@@ -12,8 +12,8 @@ This is the Rust implementation of Codex - a TUI-first coding agent from OpenAI 
 
 ### Running Tests
 ```bash
-# Run all tests in the workspace
-cargo test
+# Run full tests without being interrupted by failuresf in the workspace
+cargo test --no-fail-fast
 
 # Run tests for a specific crate
 cargo test -p codex-core
@@ -25,7 +25,7 @@ cargo test test_name
 cargo test -- --nocapture
 
 # Run tests with specific features
-cargo test --all-features
+cargo test --all-features --no-fail-fast
 ```
 
 ### Code Quality Checks
@@ -47,7 +47,6 @@ cargo clippy --all-features --all-targets --workspace --tests -- -D warnings
 ```bash
 # Use fd to locate Cargo.toml files at depth 2 (crate directories) and run cargo check for each
 fd --type file --min-depth 2 --max-depth 2 -g 'Cargo.toml' -x cargo check --manifest-path {}
-```
 ```
 
 ### Running the Application
