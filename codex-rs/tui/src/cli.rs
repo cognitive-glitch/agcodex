@@ -27,6 +27,10 @@ pub struct Cli {
     #[arg(long = "profile", short = 'p')]
     pub config_profile: Option<String>,
 
+    /// Operating mode: plan, build, or review. Default is build.
+    #[arg(long = "mode", value_name = "MODE")]
+    pub mode: Option<String>,
+
     /// Select the sandbox policy to use when executing model-generated shell
     /// commands.
     #[arg(long = "sandbox", short = 's')]

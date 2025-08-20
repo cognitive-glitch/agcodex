@@ -10,6 +10,7 @@ use codex_core::config::ConfigOverrides;
 use codex_core::config::ConfigToml;
 use codex_core::config::find_codex_home;
 use codex_core::config::load_config_as_toml_with_cli_overrides;
+use codex_core::modes::{ModeManager, OperatingMode};
 use codex_core::protocol::AskForApproval;
 use codex_core::protocol::SandboxPolicy;
 use codex_login::AuthMode;
@@ -104,6 +105,17 @@ pub async fn run_main(
         None
     };
 
+    // Initialize operating mode from CLI. Default to Build.
+    let operating_mode = match cli.mode.as_deref() {
+        Some(s) => match s.to_lowercase().as_str() {
+            "plan" => OperatingMode::Plan,
+            "review" => OperatingMode::Review,
+            _ => OperatingMode::Build,
+        },
+        None => OperatingMode::Build,
+    };
+    let mode_manager = ModeManager::new(operating_mode);
+
     // canonicalize the cwd
     let cwd = cli.cwd.clone().map(|p| p.canonicalize().unwrap_or(p));
 
@@ -115,7 +127,7 @@ pub async fn run_main(
         model_provider: model_provider_override,
         config_profile: cli.config_profile.clone(),
         codex_linux_sandbox_exe,
-        base_instructions: None,
+        base_instructions: Some(mode_manager.prompt_suffix().to_string()),
         include_plan_tool: Some(true),
         include_apply_patch_tool: None,
         disable_response_storage: cli.oss.then_some(true),

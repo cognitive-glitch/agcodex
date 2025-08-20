@@ -123,6 +123,27 @@ pub enum CodexErr {
 
     #[error("{0}")]
     EnvVar(EnvVarError),
+
+    // MCP-related errors
+    #[error("MCP server error: {0}")]
+    McpServer(String),
+
+    #[error("MCP client start failed for server {server}: {error}")]
+    McpClientStart { server: String, error: String },
+
+    #[error("MCP tool not found: {0}")]
+    McpToolNotFound(String),
+
+    // Configuration errors
+    #[error("invalid configuration: {0}")]
+    InvalidConfig(String),
+
+    #[error("invalid working directory: {0}")]
+    InvalidWorkingDirectory(String),
+
+    // General errors for migration from anyhow
+    #[error("{0}")]
+    General(String),
 }
 
 #[derive(Debug)]

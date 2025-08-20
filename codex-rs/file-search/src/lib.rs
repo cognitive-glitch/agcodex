@@ -300,7 +300,7 @@ struct BestMatchesList {
 }
 
 impl BestMatchesList {
-    fn new(max_count: usize, pattern: Pattern, matcher: Matcher) -> Self {
+    const fn new(max_count: usize, pattern: Pattern, matcher: Matcher) -> Self {
         Self {
             max_count,
             num_matches: 0,
@@ -335,7 +335,7 @@ struct WorkerCount {
     num_best_matches_lists: usize,
 }
 
-fn create_worker_count(num_workers: NonZero<usize>) -> WorkerCount {
+const fn create_worker_count(num_workers: NonZero<usize>) -> WorkerCount {
     // It appears that the number of times the function passed to
     // `WalkParallel::run()` is called is: the number of threads specified to
     // the builder PLUS ONE.

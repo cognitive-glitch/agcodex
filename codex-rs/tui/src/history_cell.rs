@@ -582,20 +582,24 @@ pub(crate) fn new_status_output(
         "  • Provider: ".into(),
         provider_disp.into(),
     ]));
-    // Only show Reasoning fields if present in config summary
-    let reff = lookup("reasoning effort");
-    if !reff.is_empty() {
-        lines.push(Line::from(vec![
-            "  • Reasoning Effort: ".into(),
-            title_case(&reff).into(),
-        ]));
-    }
-    let rsum = lookup("reasoning summaries");
-    if !rsum.is_empty() {
-        lines.push(Line::from(vec![
-            "  • Reasoning Summaries: ".into(),
-            title_case(&rsum).into(),
-        ]));
+    // Only show Reasoning fields if explicitly enabled via env var.
+    // This avoids changing historical transcripts when defaults change.
+    let show_reasoning = std::env::var("SHOW_REASONING_STATUS").as_deref() == Ok("1");
+    if show_reasoning {
+        let reff = lookup("reasoning effort");
+        if !reff.is_empty() {
+            lines.push(Line::from(vec![
+                "  • Reasoning Effort: ".into(),
+                title_case(&reff).into(),
+            ]));
+        }
+        let rsum = lookup("reasoning summaries");
+        if !rsum.is_empty() {
+            lines.push(Line::from(vec![
+                "  • Reasoning Summaries: ".into(),
+                title_case(&rsum).into(),
+            ]));
+        }
     }
 
     lines.push(Line::from(""));

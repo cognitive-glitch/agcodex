@@ -779,7 +779,7 @@ impl ChatWidget<'_> {
     }
 
     /// Set the approval policy in the widget's config copy.
-    pub(crate) fn set_approval_policy(&mut self, policy: AskForApproval) {
+    pub(crate) const fn set_approval_policy(&mut self, policy: AskForApproval) {
         self.config.approval_policy = policy;
     }
 

@@ -170,7 +170,8 @@ mod tests {
     }
 
     #[test]
-    fn supports_searching_for_navigate_to_route() -> anyhow::Result<()> {
+    fn supports_searching_for_navigate_to_route()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
         let inner = "rg -n \"navigate-to-route\" -S";
         assert_parsed(
             &vec_str(&["bash", "-lc", inner]),

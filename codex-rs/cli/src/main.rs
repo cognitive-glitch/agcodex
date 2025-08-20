@@ -17,7 +17,9 @@ use codex_exec::Cli as ExecCli;
 use codex_tui::Cli as TuiCli;
 use std::path::PathBuf;
 
+mod error;
 use crate::proto::ProtoCli;
+use error::Result;
 
 /// Codex CLI
 ///
@@ -137,12 +139,14 @@ struct GenerateTsCommand {
 
 fn main() -> anyhow::Result<()> {
     arg0_dispatch_or_else(|codex_linux_sandbox_exe| async move {
-        cli_main(codex_linux_sandbox_exe).await?;
+        cli_main(codex_linux_sandbox_exe)
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?;
         Ok(())
     })
 }
 
-async fn cli_main(codex_linux_sandbox_exe: Option<PathBuf>) -> anyhow::Result<()> {
+async fn cli_main(codex_linux_sandbox_exe: Option<PathBuf>) -> Result<()> {
     let cli = MultitoolCli::parse();
 
     match cli.subcommand {

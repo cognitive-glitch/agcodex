@@ -1,3 +1,4 @@
+mod error;
 mod parser;
 mod seek_sequence;
 
@@ -6,15 +7,13 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str::Utf8Error;
 
-use anyhow::Context;
-use anyhow::Result;
+use error::{PatchError, Result};
 pub use parser::Hunk;
 pub use parser::ParseError;
 use parser::ParseError::*;
 use parser::UpdateFileChunk;
 pub use parser::parse_patch;
 use similar::TextDiff;
-use thiserror::Error;
 use tree_sitter::LanguageError;
 use tree_sitter::Parser;
 use tree_sitter_bash::LANGUAGE as BASH;
@@ -22,46 +21,24 @@ use tree_sitter_bash::LANGUAGE as BASH;
 /// Detailed instructions for gpt-4.1 on how to use the `apply_patch` tool.
 pub const APPLY_PATCH_TOOL_INSTRUCTIONS: &str = include_str!("../apply_patch_tool_instructions.md");
 
-#[derive(Debug, Error, PartialEq)]
-pub enum ApplyPatchError {
-    #[error(transparent)]
-    ParseError(#[from] ParseError),
-    #[error(transparent)]
-    IoError(#[from] IoError),
-    /// Error that occurs while computing replacements when applying patch chunks
-    #[error("{0}")]
-    ComputeReplacements(String),
-}
+// ApplyPatchError is now aliased to PatchError in error.rs
+use error::ApplyPatchError;
 
-impl From<std::io::Error> for ApplyPatchError {
+impl From<std::io::Error> for PatchError {
     fn from(err: std::io::Error) -> Self {
-        ApplyPatchError::IoError(IoError {
+        PatchError::IoError {
             context: "I/O error".to_string(),
             source: err,
-        })
+        }
     }
 }
 
 impl From<&std::io::Error> for ApplyPatchError {
     fn from(err: &std::io::Error) -> Self {
-        ApplyPatchError::IoError(IoError {
+        ApplyPatchError::IoError {
             context: "I/O error".to_string(),
             source: std::io::Error::new(err.kind(), err.to_string()),
-        })
-    }
-}
-
-#[derive(Debug, Error)]
-#[error("{context}: {source}")]
-pub struct IoError {
-    context: String,
-    #[source]
-    source: std::io::Error,
-}
-
-impl PartialEq for IoError {
-    fn eq(&self, other: &Self) -> bool {
-        self.context == other.context && self.source.to_string() == other.source.to_string()
+        }
     }
 }
 
@@ -257,7 +234,7 @@ pub fn maybe_parse_apply_patch_verified(argv: &[String], cwd: &Path) -> MaybeApp
 /// This function returns a `Result` which is:
 ///
 /// * `Ok(String)` - The heredoc body if the extraction is successful.
-/// * `Err(anyhow::Error)` - An error if the extraction fails.
+/// * `Err(PatchError)` - An error if the extraction fails.
 ///
 fn extract_heredoc_body_from_apply_patch_command(
     src: &str,
@@ -312,7 +289,7 @@ pub fn apply_patch(
     patch: &str,
     stdout: &mut impl std::io::Write,
     stderr: &mut impl std::io::Write,
-) -> Result<(), ApplyPatchError> {
+) -> Result<()> {
     let hunks = match parse_patch(patch) {
         Ok(source) => source.hunks,
         Err(e) => {
@@ -345,7 +322,7 @@ pub fn apply_hunks(
     hunks: &[Hunk],
     stdout: &mut impl std::io::Write,
     stderr: &mut impl std::io::Write,
-) -> Result<(), ApplyPatchError> {
+) -> Result<()> {
     let _existing_paths: Vec<&Path> = hunks
         .iter()
         .filter_map(|hunk| match hunk {
@@ -381,14 +358,11 @@ pub fn apply_hunks(
         Err(err) => {
             let msg = err.to_string();
             writeln!(stderr, "{msg}").map_err(ApplyPatchError::from)?;
-            if let Some(io) = err.downcast_ref::<std::io::Error>() {
-                Err(ApplyPatchError::from(io))
-            } else {
-                Err(ApplyPatchError::IoError(IoError {
-                    context: msg,
-                    source: std::io::Error::other(err),
-                }))
-            }
+            // Convert all errors to IoError variant
+            Err(ApplyPatchError::IoError {
+                context: msg.clone(),
+                source: std::io::Error::other(msg),
+            })
         }
     }
 }
@@ -404,9 +378,9 @@ pub struct AffectedPaths {
 
 /// Apply the hunks to the filesystem, returning which files were added, modified, or deleted.
 /// Returns an error if the patch could not be applied.
-fn apply_hunks_to_files(hunks: &[Hunk]) -> anyhow::Result<AffectedPaths> {
+fn apply_hunks_to_files(hunks: &[Hunk]) -> Result<AffectedPaths> {
     if hunks.is_empty() {
-        anyhow::bail!("No files were modified.");
+        return Err(PatchError::NoFilesModified);
     }
 
     let mut added: Vec<PathBuf> = Vec::new();
@@ -418,17 +392,25 @@ fn apply_hunks_to_files(hunks: &[Hunk]) -> anyhow::Result<AffectedPaths> {
                 if let Some(parent) = path.parent()
                     && !parent.as_os_str().is_empty()
                 {
-                    std::fs::create_dir_all(parent).with_context(|| {
-                        format!("Failed to create parent directories for {}", path.display())
+                    std::fs::create_dir_all(parent).map_err(|e| PatchError::IoError {
+                        context: format!(
+                            "Failed to create parent directories for {}",
+                            path.display()
+                        ),
+                        source: e,
                     })?;
                 }
-                std::fs::write(path, contents)
-                    .with_context(|| format!("Failed to write file {}", path.display()))?;
+                std::fs::write(path, contents).map_err(|e| PatchError::IoError {
+                    context: format!("Failed to write file {}", path.display()),
+                    source: e,
+                })?;
                 added.push(path.clone());
             }
             Hunk::DeleteFile { path } => {
-                std::fs::remove_file(path)
-                    .with_context(|| format!("Failed to delete file {}", path.display()))?;
+                std::fs::remove_file(path).map_err(|e| PatchError::IoError {
+                    context: format!("Failed to delete file {}", path.display()),
+                    source: e,
+                })?;
                 deleted.push(path.clone());
             }
             Hunk::UpdateFile {
@@ -442,18 +424,28 @@ fn apply_hunks_to_files(hunks: &[Hunk]) -> anyhow::Result<AffectedPaths> {
                     if let Some(parent) = dest.parent()
                         && !parent.as_os_str().is_empty()
                     {
-                        std::fs::create_dir_all(parent).with_context(|| {
-                            format!("Failed to create parent directories for {}", dest.display())
+                        std::fs::create_dir_all(parent).map_err(|e| PatchError::IoError {
+                            context: format!(
+                                "Failed to create parent directories for {}",
+                                dest.display()
+                            ),
+                            source: e,
                         })?;
                     }
-                    std::fs::write(dest, new_contents)
-                        .with_context(|| format!("Failed to write file {}", dest.display()))?;
-                    std::fs::remove_file(path)
-                        .with_context(|| format!("Failed to remove original {}", path.display()))?;
+                    std::fs::write(dest, new_contents).map_err(|e| PatchError::IoError {
+                        context: format!("Failed to write file {}", dest.display()),
+                        source: e,
+                    })?;
+                    std::fs::remove_file(path).map_err(|e| PatchError::IoError {
+                        context: format!("Failed to remove original {}", path.display()),
+                        source: e,
+                    })?;
                     modified.push(dest.clone());
                 } else {
-                    std::fs::write(path, new_contents)
-                        .with_context(|| format!("Failed to write file {}", path.display()))?;
+                    std::fs::write(path, new_contents).map_err(|e| PatchError::IoError {
+                        context: format!("Failed to write file {}", path.display()),
+                        source: e,
+                    })?;
                     modified.push(path.clone());
                 }
             }
@@ -476,14 +468,14 @@ struct AppliedPatch {
 fn derive_new_contents_from_chunks(
     path: &Path,
     chunks: &[UpdateFileChunk],
-) -> std::result::Result<AppliedPatch, ApplyPatchError> {
+) -> Result<AppliedPatch> {
     let original_contents = match std::fs::read_to_string(path) {
         Ok(contents) => contents,
         Err(err) => {
-            return Err(ApplyPatchError::IoError(IoError {
+            return Err(ApplyPatchError::IoError {
                 context: format!("Failed to read file to update {}", path.display()),
                 source: err,
-            }));
+            });
         }
     };
 
@@ -518,7 +510,7 @@ fn compute_replacements(
     original_lines: &[String],
     path: &Path,
     chunks: &[UpdateFileChunk],
-) -> std::result::Result<Vec<(usize, usize, Vec<String>)>, ApplyPatchError> {
+) -> Result<Vec<(usize, usize, Vec<String>)>> {
     let mut replacements: Vec<(usize, usize, Vec<String>)> = Vec::new();
     let mut line_index: usize = 0;
 
@@ -640,7 +632,7 @@ pub struct ApplyPatchFileUpdate {
 pub fn unified_diff_from_chunks(
     path: &Path,
     chunks: &[UpdateFileChunk],
-) -> std::result::Result<ApplyPatchFileUpdate, ApplyPatchError> {
+) -> Result<ApplyPatchFileUpdate> {
     unified_diff_from_chunks_with_context(path, chunks, 1)
 }
 
@@ -648,7 +640,7 @@ pub fn unified_diff_from_chunks_with_context(
     path: &Path,
     chunks: &[UpdateFileChunk],
     context: usize,
-) -> std::result::Result<ApplyPatchFileUpdate, ApplyPatchError> {
+) -> Result<ApplyPatchFileUpdate> {
     let AppliedPatch {
         original_contents,
         new_contents,

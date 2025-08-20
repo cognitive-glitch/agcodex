@@ -167,7 +167,7 @@ echo "--- $d/Cargo.toml"; sed -n '1,200p' $d/Cargo.toml; echo; done
     chrono = { version = "0.4", features = ["serde"] }
     insta = "1.43.1"
     pretty_assertions = "1"
-    rand = "0.9"
+    rand = "0.8"
     vt100 = "0.16.2"
 ⚡  Running sed -n '1,200p' chatgpt/Cargo.toml
   └ [package]

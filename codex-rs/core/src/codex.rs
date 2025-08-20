@@ -42,10 +42,10 @@ use crate::config::Config;
 use crate::config_types::ShellEnvironmentPolicy;
 use crate::conversation_history::ConversationHistory;
 use crate::environment_context::EnvironmentContext;
-use crate::error::CodexErr;
 use crate::error::Result as CodexResult;
 use crate::error::SandboxErr;
 use crate::error::get_error_message_ui;
+use crate::error::{CodexErr, Result};
 use crate::exec::ExecParams;
 use crate::exec::ExecToolCallOutput;
 use crate::exec::SandboxType;
@@ -324,7 +324,7 @@ impl Session {
         config: Arc<Config>,
         auth: Option<CodexAuth>,
         tx_event: Sender<Event>,
-    ) -> anyhow::Result<(Arc<Self>, TurnContext)> {
+    ) -> Result<(Arc<Self>, TurnContext)> {
         let ConfigureSession {
             provider,
             model,
@@ -341,7 +341,9 @@ impl Session {
         } = configure_session;
         debug!("Configuring session: model={model}; provider={provider:?}");
         if !cwd.is_absolute() {
-            return Err(anyhow::anyhow!("cwd is not absolute: {cwd:?}"));
+            return Err(CodexErr::InvalidWorkingDirectory(format!(
+                "cwd is not absolute: {cwd:?}"
+            )));
         }
 
         // Error messages to dispatch after SessionConfigured is sent.
@@ -399,9 +401,9 @@ impl Session {
             }
             Err(e) => {
                 if let Some(path) = resume_path.as_ref() {
-                    return Err(anyhow::anyhow!(
+                    return Err(CodexErr::McpServer(format!(
                         "failed to resume rollout from {path:?}: {e}"
-                    ));
+                    )));
                 }
 
                 let message = format!("failed to initialize rollout recorder: {e}");
@@ -821,7 +823,7 @@ impl Session {
     }
 
     /// Returns the input if there was no task running to inject into
-    pub fn inject_input(&self, input: Vec<InputItem>) -> Result<(), Vec<InputItem>> {
+    pub fn inject_input(&self, input: Vec<InputItem>) -> std::result::Result<(), Vec<InputItem>> {
         let mut state = self.state.lock_unchecked();
         if state.current_task.is_some() {
             state.pending_input.push(input.into());
@@ -848,7 +850,7 @@ impl Session {
         tool: &str,
         arguments: Option<serde_json::Value>,
         timeout: Option<Duration>,
-    ) -> anyhow::Result<CallToolResult> {
+    ) -> Result<CallToolResult> {
         self.mcp_connection_manager
             .call_tool(server, tool, arguments, timeout)
             .await
@@ -2025,7 +2027,7 @@ fn parse_container_exec_arguments(
     arguments: String,
     turn_context: &TurnContext,
     call_id: &str,
-) -> Result<ExecParams, Box<ResponseInputItem>> {
+) -> std::result::Result<ExecParams, Box<ResponseInputItem>> {
     // parse command
     match serde_json::from_str::<ShellToolCallParams>(&arguments) {
         Ok(shell_tool_call_params) => Ok(to_exec_params(shell_tool_call_params, turn_context)),

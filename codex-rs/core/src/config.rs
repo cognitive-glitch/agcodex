@@ -6,6 +6,7 @@ use crate::config_types::ShellEnvironmentPolicy;
 use crate::config_types::ShellEnvironmentPolicyToml;
 use crate::config_types::Tui;
 use crate::config_types::UriBasedFileOpener;
+use crate::error::CodexErr;
 use crate::model_family::ModelFamily;
 use crate::model_family::find_family_for_model;
 use crate::model_provider_info::ModelProviderInfo;
@@ -250,11 +251,13 @@ pub fn load_config_as_toml(codex_home: &Path) -> std::io::Result<TomlValue> {
 
 /// Patch `CODEX_HOME/config.toml` project state.
 /// Use with caution.
-pub fn set_project_trusted(codex_home: &Path, project_path: &Path) -> anyhow::Result<()> {
+pub fn set_project_trusted(codex_home: &Path, project_path: &Path) -> crate::error::Result<()> {
     let config_path = codex_home.join(CONFIG_TOML_FILE);
     // Parse existing config if present; otherwise start a new document.
     let mut doc = match std::fs::read_to_string(config_path.clone()) {
-        Ok(s) => s.parse::<DocumentMut>()?,
+        Ok(s) => s
+            .parse::<DocumentMut>()
+            .map_err(|e| crate::error::CodexErr::InvalidConfig(e.to_string()))?,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => DocumentMut::new(),
         Err(e) => return Err(e.into()),
     };
@@ -272,7 +275,9 @@ pub fn set_project_trusted(codex_home: &Path, project_path: &Path) -> anyhow::Re
     std::fs::write(tmp_file.path(), doc.to_string())?;
 
     // atomically move the tmp file into config.toml
-    tmp_file.persist(config_path)?;
+    tmp_file
+        .persist(config_path)
+        .map_err(|e| CodexErr::Io(e.error))?;
 
     Ok(())
 }
@@ -670,11 +675,11 @@ impl Config {
             model_reasoning_effort: config_profile
                 .model_reasoning_effort
                 .or(cfg.model_reasoning_effort)
-                .unwrap_or_default(),
+                .unwrap_or(ReasoningEffort::High),
             model_reasoning_summary: config_profile
                 .model_reasoning_summary
                 .or(cfg.model_reasoning_summary)
-                .unwrap_or_default(),
+                .unwrap_or(ReasoningSummary::Detailed),
 
             chatgpt_base_url: config_profile
                 .chatgpt_base_url
@@ -1095,8 +1100,8 @@ disable_response_storage = true
             codex_linux_sandbox_exe: None,
             hide_agent_reasoning: false,
             show_raw_agent_reasoning: false,
-            model_reasoning_effort: ReasoningEffort::default(),
-            model_reasoning_summary: ReasoningSummary::default(),
+            model_reasoning_effort: ReasoningEffort::High,
+            model_reasoning_summary: ReasoningSummary::Detailed,
             chatgpt_base_url: "https://chatgpt.com/backend-api/".to_string(),
             experimental_resume: None,
             base_instructions: None,
@@ -1163,8 +1168,8 @@ disable_response_storage = true
             codex_linux_sandbox_exe: None,
             hide_agent_reasoning: false,
             show_raw_agent_reasoning: false,
-            model_reasoning_effort: ReasoningEffort::default(),
-            model_reasoning_summary: ReasoningSummary::default(),
+            model_reasoning_effort: ReasoningEffort::High,
+            model_reasoning_summary: ReasoningSummary::Detailed,
             chatgpt_base_url: "https://chatgpt.com/backend-api/".to_string(),
             experimental_resume: None,
             base_instructions: None,

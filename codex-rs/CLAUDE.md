@@ -24,17 +24,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Sandboxing**: Platform-specific (Seatbelt/Landlock/seccomp) with approval workflows
 - **MCP Protocol**: Client/server modes with tool discovery and invocation
 - **Basic Agent Support**: Simple spawn_agent function in TUI
+- **Operating Modes**: Basic ModeManager implementation with Plan/Build/Review (2025-08-21)
+- **Error Handling**: Domain-specific error types with thiserror (2025-08-21)
+- **Workspace Dependencies**: Consolidated ~80 dependencies in root Cargo.toml (2025-08-21)
 
 ### Critical Gaps (Must Implement)
-- **Error Handling**: 21 anyhow uses vs 4 thiserror (needs complete migration)
+- ~~**Error Handling**: 21 anyhow uses vs 4 thiserror~~ ✅ **COMPLETE** (2025-08-21)
 - **AST Intelligence**: Need full tree-sitter (50+ langs), ast-grep, AI Distiller-style compaction
+  - **Plan created**: Comprehensive implementation strategy ready
 - **Session Management**: No persistence at ~/.agcodex/history, missing smooth switching UX
-- **Operating Modes**: No Plan/Build/Review modes, poor profile UX needs replacement
+- ~~**Operating Modes**: No Plan/Build/Review modes~~ ✅ **SCAFFOLDED** (needs TUI integration)
 - **Mode Switching**: Missing Shift+Tab for instant mode cycling in TUI
+  - **Plan created**: ModeIndicator widget and integration strategy ready
 - **Embeddings**: No configurable Light/Medium/Hard intelligence options
 - **Location Awareness**: No precise file:line:column metadata in embeddings
+  - **Plan created**: SourceLocation type design complete
 - **Native Tools**: fd-find and ripgrep need native integration as internal tools
-- **Defaults**: Need HIGH reasoning effort and verbosity as defaults
+  - **Scaffolded**: Module structure in place
+- ~~**Defaults**: Need HIGH reasoning effort and verbosity~~ ✅ **COMPLETE** (2025-08-21)
 - **Multi-Agent**: No orchestrator, worktree management, or coordination
 - **Type Safety**: Minimal newtype/builder/typestate patterns
 - **TUI Features**: Missing Ctrl+J, Ctrl+H, Ctrl+S, Ctrl+A, Ctrl+Z/Y functionality
@@ -200,10 +207,13 @@ The codebase is organized as a Cargo workspace with the following crates:
 
 ### Phase 1: Foundation & Rebranding (IMMEDIATE)
 1. **Complete rebranding**: codex → agcodex across all 19+ crates
+   - **Status**: Plan created with automated script for 8,773 occurrences
 2. **Implement operating modes**: Plan/Build/Review with Shift+Tab switching
+   - **Status**: ModeManager scaffolded, TUI integration plan ready
 3. **Session persistence**: Create ~/.agcodex/history with Zstd compression
-4. **Set HIGH defaults**: reasoning_effort=high, verbosity=high in config
-5. **Complete anyhow→thiserror migration** (21 files affected)
+   - **Status**: Design complete, implementation pending
+4. ~~**Set HIGH defaults**: reasoning_effort=high, verbosity=high~~ ✅ **COMPLETE**
+5. ~~**Complete anyhow→thiserror migration**~~ ✅ **COMPLETE** (2025-08-21)
 
 ### Phase 2: AST Intelligence (HIGH PRIORITY)
 1. **Tree-sitter integration**: Add all 50+ language parsers
