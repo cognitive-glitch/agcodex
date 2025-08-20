@@ -6,6 +6,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the Rust implementation of Codex - a TUI-first coding agent from OpenAI that runs locally. The project prioritizes the Terminal User Interface (TUI) as the primary interaction method, with all features accessible through keyboard shortcuts and visual panels. The project is structured as a Cargo workspace with the TUI crate as the main user-facing component.
 
+## Current Implementation State
+
+### What's Working
+- **TUI Foundation**: Basic ChatWidget, onboarding flow, file search integration
+- **Conversation Management**: UUID-based tracking, turn history, diff tracking
+- **Client Architecture**: Dual API support (Responses/Chat), streaming, multi-provider
+- **Sandboxing**: Platform-specific (Seatbelt/Landlock/seccomp) with approval workflows
+- **MCP Protocol**: Client/server modes with tool discovery and invocation
+- **Basic Agent Support**: Simple spawn_agent function in TUI
+
+### Critical Gaps (Must Implement)
+- **Error Handling**: 21 anyhow uses vs 4 thiserror (needs complete migration)
+- **AST Intelligence**: Only basic tree-sitter, no ast-grep, no semantic search
+- **Session Management**: No save/load, checkpoints, undo/redo, or message jump
+- **Multi-Agent**: No orchestrator, worktree management, or coordination
+- **Type Safety**: Minimal newtype/builder/typestate patterns
+- **TUI Features**: Missing Ctrl+J, Ctrl+H, Ctrl+S, Ctrl+A, Ctrl+Z/Y functionality
+
 ## Build and Development Commands
 
 ### Building the Project
@@ -78,21 +96,35 @@ cargo run --bin codex mcp                        # MCP server mode
 
 ## Architecture and Code Organization
 
-### Workspace Structure
-The codebase is organized as a Cargo workspace with the following key crates:
+### Workspace Structure (19 Crates)
+The codebase is organized as a Cargo workspace with the following crates:
 
+#### Core Components
 - **`tui/`**: PRIMARY INTERFACE - Terminal UI implementation using Ratatui (first-party)
 - **`core/`**: Business logic and main functionality. The heart of Codex operations.
 - **`cli/`**: Command-line interface entry point (mainly launches TUI)
 - **`exec/`**: Headless/non-interactive execution mode (secondary)
-- **`mcp-client/`**, **`mcp-server/`**, **`mcp-types/`**: Model Context Protocol implementation
-- **`file-search/`**: File discovery and fuzzy search functionality
-- **`apply-patch/`**: Code modification and patching functionality
+
+#### Communication & Protocol
 - **`protocol/`**: Communication protocol definitions
+- **`protocol-ts/`**: TypeScript protocol bindings
+- **`mcp-client/`**: MCP client for connecting to servers
+- **`mcp-server/`**: MCP server mode for Codex
+- **`mcp-types/`**: Shared MCP type definitions
+
+#### Security & Sandboxing
 - **`execpolicy/`**: Sandboxing and execution policy enforcement
 - **`linux-sandbox/`**: Linux-specific sandboxing using Landlock/seccomp
+
+#### Utilities & Integration
+- **`file-search/`**: File discovery and fuzzy search functionality (nucleo-matcher)
+- **`apply-patch/`**: Code modification and patching functionality
+- **`ansi-escape/`**: ANSI escape sequence handling
+- **`common/`**: Shared utilities across crates
+- **`login/`**: Authentication management
 - **`chatgpt/`**: ChatGPT-specific authentication and session management
 - **`ollama/`**: Ollama integration for local LLM support
+- **`arg0/`**: Argument handling utilities
 
 ### Key Architectural Components
 
@@ -135,6 +167,23 @@ The codebase is organized as a Cargo workspace with the following key crates:
 - `history_browser.rs`: Conversation history navigation
 - `notification.rs`: In-TUI notification system
 - `widgets/`: Custom Ratatui widgets for Codex
+
+## Refactoring Priority Roadmap
+
+### Phase 1: Foundation (HIGH PRIORITY)
+1. **Complete anyhow→thiserror migration** (21 files affected)
+2. **Add AST intelligence** (tree-sitter + ast-grep integration)
+3. **Implement SessionManager** with save/load/checkpoint capabilities
+
+### Phase 2: Core Features (HIGH PRIORITY)
+4. **Message Navigation** (Ctrl+J jump with context restoration)
+5. **History Browser** (Ctrl+H with timeline visualization)
+6. **Multi-Agent Orchestrator** with git worktree support
+
+### Phase 3: Enhancement (MEDIUM PRIORITY)
+7. **Type system improvements** (newtype, builder, typestate patterns)
+8. **Tool integration module** (unified interface for rg/fd/ast-grep)
+9. **Notification system** (terminal bell, desktop notifications)
 
 ## Critical Refactoring Requirements
 
