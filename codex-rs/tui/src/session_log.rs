@@ -20,7 +20,7 @@ struct SessionLogger {
 }
 
 impl SessionLogger {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             file: OnceCell::new(),
         }

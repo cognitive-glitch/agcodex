@@ -41,7 +41,7 @@ pub(crate) struct TextAreaState {
 }
 
 impl TextArea {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             text: String::new(),
             cursor_pos: 0,
@@ -116,7 +116,7 @@ impl TextArea {
         self.cursor_pos = self.clamp_pos_to_nearest_boundary(self.cursor_pos);
     }
 
-    pub fn cursor(&self) -> usize {
+    pub const fn cursor(&self) -> usize {
         self.cursor_pos
     }
 
@@ -149,7 +149,7 @@ impl TextArea {
         Some((area.x + col, area.y + screen_row))
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.text.is_empty()
     }
 

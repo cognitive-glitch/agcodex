@@ -18,7 +18,7 @@ pub struct ModelPreset {
 /// Built-in list of model presets that pair a model with a reasoning effort.
 ///
 /// Keep this UI-agnostic so it can be reused by both TUI and MCP server.
-pub fn builtin_model_presets() -> &'static [ModelPreset] {
+pub const fn builtin_model_presets() -> &'static [ModelPreset] {
     // Order reflects effort from minimal to high.
     const PRESETS: &[ModelPreset] = &[
         ModelPreset {

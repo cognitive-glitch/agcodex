@@ -209,7 +209,7 @@ pub(crate) struct OutgoingNotificationMeta {
 }
 
 impl OutgoingNotificationMeta {
-    pub(crate) fn new(request_id: Option<RequestId>) -> Self {
+    pub(crate) const fn new(request_id: Option<RequestId>) -> Self {
         Self { request_id }
     }
 }

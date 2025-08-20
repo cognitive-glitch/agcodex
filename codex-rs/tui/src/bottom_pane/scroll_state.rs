@@ -11,7 +11,7 @@ pub(crate) struct ScrollState {
 }
 
 impl ScrollState {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             selected_idx: None,
             scroll_top: 0,
@@ -19,7 +19,7 @@ impl ScrollState {
     }
 
     /// Reset selection and scroll.
-    pub fn reset(&mut self) {
+    pub const fn reset(&mut self) {
         self.selected_idx = None;
         self.scroll_top = 0;
     }
@@ -36,7 +36,7 @@ impl ScrollState {
     }
 
     /// Move selection up by one, wrapping to the bottom when necessary.
-    pub fn move_up_wrap(&mut self, len: usize) {
+    pub const fn move_up_wrap(&mut self, len: usize) {
         if len == 0 {
             self.selected_idx = None;
             self.scroll_top = 0;
@@ -50,7 +50,7 @@ impl ScrollState {
     }
 
     /// Move selection down by one, wrapping to the top when necessary.
-    pub fn move_down_wrap(&mut self, len: usize) {
+    pub const fn move_down_wrap(&mut self, len: usize) {
         if len == 0 {
             self.selected_idx = None;
             self.scroll_top = 0;
@@ -64,7 +64,7 @@ impl ScrollState {
 
     /// Adjust `scroll_top` so that the current `selected_idx` is visible within
     /// the window of `visible_rows`.
-    pub fn ensure_visible(&mut self, len: usize, visible_rows: usize) {
+    pub const fn ensure_visible(&mut self, len: usize, visible_rows: usize) {
         if len == 0 || visible_rows == 0 {
             self.scroll_top = 0;
             return;

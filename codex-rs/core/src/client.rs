@@ -332,12 +332,12 @@ impl ModelClient {
     }
 
     /// Returns the current reasoning effort setting.
-    pub fn get_reasoning_effort(&self) -> ReasoningEffortConfig {
+    pub const fn get_reasoning_effort(&self) -> ReasoningEffortConfig {
         self.effort
     }
 
     /// Returns the current reasoning summary setting.
-    pub fn get_reasoning_summary(&self) -> ReasoningSummaryConfig {
+    pub const fn get_reasoning_summary(&self) -> ReasoningSummaryConfig {
         self.summary
     }
 

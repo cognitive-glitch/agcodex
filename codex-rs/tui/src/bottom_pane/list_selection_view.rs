@@ -99,7 +99,7 @@ impl ListSelectionView {
         }
     }
 
-    fn cancel(&mut self) {
+    const fn cancel(&mut self) {
         // Close the popup without performing any actions.
         self.complete = true;
     }

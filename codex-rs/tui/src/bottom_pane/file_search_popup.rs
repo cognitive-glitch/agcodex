@@ -24,7 +24,7 @@ pub(crate) struct FileSearchPopup {
 }
 
 impl FileSearchPopup {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             display_query: String::new(),
             pending_query: String::new(),

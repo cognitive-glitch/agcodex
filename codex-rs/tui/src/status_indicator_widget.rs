@@ -54,7 +54,7 @@ impl StatusIndicatorWidget {
         }
     }
 
-    pub fn desired_height(&self, _width: u16) -> u16 {
+    pub const fn desired_height(&self, _width: u16) -> u16 {
         1
     }
 

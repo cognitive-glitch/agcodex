@@ -211,7 +211,7 @@ impl UserApprovalWidget<'_> {
     /// Normalize a key for comparison.
     /// - For `KeyCode::Char`, converts to lowercase for case-insensitive matching.
     /// - Other key codes are returned unchanged.
-    fn normalize_keycode(code: KeyCode) -> KeyCode {
+    const fn normalize_keycode(code: KeyCode) -> KeyCode {
         match code {
             KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
             other => other,
@@ -347,7 +347,7 @@ impl UserApprovalWidget<'_> {
 
     /// Returns `true` once the user has made a decision and the widget no
     /// longer needs to be displayed.
-    pub(crate) fn is_complete(&self) -> bool {
+    pub(crate) const fn is_complete(&self) -> bool {
         self.done
     }
 

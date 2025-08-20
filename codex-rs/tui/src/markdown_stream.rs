@@ -15,7 +15,7 @@ pub(crate) struct MarkdownStreamCollector {
 }
 
 impl MarkdownStreamCollector {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             buffer: String::new(),
             committed_line_count: 0,
@@ -24,7 +24,7 @@ impl MarkdownStreamCollector {
 
     /// Returns the number of logical lines that have already been committed
     /// (i.e., previously returned from `commit_complete_lines`).
-    pub fn committed_count(&self) -> usize {
+    pub const fn committed_count(&self) -> usize {
         self.committed_line_count
     }
 
@@ -136,7 +136,7 @@ impl MarkdownStreamCollector {
 
 /// fence helpers are provided by `crate::render::markdown_utils`
 #[cfg(test)]
-fn unwrap_markdown_language_fence_if_enabled(s: String) -> String {
+const fn unwrap_markdown_language_fence_if_enabled(s: String) -> String {
     // In tests, keep content exactly as provided to simplify assertions.
     s
 }
@@ -192,7 +192,7 @@ pub(crate) struct AnimatedLineStreamer {
 }
 
 impl AnimatedLineStreamer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             queue: VecDeque::new(),
         }

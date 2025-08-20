@@ -30,7 +30,7 @@ pub struct ExecvChecker {
 }
 
 impl ExecvChecker {
-    pub fn new(execv_policy: Policy) -> Self {
+    pub const fn new(execv_policy: Policy) -> Self {
         Self { execv_policy }
     }
 

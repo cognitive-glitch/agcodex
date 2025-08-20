@@ -388,7 +388,7 @@ enum FileMode {
 }
 
 impl FileMode {
-    fn as_str(&self) -> &'static str {
+    const fn as_str(&self) -> &'static str {
         match self {
             FileMode::Regular => "100644",
             #[cfg(unix)]

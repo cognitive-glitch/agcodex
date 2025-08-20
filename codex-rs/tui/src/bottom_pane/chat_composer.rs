@@ -130,7 +130,7 @@ impl ChatComposer {
     }
 
     /// Returns true if the composer currently contains no user input.
-    pub(crate) fn is_empty(&self) -> bool {
+    pub(crate) const fn is_empty(&self) -> bool {
         self.textarea.is_empty()
     }
 
@@ -211,7 +211,7 @@ impl ChatComposer {
         }
     }
 
-    pub fn set_ctrl_c_quit_hint(&mut self, show: bool, has_focus: bool) {
+    pub const fn set_ctrl_c_quit_hint(&mut self, show: bool, has_focus: bool) {
         self.ctrl_c_quit_hint = show;
         self.set_has_focus(has_focus);
     }
@@ -632,7 +632,7 @@ impl ChatComposer {
         self.dismissed_file_popup_token = None;
     }
 
-    fn set_has_focus(&mut self, has_focus: bool) {
+    const fn set_has_focus(&mut self, has_focus: bool) {
         self.has_focus = has_focus;
     }
 }

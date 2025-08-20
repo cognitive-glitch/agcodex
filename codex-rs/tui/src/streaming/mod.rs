@@ -15,7 +15,7 @@ pub(crate) struct StreamState {
 }
 
 impl StreamState {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             collector: MarkdownStreamCollector::new(),
             streamer: AnimatedLineStreamer::new(),
@@ -49,7 +49,7 @@ pub(crate) struct HeaderEmitter {
 }
 
 impl HeaderEmitter {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             reasoning_emitted_this_turn: false,
             answer_emitted_this_turn: false,
@@ -58,21 +58,21 @@ impl HeaderEmitter {
         }
     }
 
-    pub(crate) fn reset_for_new_turn(&mut self) {
+    pub(crate) const fn reset_for_new_turn(&mut self) {
         self.reasoning_emitted_this_turn = false;
         self.answer_emitted_this_turn = false;
         self.reasoning_emitted_in_stream = false;
         self.answer_emitted_in_stream = false;
     }
 
-    pub(crate) fn reset_for_stream(&mut self, kind: StreamKind) {
+    pub(crate) const fn reset_for_stream(&mut self, kind: StreamKind) {
         match kind {
             StreamKind::Reasoning => self.reasoning_emitted_in_stream = false,
             StreamKind::Answer => self.answer_emitted_in_stream = false,
         }
     }
 
-    pub(crate) fn has_emitted_for_stream(&self, kind: StreamKind) -> bool {
+    pub(crate) const fn has_emitted_for_stream(&self, kind: StreamKind) -> bool {
         match kind {
             StreamKind::Reasoning => self.reasoning_emitted_in_stream,
             StreamKind::Answer => self.answer_emitted_in_stream,
@@ -84,7 +84,7 @@ impl HeaderEmitter {
     /// This is used when a stream (e.g., Answer) is finalized and a subsequent
     /// block of the same kind is started within the same turn. Without this,
     /// only the first block would render a header.
-    pub(crate) fn allow_reemit_for_same_kind_in_turn(&mut self, kind: StreamKind) {
+    pub(crate) const fn allow_reemit_for_same_kind_in_turn(&mut self, kind: StreamKind) {
         match kind {
             StreamKind::Reasoning => self.reasoning_emitted_this_turn = false,
             StreamKind::Answer => self.answer_emitted_this_turn = false,

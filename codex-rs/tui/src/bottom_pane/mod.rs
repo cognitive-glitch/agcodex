@@ -188,7 +188,7 @@ impl BottomPane<'_> {
         }
     }
 
-    pub(crate) fn ctrl_c_quit_hint_visible(&self) -> bool {
+    pub(crate) const fn ctrl_c_quit_hint_visible(&self) -> bool {
         self.ctrl_c_quit_hint
     }
 
@@ -248,11 +248,11 @@ impl BottomPane<'_> {
         }
     }
 
-    pub(crate) fn composer_is_empty(&self) -> bool {
+    pub(crate) const fn composer_is_empty(&self) -> bool {
         self.composer.is_empty()
     }
 
-    pub(crate) fn is_task_running(&self) -> bool {
+    pub(crate) const fn is_task_running(&self) -> bool {
         self.is_task_running
     }
 

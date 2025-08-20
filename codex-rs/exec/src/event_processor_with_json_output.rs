@@ -17,7 +17,7 @@ pub(crate) struct EventProcessorWithJsonOutput {
 }
 
 impl EventProcessorWithJsonOutput {
-    pub fn new(last_message_path: Option<PathBuf>) -> Self {
+    pub const fn new(last_message_path: Option<PathBuf>) -> Self {
         Self { last_message_path }
     }
 }

@@ -5,7 +5,7 @@ use codex_protocol::config_types::SandboxMode;
 use mcp_types::Tool;
 use mcp_types::ToolInputSchema;
 use schemars::JsonSchema;
-use schemars::r#gen::SchemaSettings;
+use schemars::generate::SchemaSettings;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -103,7 +103,6 @@ pub(crate) fn create_tool_for_codex_tool_call_param() -> Tool {
     let schema = SchemaSettings::draft2019_09()
         .with(|s| {
             s.inline_subschemas = true;
-            s.option_add_null_type = false;
         })
         .into_generator()
         .into_root_schema_for::<CodexToolCallParam>();
@@ -192,7 +191,6 @@ pub(crate) fn create_tool_for_codex_tool_call_reply_param() -> Tool {
     let schema = SchemaSettings::draft2019_09()
         .with(|s| {
             s.inline_subschemas = true;
-            s.option_add_null_type = false;
         })
         .into_generator()
         .into_root_schema_for::<CodexToolCallReplyParam>();

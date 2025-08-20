@@ -159,7 +159,7 @@ pub(crate) fn assess_safety_for_untrusted_command(
     }
 }
 
-pub fn get_platform_sandbox() -> Option<SandboxType> {
+pub const fn get_platform_sandbox() -> Option<SandboxType> {
     if cfg!(target_os = "macos") {
         Some(SandboxType::MacosSeatbelt)
     } else if cfg!(target_os = "linux") {

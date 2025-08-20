@@ -544,7 +544,7 @@ fn escape_command(command: &[String]) -> String {
     try_join(command.iter().map(|s| s.as_str())).unwrap_or_else(|_| command.join(" "))
 }
 
-fn format_file_change(change: &FileChange) -> &'static str {
+const fn format_file_change(change: &FileChange) -> &'static str {
     match change {
         FileChange::Add { .. } => "A",
         FileChange::Delete => "D",

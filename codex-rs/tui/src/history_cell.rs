@@ -206,7 +206,7 @@ pub(crate) fn new_active_exec_command(
     }
 }
 
-pub(crate) fn new_completed_exec_command(
+pub(crate) const fn new_completed_exec_command(
     command: Vec<String>,
     parsed: Vec<ParsedCommand>,
     output: CommandOutput,

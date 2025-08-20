@@ -122,7 +122,7 @@ fn create_initial_user_message(text: String, image_paths: Vec<PathBuf>) -> Optio
 
 impl ChatWidget<'_> {
     #[inline]
-    fn mark_needs_redraw(&mut self) {
+    const fn mark_needs_redraw(&mut self) {
         self.needs_redraw = true;
     }
     fn flush_answer_stream_with_separator(&mut self) {
@@ -311,7 +311,7 @@ impl ChatWidget<'_> {
         let finished = self.stream.on_commit_tick(&sink);
         self.handle_if_stream_finished(finished);
     }
-    fn is_write_cycle_active(&self) -> bool {
+    const fn is_write_cycle_active(&self) -> bool {
         self.stream.is_write_cycle_active()
     }
 
@@ -734,7 +734,7 @@ impl ChatWidget<'_> {
     }
 
     /// Set the reasoning effort in the widget's config copy.
-    pub(crate) fn set_reasoning_effort(&mut self, effort: ReasoningEffortConfig) {
+    pub(crate) const fn set_reasoning_effort(&mut self, effort: ReasoningEffortConfig) {
         self.config.model_reasoning_effort = effort;
     }
 
@@ -776,7 +776,7 @@ impl ChatWidget<'_> {
         }
     }
 
-    pub(crate) fn composer_is_empty(&self) -> bool {
+    pub(crate) const fn composer_is_empty(&self) -> bool {
         self.bottom_pane.composer_is_empty()
     }
 
@@ -806,7 +806,7 @@ impl ChatWidget<'_> {
         self.submit_user_message(text.into());
     }
 
-    pub(crate) fn token_usage(&self) -> &TokenUsage {
+    pub(crate) const fn token_usage(&self) -> &TokenUsage {
         &self.total_token_usage
     }
 
@@ -844,7 +844,7 @@ const EXAMPLE_PROMPTS: [&str; 6] = [
     "Improve documentation in @filename",
 ];
 
-fn add_token_usage(current_usage: &TokenUsage, new_usage: &TokenUsage) -> TokenUsage {
+const fn add_token_usage(current_usage: &TokenUsage, new_usage: &TokenUsage) -> TokenUsage {
     let cached_input_tokens = match (
         current_usage.cached_input_tokens,
         new_usage.cached_input_tokens,

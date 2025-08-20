@@ -155,7 +155,7 @@ impl ApplyPatchAction {
     }
 
     /// Returns the changes that would be made by applying the patch.
-    pub fn changes(&self) -> &HashMap<PathBuf, ApplyPatchFileChange> {
+    pub const fn changes(&self) -> &HashMap<PathBuf, ApplyPatchFileChange> {
         &self.changes
     }
 
@@ -693,7 +693,7 @@ mod tests {
     }
 
     fn strs_to_strings(strs: &[&str]) -> Vec<String> {
-        strs.iter().map(|s| s.to_string()).collect()
+        strs.iter().map(|s| (*s).to_string()).collect()
     }
 
     #[test]

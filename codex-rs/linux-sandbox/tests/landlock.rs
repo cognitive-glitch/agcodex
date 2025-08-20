@@ -36,7 +36,7 @@ fn create_env_from_core_vars() -> HashMap<String, String> {
 #[expect(clippy::print_stdout, clippy::expect_used, clippy::unwrap_used)]
 async fn run_cmd(cmd: &[&str], writable_roots: &[PathBuf], timeout_ms: u64) {
     let params = ExecParams {
-        command: cmd.iter().map(|elm| elm.to_string()).collect(),
+        command: cmd.iter().map(|elm| (*elm).to_string()).collect(),
         cwd: std::env::current_dir().expect("cwd should exist"),
         timeout_ms: Some(timeout_ms),
         env: create_env_from_core_vars(),
@@ -134,7 +134,7 @@ async fn test_timeout() {
 async fn assert_network_blocked(cmd: &[&str]) {
     let cwd = std::env::current_dir().expect("cwd should exist");
     let params = ExecParams {
-        command: cmd.iter().map(|s| s.to_string()).collect(),
+        command: cmd.iter().map(|s| (*s).to_string()).collect(),
         cwd,
         // Give the tool a generous 2-second timeout so even slow DNS timeouts
         // do not stall the suite.

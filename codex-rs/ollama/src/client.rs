@@ -126,6 +126,7 @@ impl OllamaClient {
 
     /// Start a model pull and emit streaming events. The returned stream ends when
     /// a Success event is observed or the server closes the connection.
+    #[allow(tail_expr_drop_order)]
     pub async fn pull_model_stream(
         &self,
         model: &str,

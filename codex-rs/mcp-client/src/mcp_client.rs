@@ -448,7 +448,7 @@ fn create_env_for_mcp_server(
     DEFAULT_ENV_VARS
         .iter()
         .filter_map(|var| match std::env::var(var) {
-            Ok(value) => Some((var.to_string(), value)),
+            Ok(value) => Some(((*var).to_string(), value)),
             Err(_) => None,
         })
         .chain(extra_env.unwrap_or_default())

@@ -40,7 +40,7 @@ pub enum UriBasedFileOpener {
 }
 
 impl UriBasedFileOpener {
-    pub fn get_scheme(&self) -> Option<&str> {
+    pub const fn get_scheme(&self) -> Option<&str> {
         match self {
             UriBasedFileOpener::VsCode => Some("vscode"),
             UriBasedFileOpener::VsCodeInsiders => Some("vscode-insiders"),

@@ -111,7 +111,7 @@ pub(crate) struct ResponsesApiRequest<'a> {
     pub(crate) prompt_cache_key: Option<String>,
 }
 
-pub(crate) fn create_reasoning_param_for_request(
+pub(crate) const fn create_reasoning_param_for_request(
     model_family: &ModelFamily,
     effort: ReasoningEffortConfig,
     summary: ReasoningSummaryConfig,

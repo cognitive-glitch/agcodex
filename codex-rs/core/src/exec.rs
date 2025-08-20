@@ -196,7 +196,7 @@ pub struct RawExecToolCallOutput {
 }
 
 impl StreamOutput<String> {
-    pub fn new(text: String) -> Self {
+    pub const fn new(text: String) -> Self {
         Self {
             text,
             truncated_after_lines: None,

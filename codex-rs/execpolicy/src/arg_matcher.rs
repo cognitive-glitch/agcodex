@@ -48,7 +48,7 @@ pub enum ArgMatcher {
 }
 
 impl ArgMatcher {
-    pub fn cardinality(&self) -> ArgMatcherCardinality {
+    pub const fn cardinality(&self) -> ArgMatcherCardinality {
         match self {
             ArgMatcher::Literal(_)
             | ArgMatcher::OpaqueNonFile
@@ -85,7 +85,7 @@ pub enum ArgMatcherCardinality {
 }
 
 impl ArgMatcherCardinality {
-    pub fn is_exact(&self) -> Option<usize> {
+    pub const fn is_exact(&self) -> Option<usize> {
         match self {
             ArgMatcherCardinality::One => Some(1),
             ArgMatcherCardinality::AtLeastOne => None,

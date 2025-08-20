@@ -166,7 +166,7 @@ impl TrustDirectoryWidget {
         self.selection = Some(TrustDirectorySelection::Trust);
     }
 
-    fn handle_dont_trust(&mut self) {
+    const fn handle_dont_trust(&mut self) {
         self.highlighted = TrustDirectorySelection::DontTrust;
         self.selection = Some(TrustDirectorySelection::DontTrust);
     }

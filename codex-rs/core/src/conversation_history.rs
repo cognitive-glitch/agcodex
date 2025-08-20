@@ -8,7 +8,7 @@ pub(crate) struct ConversationHistory {
 }
 
 impl ConversationHistory {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self { items: Vec::new() }
     }
 

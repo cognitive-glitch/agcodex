@@ -98,7 +98,7 @@ mod tests {
     }
 
     fn vec_str(args: &[&str]) -> Vec<String> {
-        args.iter().map(|s| s.to_string()).collect()
+        args.iter().map(|s| (*s).to_string()).collect()
     }
 
     fn assert_parsed(args: &[String], expected: Vec<ParsedCommand>) {
