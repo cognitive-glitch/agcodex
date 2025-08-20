@@ -16,6 +16,7 @@ async-channel = { workspace = true }
 base64 = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
+dashmap = { workspace = true }
 agcodex-apply-patch = { path = "../apply-patch" }
 agcodex-login = { path = "../login" }
 agcodex-mcp-client = { path = "../mcp-client" }

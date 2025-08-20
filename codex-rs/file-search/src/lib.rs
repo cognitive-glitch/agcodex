@@ -148,8 +148,8 @@ pub fn run(
         })
         .collect();
 
-    // Use the same tree-walker library that ripgrep uses. We use it directly so
-    // that we can leverage the parallelism it provides.
+    // Use the ignore crate's tree-walker for efficient parallel file traversal.
+    // This provides high-performance directory walking with built-in parallelism.
     let mut walk_builder = WalkBuilder::new(search_directory);
     walk_builder.threads(num_walk_builder_threads);
     if !exclude.is_empty() {
@@ -341,10 +341,10 @@ const fn create_worker_count(num_workers: NonZero<usize>) -> WorkerCount {
     // the builder PLUS ONE.
     //
     // In `WalkParallel::visit()`, the builder function gets called once here:
-    // https://github.com/BurntSushi/ripgrep/blob/79cbe89deb1151e703f4d91b19af9cdcc128b765/crates/ignore/src/walk.rs#L1233
+    // Reference: ignore crate's WalkParallel::visit() implementation
     //
     // And then once for every worker here:
-    // https://github.com/BurntSushi/ripgrep/blob/79cbe89deb1151e703f4d91b19af9cdcc128b765/crates/ignore/src/walk.rs#L1288
+    // Reference: ignore crate's worker thread spawn logic
     let num_walk_builder_threads = num_workers.get();
     let num_best_matches_lists = num_walk_builder_threads + 1;
 

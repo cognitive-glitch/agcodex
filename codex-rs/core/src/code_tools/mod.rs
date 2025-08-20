@@ -25,8 +25,10 @@ pub trait CodeTool {
 }
 
 pub mod fd_find;
-pub mod ripgrep;
 pub mod tree_sitter;
+
+/// AST-based agent tools for code analysis and transformation
+pub mod ast_agent_tools;
 
 /// Optional: AST-Grep internal tooling. Kept as a stub for now.
 pub mod ast_grep;

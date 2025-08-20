@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **AST-RAG intelligence**: Hierarchical retrieval with 90%+ code compression
 - **Session persistence**: Efficient storage at ~/.agcodex/history with Zstd compression
 - **GPT-5 best practices**: Structured XML-like prompts, high reasoning/verbosity defaults
-- **Native tool integration**: fd-find and ripgrep as Rust libraries, not shell commands
+- **Internal agent tools**: AST-powered code analysis and transformation tools
 
 ## Current Implementation State
 
@@ -39,7 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Embeddings**: No configurable Light/Medium/Hard intelligence options
 - **Location Awareness**: No precise file:line:column metadata in embeddings
   - **Plan created**: SourceLocation type design complete
-- **Native Tools**: fd-find and ripgrep need native integration as internal tools
+- **Internal Agent Tools**: AST-based analysis, search, and transformation tools
   - **Scaffolded**: Module structure in place
 - ~~**Defaults**: Need HIGH reasoning effort and verbosity~~ ✅ **COMPLETE** (2025-08-21)
 - **Multi-Agent**: No orchestrator, worktree management, or coordination
@@ -150,7 +150,7 @@ The codebase is organized as a Cargo workspace with the following crates:
 - **`linux-sandbox/`**: Linux-specific sandboxing using Landlock/seccomp
 
 #### Utilities & Integration
-- **`file-search/`**: Enhanced with tree-sitter AST search and native fd-find/ripgrep
+- **`file-search/`**: Enhanced with tree-sitter AST search and fd-find integration
 - **`apply-patch/`**: AST-based patching with precise location metadata
 - **`ansi-escape/`**: ANSI escape sequence handling
 - **`common/`**: Shared utilities across crates
@@ -220,7 +220,7 @@ The codebase is organized as a Cargo workspace with the following crates:
 2. **AST-RAG engine**: Hierarchical retrieval (File→Class→Function)
 3. **AI Distiller compaction**: 90%+ code compression
 4. **Location-aware embeddings**: Precise file:line:column metadata
-5. **Native tool integration**: fd-find and ripgrep as Rust libraries
+5. **Internal agent tools**: AST-based search, analysis, and transformation
 
 ### Phase 3: Core TUI Features (HIGH PRIORITY)
 1. **Message Navigation** (Ctrl+J jump with context restoration)
@@ -322,7 +322,7 @@ mode_override: review  # Forces Review mode when active
 tools:
   - Read
   - AST-Search
-  - Ripgrep
+  - AST-Search
   - Tree-sitter-analyze
 intelligence: hard  # Maximum AST analysis
 prompt: |
@@ -385,7 +385,7 @@ Create modular context engine with: ast_compactor (code compression), semantic_i
 
 **fd-find Integration**: Native file discovery using `ignore::WalkBuilder` with parallel search support.
 
-**ripgrep Integration**: Native text search with AST context enrichment using `grep_regex` and `grep_searcher`.
+**AST Search Tools**: Tree-sitter powered search with semantic understanding and precise location tracking.
 
 **Unified Tool Interface**: All tools implement `CodeTool` trait with search and parallel search methods.
 
@@ -475,7 +475,7 @@ include_data_flow = true
 - **Day 1-2**: Complete rebranding (codex → agcodex)
 - **Day 3**: Implement Plan/Build/Review modes with Shift+Tab
 - **Day 4**: Add all 50+ tree-sitter languages
-- **Day 5**: Native fd-find and ripgrep integration
+- **Day 5**: Internal agent tools implementation
 
 ### Week 2: Intelligence Layer
 - **Day 1-2**: AST-RAG indexing pipeline
@@ -604,7 +604,7 @@ Priority areas for optimization:
 - Intelligence modes: light/medium/hard with different embedding models
 - Session auto-save with Zstd compression
 - Mode switching via Shift+Tab (Plan/Build/Review)
-- Native tools enabled (fd_find, ripgrep, ast)
+- Internal agent tools enabled (ast_search, ast_transform, ast_analyze)
 - TUI with enhanced layout, notifications, and customizable keybindings
 
 ## TUI-First Architecture Principles
@@ -628,7 +628,7 @@ This overhaul transforms Codex into **AGCodex** - a powerful, independent AI cod
 2. **Operating Modes**: Plan/Build/Review with Shift+Tab switching
 3. **Tree-sitter Integration**: 50+ languages with AST-RAG and AI Distiller compaction
 4. **Session Persistence**: ~/.agcodex/history with efficient Zstd compression
-5. **Native Tools**: fd-find and ripgrep as internal Rust libraries
+5. **Internal Agent Tools**: AST-based code analysis and transformation
 6. **High Defaults**: reasoning_effort=high, verbosity=high for GPT-5
 7. **Location Awareness**: Precise file:line:column in all embeddings
 8. **Error Handling**: Complete migration from `anyhow` to `thiserror`
@@ -687,7 +687,7 @@ This overhaul transforms Codex into **AGCodex** - a powerful, independent AI cod
 2. **50+ Language Support**: Comprehensive tree-sitter out of the box
 3. **AST-RAG Architecture**: Hierarchical retrieval with 90%+ compression
 4. **Location-Aware Everything**: Precise file:line:column in all operations
-5. **Native Tool Integration**: fd-find and ripgrep as Rust libraries
+5. **Internal Agent Tools**: AST-powered analysis and transformation
 6. **Efficient Persistence**: Zstd compression with lazy loading
 7. **Subagent System**: `@agent-name` invocation with isolated contexts
 8. **GPT-5 Optimized**: XML-structured prompts, high defaults

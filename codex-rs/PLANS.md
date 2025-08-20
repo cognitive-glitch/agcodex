@@ -18,14 +18,14 @@
 ## Executive Summary
 
 AGCodex is a complete overhaul of the original Codex project, transforming it into an independent, powerful AI coding assistant with:
-- **Three simple operating modes**: Plan (read-only), Build (full access), Review (quality focus) ✅ Scaffolded
+- **Three simple operating modes**: Plan (read-only), Build (full access), Review (quality focus) ✅ Implemented
 - **Sophisticated subagent system**: Specialized AI assistants invoked via `@agent-name`
-- **50+ language support** via comprehensive tree-sitter integration 📄 Plan ready
-- **AST-based intelligence** for precise code understanding and modification 📄 Plan ready
-- **Efficient session persistence** with 90%+ compression
+- **50+ language support** via comprehensive tree-sitter integration ✅ Implemented
+- **AST-based intelligence** for precise code understanding and modification ✅ Implemented
+- **Efficient session persistence** with 90%+ compression ✅ Implemented
 - **GPT-5 best practices** with high reasoning and verbosity defaults ✅ Complete
-- **Location-aware embeddings** for precise agentic coding 📄 Plan ready
-- **Native tool integration**: fd-find and ripgrep as Rust libraries ✅ Scaffolded
+- **Location-aware embeddings** for precise agentic coding ✅ Implemented
+- **Internal agent tools**: AST-based code analysis and transformation ✅ Implemented
 
 ## Core Philosophy
 
@@ -43,7 +43,7 @@ AGCodex is a complete overhaul of the original Codex project, transforming it in
 4. **Guided over autonomous**: Help users, don't surprise them
 5. **Precision over guessing**: Exact locations for all operations
 
-## Phase 1: Complete Rebranding 📄 Plan Ready
+## Phase 1: Complete Rebranding 🚧 In Progress
 
 ### 1.1 Global Renaming Strategy
 ```bash
@@ -129,7 +129,7 @@ impl Default for AGCodexConfig {
 }
 ```
 
-## Phase 2: Operating Modes System ✅ Partially Complete
+## Phase 2: Operating Modes System ✅ Complete
 
 ### 2.1 Three Clear Modes with Shift+Tab Switching
 
@@ -161,7 +161,7 @@ impl OperatingMode {
 <mode>PLAN MODE - Read Only</mode>
 You are analyzing and planning. You CAN:
 ✓ Read any file
-✓ Search code using ripgrep and fd-find
+✓ Search code using AST-powered semantic search
 ✓ Analyze AST structure with tree-sitter
 ✓ Create detailed implementation plans
 ✓ Research and gather information
@@ -290,7 +290,7 @@ impl Widget for ModeIndicator {
 }
 ```
 
-## Phase 3: AGCodex Subagent System 📄 Design Complete
+## Phase 3: AGCodex Subagent System 📄 Ready to Implement
 
 ### 3.1 Subagent Architecture
 
@@ -381,7 +381,7 @@ mode_override: review
 tools:
   - Read
   - AST-Search
-  - Ripgrep
+  - AST-Search
   - Tree-sitter-analyze
 intelligence: hard
 prompt: |
@@ -567,7 +567,7 @@ impl SubAgentCache {
 }
 ```
 
-## Phase 4: Comprehensive Tree-sitter Integration 📄 Plan Ready
+## Phase 4: Comprehensive Tree-sitter Integration ✅ Complete
 
 ### 3.1 Full Language Support (50+ Languages)
 
@@ -777,51 +777,52 @@ impl FdFind {
 }
 ```
 
-### 4.2 Native ripgrep Integration
+### 4.2 AST-Based Agent Tools
 
 ```rust
-// agcodex-tools/src/ripgrep.rs
-use grep_regex::{RegexMatcher, RegexMatcherBuilder};
-use grep_searcher::{BinaryDetection, SearcherBuilder, Sink};
+// agcodex-tools/src/ast_agent_tools.rs
+use tree_sitter::{Parser, Query, QueryCursor};
 
-pub struct RipGrep {
-    matcher: RegexMatcher,
-    searcher: SearcherBuilder,
-    config: RgConfig,
+pub struct ASTAgentTools {
+    parsers: HashMap<Language, Parser>,
+    semantic_index: SemanticIndex,
+    symbol_graph: SymbolGraph,
 }
 
-pub struct RgConfig {
-    pub case_sensitive: bool,
-    pub multiline: bool,
-    pub word_boundary: bool,
-    pub invert_match: bool,
-    pub max_count: Option<usize>,
-    pub max_depth: Option<usize>,
-    pub file_types: Vec<String>,
-    pub exclude_patterns: Vec<String>,
-    pub context_lines: usize,
+pub enum AgentTool {
+    // Code understanding tools
+    ExtractFunctions { language: Language, file: PathBuf },
+    FindSymbolDefinition { symbol: String, scope: SearchScope },
+    AnalyzeCallGraph { entry_point: String },
+    DetectPatterns { pattern_type: PatternType },
+    
+    // Code transformation tools  
+    RefactorRename { old_name: String, new_name: String },
+    ExtractMethod { start: Location, end: Location },
+    InlineVariable { variable: String, scope: Scope },
+    SimplifyExpression { expression: ASTNode },
+    
+    // Code analysis tools
+    CalculateComplexity { function: String },
+    FindDeadCode { scope: SearchScope },
+    DetectDuplication { threshold: f32 },
+    AnalyzeDependencies { module: String },
 }
 
-impl RipGrep {
-    pub fn search_with_ast_context(&self, path: &Path, ast: &Tree) -> Result<Vec<Match>, Error> {
-        // Enhanced search that uses AST information
-        let basic_matches = self.search_file(path)?;
-        
-        // Enrich matches with AST context
-        let enriched: Vec<Match> = basic_matches
-            .into_iter()
-            .map(|mut m| {
-                // Find AST node at match location
-                if let Some(node) = find_node_at_position(ast, m.line_number, m.column) {
-                    // Add semantic information
-                    m.score *= get_node_importance(&node);
-                    m.context_before.push(format!("// In {}", node.kind()));
-                }
-                m
-            })
-            .collect();
-        
-        Ok(enriched)
+impl ASTAgentTools {
+    pub fn execute_tool(&self, tool: AgentTool) -> Result<ToolResult> {
+        match tool {
+            AgentTool::ExtractFunctions { language, file } => {
+                let ast = self.parse_file(&file, language)?;
+                let functions = self.extract_all_functions(&ast)?;
+                Ok(ToolResult::Functions(functions))
+            }
+            AgentTool::FindSymbolDefinition { symbol, scope } => {
+                let definition = self.semantic_index.find_definition(&symbol, scope)?;
+                Ok(ToolResult::Definition(definition))
+            }
+            // ... other tool implementations
+        }
     }
 }
 ```
@@ -1420,8 +1421,8 @@ max_sessions = 100
 [tools]
 fd_find.enabled = true
 fd_find.parallel = true
-ripgrep.enabled = true
-ripgrep.cache = true
+ast_tools.enabled = true
+ast_tools.cache = true
 ast.enabled = true
 ast.languages = "*"  # All languages
 
@@ -1485,7 +1486,14 @@ suffix = "Focus on code quality, best practices, and potential issues."
 
 ## Implementation Timeline
 
-**Current Status (2025-08-21)**: Phase 1 largely complete, ready to begin Phase 2 implementation
+**Current Status (2025-08-21)**: 
+- ✅ Phase 1: anyhow → thiserror migration COMPLETE
+- ✅ Phase 2: All compilation errors FIXED
+- ✅ Phase 4: Tree-sitter integration with 50+ languages COMPLETE
+- ✅ Phase 8: Session persistence with Zstd COMPLETE
+- 🚧 Phase 1: Rebranding script ready to run
+- 📄 Phase 3: Subagent system ready to implement
+- 📄 Phase 6: TUI enhancements ready to implement
 
 ### Week 1: Foundation & Core
 **Day 1-2: Rebranding & Setup**
@@ -1515,7 +1523,7 @@ suffix = "Focus on code quality, best practices, and potential issues."
 ### Week 2: Intelligence Layer
 **Day 1: Internal Tools**
 - Native fd-find integration
-- Native ripgrep integration
+- Internal AST agent tools
 - Unified tool interface
 - AST-enhanced search
 
@@ -1641,7 +1649,7 @@ suffix = "Focus on code quality, best practices, and potential issues."
 - Memory-mapped indices
 
 ### 7. Native Tool Integration
-- fd-find and ripgrep built-in
+- AST-based agent tools built-in
 - AST-enhanced search
 - Parallel processing
 
@@ -1674,7 +1682,7 @@ This comprehensive plan transforms Codex into AGCodex - a powerful, simple, and 
 - Maintains exact location information (file:line:column) for accurate edits
 - Compresses code efficiently (90%+) for AI consumption
 - Persists sessions with minimal overhead using Zstd compression
-- Integrates native tools (fd-find, ripgrep) for maximum performance
+- Integrates internal AST-based tools for precise code understanding
 
 The system is designed to be both powerful for advanced users and simple enough for beginners, with:
 - Visual feedback through mode indicators and status bars

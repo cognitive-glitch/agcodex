@@ -149,7 +149,7 @@ impl ModeManager {
 <mode>PLAN MODE - Read Only</mode>
 You are analyzing and planning. You CAN:
 ✓ Read any file
-✓ Search code using ripgrep and fd-find
+✓ Search code using AST-powered semantic search
 ✓ Analyze AST structure with tree-sitter
 ✓ Create detailed implementation plans
 
