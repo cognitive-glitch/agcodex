@@ -1,20 +1,20 @@
+use agcodex_arg0::arg0_dispatch_or_else;
+use agcodex_chatgpt::apply_command::ApplyCommand;
+use agcodex_chatgpt::apply_command::run_apply_command;
+use agcodex_cli::LandlockCommand;
+use agcodex_cli::SeatbeltCommand;
+use agcodex_cli::login::run_login_status;
+use agcodex_cli::login::run_login_with_api_key;
+use agcodex_cli::login::run_login_with_chatgpt;
+use agcodex_cli::login::run_logout;
+use agcodex_cli::proto;
+use agcodex_common::CliConfigOverrides;
+use agcodex_exec::Cli as ExecCli;
+use agcodex_tui::Cli as TuiCli;
 use clap::CommandFactory;
 use clap::Parser;
 use clap_complete::Shell;
 use clap_complete::generate;
-use codex_arg0::arg0_dispatch_or_else;
-use codex_chatgpt::apply_command::ApplyCommand;
-use codex_chatgpt::apply_command::run_apply_command;
-use codex_cli::LandlockCommand;
-use codex_cli::SeatbeltCommand;
-use codex_cli::login::run_login_status;
-use codex_cli::login::run_login_with_api_key;
-use codex_cli::login::run_login_with_chatgpt;
-use codex_cli::login::run_logout;
-use codex_cli::proto;
-use codex_common::CliConfigOverrides;
-use codex_exec::Cli as ExecCli;
-use codex_tui::Cli as TuiCli;
 use std::path::PathBuf;
 
 mod error;
@@ -153,17 +153,17 @@ async fn cli_main(codex_linux_sandbox_exe: Option<PathBuf>) -> Result<()> {
         None => {
             let mut tui_cli = cli.interactive;
             prepend_config_flags(&mut tui_cli.config_overrides, cli.config_overrides);
-            let usage = codex_tui::run_main(tui_cli, codex_linux_sandbox_exe).await?;
+            let usage = agcodex_tui::run_main(tui_cli, codex_linux_sandbox_exe).await?;
             if !usage.is_zero() {
-                println!("{}", codex_core::protocol::FinalOutput::from(usage));
+                println!("{}", agcodex_core::protocol::FinalOutput::from(usage));
             }
         }
         Some(Subcommand::Exec(mut exec_cli)) => {
             prepend_config_flags(&mut exec_cli.config_overrides, cli.config_overrides);
-            codex_exec::run_main(exec_cli, codex_linux_sandbox_exe).await?;
+            agcodex_exec::run_main(exec_cli, codex_linux_sandbox_exe).await?;
         }
         Some(Subcommand::Mcp) => {
-            codex_mcp_server::run_main(codex_linux_sandbox_exe).await?;
+            agcodex_mcp_server::run_main(codex_linux_sandbox_exe).await?;
         }
         Some(Subcommand::Login(mut login_cli)) => {
             prepend_config_flags(&mut login_cli.config_overrides, cli.config_overrides);
@@ -194,7 +194,7 @@ async fn cli_main(codex_linux_sandbox_exe: Option<PathBuf>) -> Result<()> {
         Some(Subcommand::Debug(debug_args)) => match debug_args.cmd {
             DebugCommand::Seatbelt(mut seatbelt_cli) => {
                 prepend_config_flags(&mut seatbelt_cli.config_overrides, cli.config_overrides);
-                codex_cli::debug_sandbox::run_command_under_seatbelt(
+                agcodex_cli::debug_sandbox::run_command_under_seatbelt(
                     seatbelt_cli,
                     codex_linux_sandbox_exe,
                 )
@@ -202,7 +202,7 @@ async fn cli_main(codex_linux_sandbox_exe: Option<PathBuf>) -> Result<()> {
             }
             DebugCommand::Landlock(mut landlock_cli) => {
                 prepend_config_flags(&mut landlock_cli.config_overrides, cli.config_overrides);
-                codex_cli::debug_sandbox::run_command_under_landlock(
+                agcodex_cli::debug_sandbox::run_command_under_landlock(
                     landlock_cli,
                     codex_linux_sandbox_exe,
                 )
@@ -214,7 +214,7 @@ async fn cli_main(codex_linux_sandbox_exe: Option<PathBuf>) -> Result<()> {
             run_apply_command(apply_cli, None).await?;
         }
         Some(Subcommand::GenerateTs(gen_cli)) => {
-            codex_protocol_ts::generate_ts(&gen_cli.out_dir, gen_cli.prettier.as_deref())?;
+            agcodex_protocol_ts::generate_ts(&gen_cli.out_dir, gen_cli.prettier.as_deref())?;
         }
     }
 

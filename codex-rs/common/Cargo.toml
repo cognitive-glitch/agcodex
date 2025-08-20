@@ -1,6 +1,6 @@
 [package]
 edition.workspace = true
-name = "codex-common"
+name = "agcodex-common"
 version = { workspace = true }
 license = { workspace = true }
 
@@ -9,8 +9,8 @@ workspace = true
 
 [dependencies]
 clap = { workspace = true, features = ["derive", "wrap_help"], optional = true }
-codex-core = { path = "../core" }
-codex-protocol = { path = "../protocol" }
+agcodex-core = { path = "../core" }
+agcodex-protocol = { path = "../protocol" }
 serde = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }
 

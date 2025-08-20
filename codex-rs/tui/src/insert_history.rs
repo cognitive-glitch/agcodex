@@ -3,16 +3,17 @@ use std::io;
 use std::io::Write;
 
 use crate::tui;
-use crossterm::Command;
-use crossterm::cursor::MoveTo;
-use crossterm::queue;
-use crossterm::style::Color as CColor;
-use crossterm::style::Colors;
-use crossterm::style::Print;
-use crossterm::style::SetAttribute;
-use crossterm::style::SetBackgroundColor;
-use crossterm::style::SetColors;
-use crossterm::style::SetForegroundColor;
+use ratatui::crossterm::Command;
+use ratatui::crossterm::cursor::MoveTo;
+use ratatui::crossterm::queue;
+use ratatui::crossterm::style::Attribute as CAttribute;
+use ratatui::crossterm::style::Color as CColor;
+use ratatui::crossterm::style::Colors;
+use ratatui::crossterm::style::Print;
+use ratatui::crossterm::style::SetAttribute;
+use ratatui::crossterm::style::SetBackgroundColor;
+use ratatui::crossterm::style::SetColors;
+use ratatui::crossterm::style::SetForegroundColor;
 use ratatui::layout::Size;
 use ratatui::style::Color;
 use ratatui::style::Modifier;
@@ -159,7 +160,7 @@ impl ModifierDiff {
     where
         W: io::Write,
     {
-        use crossterm::style::Attribute as CAttribute;
+        use ratatui::crossterm::style::Attribute as CAttribute;
         let removed = self.from - self.to;
         if removed.contains(Modifier::REVERSED) {
             queue!(w, SetAttribute(CAttribute::NoReverse))?;
@@ -253,7 +254,7 @@ where
         writer,
         SetForegroundColor(CColor::Reset),
         SetBackgroundColor(CColor::Reset),
-        SetAttribute(crossterm::style::Attribute::Reset),
+        SetAttribute(CAttribute::Reset),
     )
 }
 
@@ -380,6 +381,7 @@ fn slice_line_spans(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::crossterm::style::Attribute as CAttribute;
 
     #[test]
     fn writes_bold_then_regular_spans() {
@@ -393,13 +395,13 @@ mod tests {
         let mut expected: Vec<u8> = Vec::new();
         queue!(
             expected,
-            SetAttribute(crossterm::style::Attribute::Bold),
+            SetAttribute(CAttribute::Bold),
             Print("A"),
-            SetAttribute(crossterm::style::Attribute::NormalIntensity),
+            SetAttribute(CAttribute::NormalIntensity),
             Print("B"),
             SetForegroundColor(CColor::Reset),
             SetBackgroundColor(CColor::Reset),
-            SetAttribute(crossterm::style::Attribute::Reset),
+            SetAttribute(CAttribute::Reset),
         )
         .unwrap();
 

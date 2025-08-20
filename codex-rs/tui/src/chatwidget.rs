@@ -2,35 +2,35 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use codex_core::config::Config;
-use codex_core::protocol::AgentMessageDeltaEvent;
-use codex_core::protocol::AgentMessageEvent;
-use codex_core::protocol::AgentReasoningDeltaEvent;
-use codex_core::protocol::AgentReasoningEvent;
-use codex_core::protocol::AgentReasoningRawContentDeltaEvent;
-use codex_core::protocol::AgentReasoningRawContentEvent;
-use codex_core::protocol::ApplyPatchApprovalRequestEvent;
-use codex_core::protocol::BackgroundEventEvent;
-use codex_core::protocol::ErrorEvent;
-use codex_core::protocol::Event;
-use codex_core::protocol::EventMsg;
-use codex_core::protocol::ExecApprovalRequestEvent;
-use codex_core::protocol::ExecCommandBeginEvent;
-use codex_core::protocol::ExecCommandEndEvent;
-use codex_core::protocol::InputItem;
-use codex_core::protocol::McpListToolsResponseEvent;
-use codex_core::protocol::McpToolCallBeginEvent;
-use codex_core::protocol::McpToolCallEndEvent;
-use codex_core::protocol::Op;
-use codex_core::protocol::PatchApplyBeginEvent;
-use codex_core::protocol::TaskCompleteEvent;
-use codex_core::protocol::TokenUsage;
-use codex_core::protocol::TurnDiffEvent;
-use codex_protocol::parse_command::ParsedCommand;
-use crossterm::event::KeyEvent;
-use crossterm::event::KeyEventKind;
+use agcodex_core::config::Config;
+use agcodex_core::protocol::AgentMessageDeltaEvent;
+use agcodex_core::protocol::AgentMessageEvent;
+use agcodex_core::protocol::AgentReasoningDeltaEvent;
+use agcodex_core::protocol::AgentReasoningEvent;
+use agcodex_core::protocol::AgentReasoningRawContentDeltaEvent;
+use agcodex_core::protocol::AgentReasoningRawContentEvent;
+use agcodex_core::protocol::ApplyPatchApprovalRequestEvent;
+use agcodex_core::protocol::BackgroundEventEvent;
+use agcodex_core::protocol::ErrorEvent;
+use agcodex_core::protocol::Event;
+use agcodex_core::protocol::EventMsg;
+use agcodex_core::protocol::ExecApprovalRequestEvent;
+use agcodex_core::protocol::ExecCommandBeginEvent;
+use agcodex_core::protocol::ExecCommandEndEvent;
+use agcodex_core::protocol::InputItem;
+use agcodex_core::protocol::McpListToolsResponseEvent;
+use agcodex_core::protocol::McpToolCallBeginEvent;
+use agcodex_core::protocol::McpToolCallEndEvent;
+use agcodex_core::protocol::Op;
+use agcodex_core::protocol::PatchApplyBeginEvent;
+use agcodex_core::protocol::TaskCompleteEvent;
+use agcodex_core::protocol::TokenUsage;
+use agcodex_core::protocol::TurnDiffEvent;
+use agcodex_protocol::parse_command::ParsedCommand;
 use rand::Rng;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyEventKind;
 use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::layout::Rect;
@@ -60,15 +60,15 @@ mod agent;
 use self::agent::spawn_agent;
 use crate::streaming::controller::AppEventHistorySink;
 use crate::streaming::controller::StreamController;
-use codex_common::approval_presets::ApprovalPreset;
-use codex_common::approval_presets::builtin_approval_presets;
-use codex_common::model_presets::ModelPreset;
-use codex_common::model_presets::builtin_model_presets;
-use codex_core::ConversationManager;
-use codex_core::protocol::AskForApproval;
-use codex_core::protocol::SandboxPolicy;
-use codex_core::protocol_config_types::ReasoningEffort as ReasoningEffortConfig;
-use codex_file_search::FileMatch;
+use agcodex_common::approval_presets::ApprovalPreset;
+use agcodex_common::approval_presets::builtin_approval_presets;
+use agcodex_common::model_presets::ModelPreset;
+use agcodex_common::model_presets::builtin_model_presets;
+use agcodex_core::ConversationManager;
+use agcodex_core::protocol::AskForApproval;
+use agcodex_core::protocol::SandboxPolicy;
+use agcodex_core::protocol_config_types::ReasoningEffort as ReasoningEffortConfig;
+use agcodex_file_search::FileMatch;
 use uuid::Uuid;
 
 // Track information about an in-flight exec command.
@@ -134,7 +134,7 @@ impl ChatWidget<'_> {
         let _ = self.stream.finalize(StreamKind::Answer, true, &sink);
     }
     // --- Small event handlers ---
-    fn on_session_configured(&mut self, event: codex_core::protocol::SessionConfiguredEvent) {
+    fn on_session_configured(&mut self, event: agcodex_core::protocol::SessionConfiguredEvent) {
         self.bottom_pane
             .set_history_metadata(event.history_log_id, event.history_entry_count);
         self.session_id = Some(event.session_id);
@@ -217,7 +217,7 @@ impl ChatWidget<'_> {
         self.mark_needs_redraw();
     }
 
-    fn on_plan_update(&mut self, update: codex_core::plan_tool::UpdatePlanArgs) {
+    fn on_plan_update(&mut self, update: agcodex_core::plan_tool::UpdatePlanArgs) {
         self.add_to_history(&history_cell::new_plan_update(update));
     }
 
@@ -247,7 +247,7 @@ impl ChatWidget<'_> {
 
     fn on_exec_command_output_delta(
         &mut self,
-        _ev: codex_core::protocol::ExecCommandOutputDeltaEvent,
+        _ev: agcodex_core::protocol::ExecCommandOutputDeltaEvent,
     ) {
         // TODO: Handle streaming exec output if/when implemented
     }
@@ -261,7 +261,7 @@ impl ChatWidget<'_> {
         ));
     }
 
-    fn on_patch_apply_end(&mut self, event: codex_core::protocol::PatchApplyEndEvent) {
+    fn on_patch_apply_end(&mut self, event: agcodex_core::protocol::PatchApplyEndEvent) {
         let ev2 = event.clone();
         self.defer_or_handle(
             |q| q.push_patch_end(event),
@@ -286,9 +286,9 @@ impl ChatWidget<'_> {
 
     fn on_get_history_entry_response(
         &mut self,
-        event: codex_core::protocol::GetHistoryEntryResponseEvent,
+        event: agcodex_core::protocol::GetHistoryEntryResponseEvent,
     ) {
-        let codex_core::protocol::GetHistoryEntryResponseEvent {
+        let agcodex_core::protocol::GetHistoryEntryResponseEvent {
             offset,
             log_id,
             entry,
@@ -390,7 +390,7 @@ impl ChatWidget<'_> {
 
     pub(crate) fn handle_patch_apply_end_now(
         &mut self,
-        event: codex_core::protocol::PatchApplyEndEvent,
+        event: agcodex_core::protocol::PatchApplyEndEvent,
     ) {
         if event.success {
             self.add_to_history(&history_cell::new_patch_apply_success(event.stdout));

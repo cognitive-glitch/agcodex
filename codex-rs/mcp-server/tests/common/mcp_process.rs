@@ -9,28 +9,28 @@ use tokio::process::Child;
 use tokio::process::ChildStdin;
 use tokio::process::ChildStdout;
 
+use agcodex_mcp_server::CodexToolCallParam;
+use agcodex_protocol::mcp_protocol::AddConversationListenerParams;
+use agcodex_protocol::mcp_protocol::InterruptConversationParams;
+use agcodex_protocol::mcp_protocol::NewConversationParams;
+use agcodex_protocol::mcp_protocol::RemoveConversationListenerParams;
+use agcodex_protocol::mcp_protocol::SendUserMessageParams;
+use agcodex_protocol::mcp_protocol::SendUserTurnParams;
 use anyhow::Context;
 use assert_cmd::prelude::*;
-use codex_mcp_server::CodexToolCallParam;
-use codex_protocol::mcp_protocol::AddConversationListenerParams;
-use codex_protocol::mcp_protocol::InterruptConversationParams;
-use codex_protocol::mcp_protocol::NewConversationParams;
-use codex_protocol::mcp_protocol::RemoveConversationListenerParams;
-use codex_protocol::mcp_protocol::SendUserMessageParams;
-use codex_protocol::mcp_protocol::SendUserTurnParams;
 
-use mcp_types::CallToolRequestParams;
-use mcp_types::ClientCapabilities;
-use mcp_types::Implementation;
-use mcp_types::InitializeRequestParams;
-use mcp_types::JSONRPC_VERSION;
-use mcp_types::JSONRPCMessage;
-use mcp_types::JSONRPCNotification;
-use mcp_types::JSONRPCRequest;
-use mcp_types::JSONRPCResponse;
-use mcp_types::ModelContextProtocolNotification;
-use mcp_types::ModelContextProtocolRequest;
-use mcp_types::RequestId;
+use agcodex_mcp_types::CallToolRequestParams;
+use agcodex_mcp_types::ClientCapabilities;
+use agcodex_mcp_types::Implementation;
+use agcodex_mcp_types::InitializeRequestParams;
+use agcodex_mcp_types::JSONRPC_VERSION;
+use agcodex_mcp_types::JSONRPCMessage;
+use agcodex_mcp_types::JSONRPCNotification;
+use agcodex_mcp_types::JSONRPCRequest;
+use agcodex_mcp_types::JSONRPCResponse;
+use agcodex_mcp_types::ModelContextProtocolNotification;
+use agcodex_mcp_types::ModelContextProtocolRequest;
+use agcodex_mcp_types::RequestId;
 use pretty_assertions::assert_eq;
 use serde_json::json;
 use std::process::Command as StdCommand;
@@ -99,14 +99,14 @@ impl McpProcess {
                 title: Some("Elicitation Test".into()),
                 version: "0.0.0".into(),
             },
-            protocol_version: mcp_types::MCP_SCHEMA_VERSION.into(),
+            protocol_version: agcodex_mcp_types::MCP_SCHEMA_VERSION.into(),
         };
         let params_value = serde_json::to_value(params)?;
 
         self.send_jsonrpc_message(JSONRPCMessage::Request(JSONRPCRequest {
             jsonrpc: JSONRPC_VERSION.into(),
             id: RequestId::Integer(request_id),
-            method: mcp_types::InitializeRequest::METHOD.into(),
+            method: agcodex_mcp_types::InitializeRequest::METHOD.into(),
             params: Some(params_value),
         }))
         .await?;
@@ -127,7 +127,7 @@ impl McpProcess {
                         "title": "Codex",
                         "version": "0.0.0"
                     },
-                    "protocolVersion": mcp_types::MCP_SCHEMA_VERSION
+                    "protocolVersion": agcodex_mcp_types::MCP_SCHEMA_VERSION
                 })
             }),
             initialized
@@ -136,7 +136,7 @@ impl McpProcess {
         // Send notifications/initialized to ack the response.
         self.send_jsonrpc_message(JSONRPCMessage::Notification(JSONRPCNotification {
             jsonrpc: JSONRPC_VERSION.into(),
-            method: mcp_types::InitializedNotification::METHOD.into(),
+            method: agcodex_mcp_types::InitializedNotification::METHOD.into(),
             params: None,
         }))
         .await?;
@@ -155,7 +155,7 @@ impl McpProcess {
             arguments: Some(serde_json::to_value(params)?),
         };
         self.send_request(
-            mcp_types::CallToolRequest::METHOD,
+            agcodex_mcp_types::CallToolRequest::METHOD,
             Some(serde_json::to_value(codex_tool_call_params)?),
         )
         .await
@@ -314,7 +314,7 @@ impl McpProcess {
     pub async fn read_stream_until_error_message(
         &mut self,
         request_id: RequestId,
-    ) -> anyhow::Result<mcp_types::JSONRPCError> {
+    ) -> anyhow::Result<agcodex_mcp_types::JSONRPCError> {
         loop {
             let message = self.read_jsonrpc_message().await?;
             eprint!("message: {message:?}");

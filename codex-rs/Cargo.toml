@@ -1,8 +1,10 @@
 [workspace]
 members = [
+    "agcodex-ast",
     "ansi-escape",
     "apply-patch",
     "arg0",
+    "chatgpt",
     "cli",
     "common",
     "core",
@@ -15,6 +17,7 @@ members = [
     "mcp-server",
     "mcp-types",
     "ollama",
+    "persistence",
     "protocol",
     "protocol-ts",
     "tui",
@@ -33,8 +36,9 @@ license = "Apache-2.0"
 [workspace.lints.rust]
 rust-2024-compatibility = "warn"
 rust-2024-incompatible-pat = "warn"
-dead_code = "allow"
-unused_variables = "allow"
+
+# dead_code = "allow"
+# unused_variables = "allow"
 
 # # Docs lints
 # missing_docs = "warn"
@@ -53,7 +57,7 @@ expect_used = "deny"
 unwrap_used = "deny"
 
 [workspace.dependencies]
-anyhow = "1.0"
+anyhow = "1"
 async-channel = "2.3.1"
 async-stream = "0.3"
 base64 = "0.22.1"
@@ -108,7 +112,7 @@ strum_macros = "0.27.2"
 supports-color = "3.0.2"
 tempfile = "3.13.0"
 textwrap = "0.16"
-thiserror = "2.0.12"
+thiserror = "2"
 time = "0.3"
 tiny_http = "0.12"
 tokio = "1"
@@ -119,8 +123,61 @@ toml_edit = "0.23.3"
 tracing = "0.1.41"
 tracing-appender = "0.2.3"
 tracing-subscriber = "0.3.19"
-tree-sitter = "0.25.8"
-tree-sitter-bash = "0.25.0"
+
+# Core tree-sitter and language parsers
+tree-sitter = "0.25"
+tree-sitter-bash = "0.25"
+tree-sitter-rust = "0.24"
+tree-sitter-python = "0.23"
+tree-sitter-javascript = "0.23"
+tree-sitter-typescript = "0.23"
+tree-sitter-go = "0.23"
+tree-sitter-java = "0.23"
+tree-sitter-c = "0.24"
+tree-sitter-cpp = "0.23"
+tree-sitter-c-sharp = "0.23"
+
+# Web languages
+tree-sitter-html = "0.23"
+tree-sitter-css = "0.23"
+tree-sitter-json = "0.24"
+tree-sitter-yaml = "0.7"
+tree-sitter-toml = "0.20"
+
+# Scripting languages
+tree-sitter-ruby = "0.23"
+tree-sitter-php = "0.24"
+tree-sitter-lua = "0.2"
+
+# tree-sitter-perl - not available on crates.io
+# Functional languages
+tree-sitter-haskell = "0.23"
+tree-sitter-elixir = "0.3"
+tree-sitter-scala = "0.24"
+tree-sitter-ocaml = "0.24"
+tree-sitter-clojure = "0.1"
+# Systems languages
+tree-sitter-zig = "1.1"
+tree-sitter-swift = "0.7"
+tree-sitter-kotlin = "0.3"
+tree-sitter-objc = "3.0"
+# Config/Build languages
+tree-sitter-dockerfile = "0.2"
+tree-sitter-hcl = "1.1"
+tree-sitter-nix = "0.3"
+tree-sitter-make = "1.1"
+# Documentation languages
+tree-sitter-markdown = "0.7.1"
+tree-sitter-latex = "0.1.0"
+tree-sitter-rst = "0.2"
+# Additional utilities for AST work
+lru = "0.16"
+dashmap = "6.1.0"
+ast-grep-core = "0.39.4"
+ast-grep-language = "0.39.4"
+bincode = { version = "2.0", features = ["serde"] }
+messagepack = "0.1.0"
+zstd = "0.13.2"
 ts-rs = "11"
 tui-input = "0.14.0"
 tui-markdown = "0.3.3"
@@ -144,7 +201,7 @@ vt100 = "0.16.2"
 lto = "fat"
 # Because we bundle some of these executables with the TypeScript CLI, we
 # remove everything to make the binary as small as possible.
-strip = "symbols"
+strip = true
 
 # See https://github.com/openai/codex/issues/1411 for details.
 codegen-units = 1

@@ -3,7 +3,9 @@
 //! (web tokens) is not sufficient and does not grant embeddings access.
 
 use crate::config::Config;
-use codex_login::{OPENAI_API_KEY_ENV_VAR, get_auth_file, try_read_auth_json};
+use agcodex_login::OPENAI_API_KEY_ENV_VAR;
+use agcodex_login::get_auth_file;
+use agcodex_login::try_read_auth_json;
 
 /// Returns true if OpenAI embeddings can be used in the current environment.
 ///

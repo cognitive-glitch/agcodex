@@ -10,16 +10,22 @@ use crate::onboarding::onboarding_screen::OnboardingScreen;
 use crate::onboarding::onboarding_screen::OnboardingScreenArgs;
 use crate::slash_command::SlashCommand;
 use crate::tui;
-use codex_core::ConversationManager;
-use codex_core::config::Config;
-use codex_core::protocol::Event;
-use codex_core::protocol::Op;
+use agcodex_core::ConversationManager;
+use agcodex_core::config::Config;
+use agcodex_core::modes::ModeManager;
+use agcodex_core::modes::OperatingMode;
+use agcodex_core::protocol::Event;
+use agcodex_core::protocol::Op;
 use color_eyre::eyre::Result;
-use crossterm::SynchronizedUpdate;
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
-use crossterm::event::KeyEventKind;
-use crossterm::terminal::supports_keyboard_enhancement;
+// Use crossterm types re-exported by ratatui to avoid version conflicts
+use crate::widgets::ModeIndicator;
+use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyEventKind;
+use ratatui::crossterm::terminal::supports_keyboard_enhancement;
+use ratatui::layout::Constraint;
+use ratatui::layout::Direction;
+use ratatui::layout::Layout;
 use ratatui::layout::Offset;
 use ratatui::prelude::Backend;
 use ratatui::text::Line;
@@ -71,6 +77,9 @@ pub(crate) struct App<'a> {
     /// Channel to schedule one-shot animation frames; coalesced by a single
     /// scheduler thread.
     frame_schedule_tx: std::sync::mpsc::Sender<Instant>,
+
+    /// Mode manager for operating mode switching
+    mode_manager: ModeManager,
 }
 
 /// Aggregate parameters needed to create a `ChatWidget`, as creation may be
@@ -227,6 +236,7 @@ impl App<'_> {
             enhanced_keys_supported,
             commit_anim_running: Arc::new(AtomicBool::new(false)),
             frame_schedule_tx: frame_tx,
+            mode_manager: ModeManager::new(OperatingMode::Build), // Default to Build mode
         }
     }
 
@@ -251,7 +261,9 @@ impl App<'_> {
                     self.schedule_frame_in(dur);
                 }
                 AppEvent::Redraw => {
-                    std::io::stdout().sync_update(|_| self.draw_next_frame(terminal))??;
+                    // Synchronized update is not available in crossterm 0.28.1
+                    // Just draw the frame directly
+                    self.draw_next_frame(terminal)?;
                 }
                 AppEvent::StartCommitAnimation => {
                     if self
@@ -292,6 +304,15 @@ impl App<'_> {
                                 self.app_event_tx.send(AppEvent::ExitRequest);
                             }
                         },
+                        KeyEvent {
+                            code: KeyCode::BackTab,
+                            modifiers: crossterm::event::KeyModifiers::SHIFT,
+                            kind: KeyEventKind::Press,
+                            ..
+                        } => {
+                            // Shift+Tab: Cycle through operating modes
+                            self.app_event_tx.send(AppEvent::CycleModes);
+                        }
                         KeyEvent {
                             code: KeyCode::Char('z'),
                             modifiers: crossterm::event::KeyModifiers::CONTROL,
@@ -396,7 +417,7 @@ impl App<'_> {
                         break;
                     }
                     SlashCommand::Logout => {
-                        if let Err(e) = codex_login::logout(&self.config.codex_home) {
+                        if let Err(e) = agcodex_login::logout(&self.config.codex_home) {
                             tracing::error!("failed to logout: {e}");
                         }
                         break;
@@ -438,11 +459,11 @@ impl App<'_> {
                     }
                     #[cfg(debug_assertions)]
                     SlashCommand::TestApproval => {
-                        use codex_core::protocol::EventMsg;
+                        use agcodex_core::protocol::EventMsg;
                         use std::collections::HashMap;
 
-                        use codex_core::protocol::ApplyPatchApprovalRequestEvent;
-                        use codex_core::protocol::FileChange;
+                        use agcodex_core::protocol::ApplyPatchApprovalRequestEvent;
+                        use agcodex_core::protocol::FileChange;
 
                         self.app_event_tx.send(AppEvent::CodexEvent(Event {
                             id: "1".to_string(),
@@ -529,6 +550,11 @@ impl App<'_> {
                         widget.set_sandbox_policy(policy);
                     }
                 }
+                AppEvent::CycleModes => {
+                    let new_mode = self.mode_manager.cycle();
+                    tracing::debug!("Switched to mode: {:?}", new_mode);
+                    self.app_event_tx.send(AppEvent::RequestRedraw);
+                }
             }
         }
         terminal.clear()?;
@@ -553,11 +579,16 @@ impl App<'_> {
         Ok(())
     }
 
-    pub(crate) fn token_usage(&self) -> codex_core::protocol::TokenUsage {
+    pub(crate) fn token_usage(&self) -> agcodex_core::protocol::TokenUsage {
         match &self.app_state {
             AppState::Chat { widget } => widget.token_usage().clone(),
-            AppState::Onboarding { .. } => codex_core::protocol::TokenUsage::default(),
+            AppState::Onboarding { .. } => agcodex_core::protocol::TokenUsage::default(),
         }
+    }
+
+    /// Get the current operating mode
+    pub(crate) const fn current_mode(&self) -> OperatingMode {
+        self.mode_manager.current_mode()
     }
 
     fn draw_next_frame(&mut self, terminal: &mut tui::Tui) -> Result<()> {
@@ -611,14 +642,65 @@ impl App<'_> {
             );
             self.pending_history_lines.clear();
         }
+        // Extract the current mode before the mutable borrow
+        let current_mode = self.current_mode();
+
         terminal.draw(|frame| match &mut self.app_state {
             AppState::Chat { widget } => {
-                if let Some((x, y)) = widget.cursor_pos(frame.area()) {
+                // Create layout with mode indicator at the top
+                let main_layout = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([
+                        Constraint::Length(3), // Mode indicator height
+                        Constraint::Min(0),    // Chat widget takes the rest
+                    ])
+                    .split(frame.area());
+
+                // Create horizontal layout for the top area (mode indicator on the right)
+                let top_layout = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([
+                        Constraint::Min(0),     // Empty space on the left
+                        Constraint::Length(15), // Mode indicator width
+                    ])
+                    .split(main_layout[0]);
+
+                // Render mode indicator
+                let mode_indicator = ModeIndicator::new(current_mode);
+                frame.render_widget(mode_indicator, top_layout[1]);
+
+                // Render chat widget in the remaining area
+                let chat_area = main_layout[1];
+                if let Some((x, y)) = widget.cursor_pos(chat_area) {
                     frame.set_cursor_position((x, y));
                 }
-                frame.render_widget_ref(&**widget, frame.area())
+                frame.render_widget_ref(&**widget, chat_area)
             }
-            AppState::Onboarding { screen } => frame.render_widget_ref(&*screen, frame.area()),
+            AppState::Onboarding { screen } => {
+                // For onboarding, still show mode indicator but simpler layout
+                let layout = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([
+                        Constraint::Length(3), // Mode indicator height
+                        Constraint::Min(0),    // Onboarding screen takes the rest
+                    ])
+                    .split(frame.area());
+
+                let top_layout = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([
+                        Constraint::Min(0),     // Empty space on the left
+                        Constraint::Length(15), // Mode indicator width
+                    ])
+                    .split(layout[0]);
+
+                // Render mode indicator
+                let mode_indicator = ModeIndicator::new(current_mode);
+                frame.render_widget(mode_indicator, top_layout[1]);
+
+                // Render onboarding screen
+                frame.render_widget_ref(&*screen, layout[1]);
+            }
         })?;
         Ok(())
     }
@@ -682,9 +764,9 @@ fn should_show_login_screen(login_status: LoginStatus, config: &Config) -> bool 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use codex_core::config::ConfigOverrides;
-    use codex_core::config::ConfigToml;
-    use codex_login::AuthMode;
+    use agcodex_core::config::ConfigOverrides;
+    use agcodex_core::config::ConfigToml;
+    use agcodex_login::AuthMode;
 
     fn make_config(preferred: AuthMode) -> Config {
         let mut cfg = Config::load_from_base_config_with_overrides(

@@ -1,0 +1,49 @@
+# Pre-commit hooks for AGCodex Rust project
+# Install: pip install pre-commit
+# Setup: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Rust hooks
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo +nightly fmt --all --
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [commit]
+
+      - id: cargo-check
+        name: cargo check
+        entry: cargo check --all-features --all-targets --workspace --tests
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [commit]
+
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --all-features --all-targets --workspace --tests -- -D warnings
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [commit]
+
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^.*\.(md|markdown)$
+      - id: end-of-file-fixer
+        exclude: ^.*\.(md|markdown)$
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: mixed-line-ending
+        args: ['--fix=lf']

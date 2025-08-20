@@ -1,11 +1,11 @@
 [package]
 edition.workspace = true
-name = "codex-ollama"
+name = "agcodex-ollama"
 version = { workspace = true }
 license = { workspace = true }
 
 [lib]
-name = "codex_ollama"
+name = "agcodex_ollama"
 path = "src/lib.rs"
 
 [lints]
@@ -14,7 +14,7 @@ workspace = true
 [dependencies]
 async-stream = { workspace = true }
 bytes = { workspace = true }
-codex-core = { path = "../core" }
+agcodex-core = { path = "../core" }
 futures = { workspace = true }
 reqwest = { workspace = true, features = ["json", "stream"] }
 serde_json = { workspace = true }

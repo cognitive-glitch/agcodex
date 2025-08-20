@@ -1,9 +1,9 @@
 //! Configuration object accepted by the `codex` MCP tool-call.
 
-use codex_core::protocol::AskForApproval;
-use codex_protocol::config_types::SandboxMode;
-use mcp_types::Tool;
-use mcp_types::ToolInputSchema;
+use agcodex_core::protocol::AskForApproval;
+use agcodex_mcp_types::Tool;
+use agcodex_mcp_types::ToolInputSchema;
+use agcodex_protocol::config_types::SandboxMode;
 use schemars::JsonSchema;
 use schemars::generate::SchemaSettings;
 use serde::Deserialize;
@@ -135,7 +135,7 @@ impl CodexToolCallParam {
     pub fn into_config(
         self,
         codex_linux_sandbox_exe: Option<PathBuf>,
-    ) -> std::io::Result<(String, codex_core::config::Config)> {
+    ) -> std::io::Result<(String, agcodex_core::config::Config)> {
         let Self {
             prompt,
             model,
@@ -149,7 +149,7 @@ impl CodexToolCallParam {
         } = self;
 
         // Build the `ConfigOverrides` recognized by codex-core.
-        let overrides = codex_core::config::ConfigOverrides {
+        let overrides = agcodex_core::config::ConfigOverrides {
             model,
             config_profile: profile,
             cwd: cwd.map(PathBuf::from),
@@ -170,7 +170,7 @@ impl CodexToolCallParam {
             .map(|(k, v)| (k, json_to_toml(v)))
             .collect();
 
-        let cfg = codex_core::config::Config::load_with_cli_overrides(cli_overrides, overrides)?;
+        let cfg = agcodex_core::config::Config::load_with_cli_overrides(cli_overrides, overrides)?;
 
         Ok((prompt, cfg))
     }

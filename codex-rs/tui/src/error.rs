@@ -18,7 +18,7 @@ pub enum TuiError {
     Io(#[from] io::Error),
     
     #[error(transparent)]
-    Core(#[from] codex_core::error::CodexErr),
+    Core(#[from] agcodex_core::error::CodexErr),
     
     #[error("{0}")]
     General(String),

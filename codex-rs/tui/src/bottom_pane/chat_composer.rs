@@ -1,8 +1,8 @@
-use codex_core::protocol::TokenUsage;
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
-use crossterm::event::KeyModifiers;
+use agcodex_core::protocol::TokenUsage;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyModifiers;
 use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::layout::Margin;
@@ -28,7 +28,7 @@ use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::bottom_pane::textarea::TextArea;
 use crate::bottom_pane::textarea::TextAreaState;
-use codex_file_search::FileMatch;
+use agcodex_file_search::FileMatch;
 use std::cell::RefCell;
 
 /// If the pasted content exceeds this number of characters, replace it with a
@@ -897,9 +897,9 @@ mod tests {
 
     #[test]
     fn handle_paste_small_inserts_text() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);
@@ -921,9 +921,9 @@ mod tests {
 
     #[test]
     fn handle_paste_large_uses_placeholder_and_replaces_on_submit() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);
@@ -950,9 +950,9 @@ mod tests {
 
     #[test]
     fn edit_clears_pending_paste() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let large = "y".repeat(LARGE_PASTE_CHAR_THRESHOLD + 1);
         let (tx, _rx) = std::sync::mpsc::channel();
@@ -970,12 +970,12 @@ mod tests {
 
     #[test]
     fn ui_snapshots() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
         use insta::assert_snapshot;
         use ratatui::Terminal;
         use ratatui::backend::TestBackend;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);
@@ -1030,9 +1030,9 @@ mod tests {
 
     #[test]
     fn slash_init_dispatches_command_and_does_not_submit_literal_text() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
         use std::sync::mpsc::TryRecvError;
 
         let (tx, rx) = std::sync::mpsc::channel();
@@ -1074,9 +1074,9 @@ mod tests {
 
     #[test]
     fn slash_tab_completion_moves_cursor_to_end() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);
@@ -1096,9 +1096,9 @@ mod tests {
 
     #[test]
     fn slash_mention_dispatches_command_and_inserts_at() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
         use std::sync::mpsc::TryRecvError;
 
         let (tx, rx) = std::sync::mpsc::channel();
@@ -1137,9 +1137,9 @@ mod tests {
 
     #[test]
     fn test_multiple_pastes_submission() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);
@@ -1211,9 +1211,9 @@ mod tests {
 
     #[test]
     fn test_placeholder_deletion() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);
@@ -1278,9 +1278,9 @@ mod tests {
 
     #[test]
     fn test_partial_placeholder_deletion() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);

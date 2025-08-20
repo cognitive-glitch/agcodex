@@ -1174,7 +1174,7 @@ mod tests {
 ## Configuration
 
 ```toml
-# ~/.codex/config.toml
+# ~/.agcodex/config.toml
 [code_intelligence]
 enabled = true
 auto_index = true
@@ -1202,7 +1202,7 @@ cache_embeddings = true
 
 [code_intelligence.storage]
 backend = "lancedb"  # lancedb, qdrant, or milvus
-path = "~/.codex/code_index"
+path = "~/.agcodex/code_index"
 compression = true
 
 [code_intelligence.retrieval]

@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use codex_core::config::Config;
+use agcodex_core::config::Config;
 use ratatui::text::Line;
 
 use crate::markdown;
@@ -257,8 +257,8 @@ pub(crate) fn simulate_stream_markdown_for_tests(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use codex_core::config::Config;
-    use codex_core::config::ConfigOverrides;
+    use agcodex_core::config::Config;
+    use agcodex_core::config::ConfigOverrides;
 
     fn test_config() -> Config {
         let overrides = ConfigOverrides {

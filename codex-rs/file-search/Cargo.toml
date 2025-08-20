@@ -1,15 +1,15 @@
 [package]
 edition.workspace = true
-name = "codex-file-search"
+name = "agcodex-file-search"
 version = { workspace = true }
 license = { workspace = true }
 
 [[bin]]
-name = "codex-file-search"
+name = "agcodex-file-search"
 path = "src/main.rs"
 
 [lib]
-name = "codex_file_search"
+name = "agcodex_file_search"
 path = "src/lib.rs"
 
 [lints]

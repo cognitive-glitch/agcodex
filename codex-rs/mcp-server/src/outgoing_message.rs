@@ -2,16 +2,16 @@ use std::collections::HashMap;
 use std::sync::atomic::AtomicI64;
 use std::sync::atomic::Ordering;
 
-use codex_core::protocol::Event;
-use mcp_types::JSONRPC_VERSION;
-use mcp_types::JSONRPCError;
-use mcp_types::JSONRPCErrorError;
-use mcp_types::JSONRPCMessage;
-use mcp_types::JSONRPCNotification;
-use mcp_types::JSONRPCRequest;
-use mcp_types::JSONRPCResponse;
-use mcp_types::RequestId;
-use mcp_types::Result;
+use agcodex_core::protocol::Event;
+use agcodex_mcp_types::JSONRPC_VERSION;
+use agcodex_mcp_types::JSONRPCError;
+use agcodex_mcp_types::JSONRPCErrorError;
+use agcodex_mcp_types::JSONRPCMessage;
+use agcodex_mcp_types::JSONRPCNotification;
+use agcodex_mcp_types::JSONRPCRequest;
+use agcodex_mcp_types::JSONRPCResponse;
+use agcodex_mcp_types::RequestId;
+use agcodex_mcp_types::Result;
 use serde::Serialize;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
@@ -228,8 +228,8 @@ pub(crate) struct OutgoingError {
 
 #[cfg(test)]
 mod tests {
-    use codex_core::protocol::EventMsg;
-    use codex_core::protocol::SessionConfiguredEvent;
+    use agcodex_core::protocol::EventMsg;
+    use agcodex_core::protocol::SessionConfiguredEvent;
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use uuid::Uuid;

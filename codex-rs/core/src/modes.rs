@@ -1,13 +1,63 @@
 //! Operating modes for AGCodex (Plan, Build, Review).
 //! Minimal scaffolding to start the refactor without impacting existing flows.
 
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::SystemTime;
+
+/// Color representation for mode indicators
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModeColor {
+    Blue,
+    Green,
+    Yellow,
+}
+
+/// Visual properties for each mode
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModeVisuals {
+    pub indicator: &'static str,
+    pub color: ModeColor,
+    pub description: &'static str,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperatingMode {
     Plan,
     Build,
     Review,
+}
+
+impl OperatingMode {
+    /// Get the visual properties for this mode
+    pub const fn visuals(&self) -> ModeVisuals {
+        match self {
+            Self::Plan => ModeVisuals {
+                indicator: "📋 PLAN",
+                color: ModeColor::Blue,
+                description: "Read-only analysis mode",
+            },
+            Self::Build => ModeVisuals {
+                indicator: "🔨 BUILD",
+                color: ModeColor::Green,
+                description: "Full access development mode",
+            },
+            Self::Review => ModeVisuals {
+                indicator: "🔍 REVIEW",
+                color: ModeColor::Yellow,
+                description: "Quality-focused review mode",
+            },
+        }
+    }
+
+    /// Cycle to the next mode
+    pub const fn cycle(&self) -> Self {
+        match self {
+            Self::Plan => Self::Build,
+            Self::Build => Self::Review,
+            Self::Review => Self::Plan,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -42,6 +92,28 @@ impl ModeManager {
             .push((self.current_mode, SystemTime::now()));
         self.current_mode = new_mode;
         self.apply_restrictions(new_mode);
+    }
+
+    /// Cycle to the next mode (Plan → Build → Review → Plan)
+    pub fn cycle(&mut self) -> OperatingMode {
+        let new_mode = self.current_mode.cycle();
+        self.switch_mode(new_mode);
+        new_mode
+    }
+
+    /// Get the current mode
+    pub const fn current_mode(&self) -> OperatingMode {
+        self.current_mode
+    }
+
+    /// Get visual properties for the current mode
+    pub const fn current_visuals(&self) -> ModeVisuals {
+        self.current_mode.visuals()
+    }
+
+    /// Create a new thread-safe ModeManager
+    pub fn new_shared(initial: OperatingMode) -> Arc<Mutex<Self>> {
+        Arc::new(Mutex::new(Self::new(initial)))
     }
 
     const fn apply_restrictions(&mut self, mode: OperatingMode) {

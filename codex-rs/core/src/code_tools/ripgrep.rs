@@ -1,6 +1,7 @@
 //! ripgrep native integration (scaffold).
 
-use super::{CodeTool, ToolError};
+use super::CodeTool;
+use super::ToolError;
 
 #[derive(Debug, Clone, Default)]
 pub struct RipGrep;

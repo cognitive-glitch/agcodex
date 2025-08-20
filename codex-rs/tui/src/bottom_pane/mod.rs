@@ -3,11 +3,11 @@
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::user_approval_widget::ApprovalRequest;
+use agcodex_core::protocol::TokenUsage;
+use agcodex_file_search::FileMatch;
 use bottom_pane_view::BottomPaneView;
-use codex_core::protocol::TokenUsage;
-use codex_file_search::FileMatch;
-use crossterm::event::KeyEvent;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::layout::Rect;
 use ratatui::widgets::WidgetRef;
 
@@ -434,9 +434,9 @@ mod tests {
         pane.push_approval_request(exec_request());
 
         // Simulate pressing 'n' (deny) on the modal.
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
         pane.handle_key_event(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE));
 
         // After denial, since the task is still running, the status indicator

@@ -1,11 +1,11 @@
 [package]
 edition.workspace = true
-name = "codex-apply-patch"
+name = "agcodex-apply-patch"
 version = { workspace = true }
 license = { workspace = true }
 
 [lib]
-name = "codex_apply_patch"
+name = "agcodex_apply_patch"
 path = "src/lib.rs"
 
 [lints]

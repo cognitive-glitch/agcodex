@@ -9,12 +9,12 @@
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
-use codex_core::protocol::Op;
-use codex_core::protocol::ReviewDecision;
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
-use crossterm::event::KeyEventKind;
+use agcodex_core::protocol::Op;
+use agcodex_core::protocol::ReviewDecision;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyEventKind;
 use ratatui::layout::Rect;
 use ratatui::prelude::*;
 use ratatui::text::Line;
@@ -421,9 +421,9 @@ impl WidgetRef for &UserApprovalWidget<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::KeyCode;
-    use crossterm::event::KeyEvent;
-    use crossterm::event::KeyModifiers;
+    use ratatui::crossterm::event::KeyCode;
+    use ratatui::crossterm::event::KeyEvent;
+    use ratatui::crossterm::event::KeyModifiers;
     use std::sync::mpsc::channel;
 
     #[test]

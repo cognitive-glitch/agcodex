@@ -367,9 +367,9 @@ pub(crate) fn create_tools_json_for_chat_completions_api(
 
 pub(crate) fn mcp_tool_to_openai_tool(
     fully_qualified_name: String,
-    tool: mcp_types::Tool,
+    tool: agcodex_mcp_types::Tool,
 ) -> Result<ResponsesApiTool, serde_json::Error> {
-    let mcp_types::Tool {
+    let agcodex_mcp_types::Tool {
         description,
         mut input_schema,
         ..
@@ -519,7 +519,7 @@ fn sanitize_json_schema(value: &mut JsonValue) {
 /// [`McpConnectionManager`] for more details.
 pub(crate) fn get_openai_tools(
     config: &ToolsConfig,
-    mcp_tools: Option<HashMap<String, mcp_types::Tool>>,
+    mcp_tools: Option<HashMap<String, agcodex_mcp_types::Tool>>,
 ) -> Vec<OpenAiTool> {
     let mut tools: Vec<OpenAiTool> = Vec::new();
 
@@ -560,7 +560,7 @@ pub(crate) fn get_openai_tools(
 #[cfg(test)]
 mod tests {
     use crate::model_family::find_family_for_model;
-    use mcp_types::ToolInputSchema;
+    use agcodex_mcp_types::ToolInputSchema;
     use pretty_assertions::assert_eq;
 
     use super::*;
@@ -632,7 +632,7 @@ mod tests {
             &config,
             Some(HashMap::from([(
                 "test_server/do_something_cool".to_string(),
-                mcp_types::Tool {
+                agcodex_mcp_types::Tool {
                     name: "do_something_cool".to_string(),
                     input_schema: ToolInputSchema {
                         properties: Some(serde_json::json!({
@@ -727,7 +727,7 @@ mod tests {
             &config,
             Some(HashMap::from([(
                 "dash/search".to_string(),
-                mcp_types::Tool {
+                agcodex_mcp_types::Tool {
                     name: "search".to_string(),
                     input_schema: ToolInputSchema {
                         properties: Some(serde_json::json!({
@@ -783,7 +783,7 @@ mod tests {
             &config,
             Some(HashMap::from([(
                 "dash/paginate".to_string(),
-                mcp_types::Tool {
+                agcodex_mcp_types::Tool {
                     name: "paginate".to_string(),
                     input_schema: ToolInputSchema {
                         properties: Some(serde_json::json!({
@@ -834,7 +834,7 @@ mod tests {
             &config,
             Some(HashMap::from([(
                 "dash/tags".to_string(),
-                mcp_types::Tool {
+                agcodex_mcp_types::Tool {
                     name: "tags".to_string(),
                     input_schema: ToolInputSchema {
                         properties: Some(serde_json::json!({
@@ -888,7 +888,7 @@ mod tests {
             &config,
             Some(HashMap::from([(
                 "dash/value".to_string(),
-                mcp_types::Tool {
+                agcodex_mcp_types::Tool {
                     name: "value".to_string(),
                     input_schema: ToolInputSchema {
                         properties: Some(serde_json::json!({

@@ -1,15 +1,15 @@
 [package]
 edition.workspace = true
-name = "codex-tui"
+name = "agcodex-tui"
 version = { workspace = true }
 license = { workspace = true }
 
 [[bin]]
-name = "codex-tui"
+name = "agcodex-tui"
 path = "src/main.rs"
 
 [lib]
-name = "codex_tui"
+name = "agcodex_tui"
 path = "src/lib.rs"
 
 [features]
@@ -26,24 +26,24 @@ anyhow = { workspace = true }
 base64 = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["derive"] }
-codex-ansi-escape = { path = "../ansi-escape" }
-codex-arg0 = { path = "../arg0" }
-codex-common = { path = "../common", features = [
+agcodex-ansi-escape = { path = "../ansi-escape" }
+agcodex-arg0 = { path = "../arg0" }
+agcodex-common = { path = "../common", features = [
     "cli",
     "elapsed",
     "sandbox_summary",
 ] }
-codex-core = { path = "../core" }
-codex-file-search = { path = "../file-search" }
-codex-login = { path = "../login" }
-codex-ollama = { path = "../ollama" }
-codex-protocol = { path = "../protocol" }
+agcodex-core = { path = "../core" }
+agcodex-file-search = { path = "../file-search" }
+agcodex-login = { path = "../login" }
+agcodex-ollama = { path = "../ollama" }
+agcodex-protocol = { path = "../protocol" }
 color-eyre = { workspace = true }
 crossterm = { workspace = true, features = ["bracketed-paste"] }
 diffy = { workspace = true }
 image = { workspace = true, features = ["jpeg"] }
 lazy_static = { workspace = true }
-mcp-types = { path = "../mcp-types" }
+agcodex-mcp-types = { path = "../mcp-types" }
 once_cell = { workspace = true }
 path-clean = { workspace = true }
 rand = { workspace = true }

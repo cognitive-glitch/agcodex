@@ -1,14 +1,14 @@
-use codex_core::ConversationManager;
-use codex_core::ModelProviderInfo;
-use codex_core::built_in_model_providers;
-use codex_core::protocol::AskForApproval;
-use codex_core::protocol::EventMsg;
-use codex_core::protocol::InputItem;
-use codex_core::protocol::Op;
-use codex_core::protocol::SandboxPolicy;
-use codex_core::protocol_config_types::ReasoningEffort;
-use codex_core::protocol_config_types::ReasoningSummary;
-use codex_login::CodexAuth;
+use agcodex_core::ConversationManager;
+use agcodex_core::ModelProviderInfo;
+use agcodex_core::built_in_model_providers;
+use agcodex_core::protocol::AskForApproval;
+use agcodex_core::protocol::EventMsg;
+use agcodex_core::protocol::InputItem;
+use agcodex_core::protocol::Op;
+use agcodex_core::protocol::SandboxPolicy;
+use agcodex_core::protocol_config_types::ReasoningEffort;
+use agcodex_core::protocol_config_types::ReasoningSummary;
+use agcodex_login::CodexAuth;
 use core_test_support::load_default_config_for_test;
 use core_test_support::load_sse_fixture_with_id;
 use core_test_support::wait_for_event;
@@ -49,8 +49,8 @@ async fn prefixes_context_and_instructions_once_and_consistently_across_requests
     };
 
     let cwd = TempDir::new().unwrap();
-    let codex_home = TempDir::new().unwrap();
-    let mut config = load_default_config_for_test(&codex_home);
+    let agcodex_home = TempDir::new().unwrap();
+    let mut config = load_default_config_for_test(&agcodex_home);
     config.cwd = cwd.path().to_path_buf();
     config.model_provider = model_provider;
     config.user_instructions = Some("be consistent and helpful".to_string());
@@ -159,8 +159,8 @@ async fn overrides_turn_context_but_keeps_cached_prefix_and_key_constant() {
     };
 
     let cwd = TempDir::new().unwrap();
-    let codex_home = TempDir::new().unwrap();
-    let mut config = load_default_config_for_test(&codex_home);
+    let agcodex_home = TempDir::new().unwrap();
+    let mut config = load_default_config_for_test(&agcodex_home);
     config.cwd = cwd.path().to_path_buf();
     config.model_provider = model_provider;
     config.user_instructions = Some("be consistent and helpful".to_string());
@@ -282,8 +282,8 @@ async fn per_turn_overrides_keep_cached_prefix_and_key_constant() {
     };
 
     let cwd = TempDir::new().unwrap();
-    let codex_home = TempDir::new().unwrap();
-    let mut config = load_default_config_for_test(&codex_home);
+    let agcodex_home = TempDir::new().unwrap();
+    let mut config = load_default_config_for_test(&agcodex_home);
     config.cwd = cwd.path().to_path_buf();
     config.model_provider = model_provider;
     config.user_instructions = Some("be consistent and helpful".to_string());

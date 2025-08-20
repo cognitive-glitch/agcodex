@@ -1,15 +1,15 @@
 [package]
 edition.workspace = true
-name = "codex-linux-sandbox"
+name = "agcodex-linux-sandbox"
 version = { workspace = true }
 license = { workspace = true }
 
 [[bin]]
-name = "codex-linux-sandbox"
+name = "agcodex-linux-sandbox"
 path = "src/main.rs"
 
 [lib]
-name = "codex_linux_sandbox"
+name = "agcodex_linux_sandbox"
 path = "src/lib.rs"
 
 [lints]
@@ -17,8 +17,8 @@ workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 clap = { workspace = true, features = ["derive"] }
-codex-common = { path = "../common", features = ["cli"] }
-codex-core = { path = "../core" }
+agcodex-common = { path = "../common", features = ["cli"] }
+agcodex-core = { path = "../core" }
 landlock = { workspace = true }
 libc = { workspace = true }
 seccompiler = { workspace = true }

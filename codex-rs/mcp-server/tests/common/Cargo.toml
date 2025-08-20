@@ -13,10 +13,10 @@ workspace = true
 [dependencies]
 anyhow = { workspace = true }
 assert_cmd = { workspace = true }
-codex-core = { path = "../../../core" }
-codex-mcp-server = { path = "../.." }
-codex-protocol = { path = "../../../protocol" }
-mcp-types = { path = "../../../mcp-types" }
+agcodex-core = { path = "../../../core" }
+agcodex-mcp-server = { path = "../.." }
+agcodex-protocol = { path = "../../../protocol" }
+agcodex-mcp-types = { path = "../../../mcp-types" }
 pretty_assertions = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

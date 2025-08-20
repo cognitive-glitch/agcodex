@@ -3,26 +3,26 @@ use crate::exec_command::relativize_to_home;
 use crate::exec_command::strip_bash_lc_and_escape;
 use crate::slash_command::SlashCommand;
 use crate::text_formatting::format_and_truncate_tool_result;
+use agcodex_ansi_escape::ansi_escape_line;
+use agcodex_common::create_config_summary_entries;
+use agcodex_common::elapsed::format_duration;
+use agcodex_core::config::Config;
+use agcodex_core::plan_tool::PlanItemArg;
+use agcodex_core::plan_tool::StepStatus;
+use agcodex_core::plan_tool::UpdatePlanArgs;
+use agcodex_core::protocol::FileChange;
+use agcodex_core::protocol::McpInvocation;
+use agcodex_core::protocol::SandboxPolicy;
+use agcodex_core::protocol::SessionConfiguredEvent;
+use agcodex_core::protocol::TokenUsage;
+use agcodex_login::get_auth_file;
+use agcodex_login::try_read_auth_json;
+use agcodex_mcp_types::EmbeddedResourceResource;
+use agcodex_mcp_types::ResourceLink;
+use agcodex_protocol::parse_command::ParsedCommand;
 use base64::Engine;
-use codex_ansi_escape::ansi_escape_line;
-use codex_common::create_config_summary_entries;
-use codex_common::elapsed::format_duration;
-use codex_core::config::Config;
-use codex_core::plan_tool::PlanItemArg;
-use codex_core::plan_tool::StepStatus;
-use codex_core::plan_tool::UpdatePlanArgs;
-use codex_core::protocol::FileChange;
-use codex_core::protocol::McpInvocation;
-use codex_core::protocol::SandboxPolicy;
-use codex_core::protocol::SessionConfiguredEvent;
-use codex_core::protocol::TokenUsage;
-use codex_login::get_auth_file;
-use codex_login::try_read_auth_json;
-use codex_protocol::parse_command::ParsedCommand;
 use image::DynamicImage;
 use image::ImageReader;
-use mcp_types::EmbeddedResourceResource;
-use mcp_types::ResourceLink;
 use ratatui::prelude::*;
 use ratatui::style::Color;
 use ratatui::style::Modifier;
@@ -364,11 +364,11 @@ pub(crate) fn new_active_mcp_tool_call(invocation: McpInvocation) -> PlainHistor
 /// If the first content is an image, return a new cell with the image.
 /// TODO(rgwood-dd): Handle images properly even if they're not the first result.
 fn try_new_completed_mcp_tool_call_with_image_output(
-    result: &Result<mcp_types::CallToolResult, String>,
+    result: &Result<agcodex_mcp_types::CallToolResult, String>,
 ) -> Option<CompletedMcpToolCallWithImageOutput> {
     match result {
-        Ok(mcp_types::CallToolResult { content, .. }) => {
-            if let Some(mcp_types::ContentBlock::ImageContent(image)) = content.first() {
+        Ok(agcodex_mcp_types::CallToolResult { content, .. }) => {
+            if let Some(agcodex_mcp_types::ContentBlock::ImageContent(image)) = content.first() {
                 let raw_data = match base64::engine::general_purpose::STANDARD.decode(&image.data) {
                     Ok(data) => data,
                     Err(e) => {
@@ -406,7 +406,7 @@ pub(crate) fn new_completed_mcp_tool_call(
     invocation: McpInvocation,
     duration: Duration,
     success: bool,
-    result: Result<mcp_types::CallToolResult, String>,
+    result: Result<agcodex_mcp_types::CallToolResult, String>,
 ) -> Box<dyn HistoryCell> {
     if let Some(cell) = try_new_completed_mcp_tool_call_with_image_output(&result) {
         return Box::new(cell);
@@ -430,32 +430,36 @@ pub(crate) fn new_completed_mcp_tool_call(
     lines.push(format_mcp_invocation(invocation));
 
     match result {
-        Ok(mcp_types::CallToolResult { content, .. }) => {
+        Ok(agcodex_mcp_types::CallToolResult { content, .. }) => {
             if !content.is_empty() {
                 lines.push(Line::from(""));
 
                 for tool_call_result in content {
                     let line_text = match tool_call_result {
-                        mcp_types::ContentBlock::TextContent(text) => {
+                        agcodex_mcp_types::ContentBlock::TextContent(text) => {
                             format_and_truncate_tool_result(
                                 &text.text,
                                 TOOL_CALL_MAX_LINES,
                                 num_cols,
                             )
                         }
-                        mcp_types::ContentBlock::ImageContent(_) => {
+                        agcodex_mcp_types::ContentBlock::ImageContent(_) => {
                             // TODO show images even if they're not the first result, will require a refactor of `CompletedMcpToolCall`
                             "<image content>".to_string()
                         }
-                        mcp_types::ContentBlock::AudioContent(_) => "<audio content>".to_string(),
-                        mcp_types::ContentBlock::EmbeddedResource(resource) => {
+                        agcodex_mcp_types::ContentBlock::AudioContent(_) => {
+                            "<audio content>".to_string()
+                        }
+                        agcodex_mcp_types::ContentBlock::EmbeddedResource(resource) => {
                             let uri = match resource.resource {
                                 EmbeddedResourceResource::TextResourceContents(text) => text.uri,
                                 EmbeddedResourceResource::BlobResourceContents(blob) => blob.uri,
                             };
                             format!("embedded resource: {uri}")
                         }
-                        mcp_types::ContentBlock::ResourceLink(ResourceLink { uri, .. }) => {
+                        agcodex_mcp_types::ContentBlock::ResourceLink(ResourceLink {
+                            uri, ..
+                        }) => {
                             format!("link: {uri}")
                         }
                     };
@@ -655,7 +659,7 @@ pub(crate) fn empty_mcp_output() -> PlainHistoryCell {
 /// Render MCP tools grouped by connection using the fully-qualified tool names.
 pub(crate) fn new_mcp_tools_output(
     config: &Config,
-    tools: std::collections::HashMap<String, mcp_types::Tool>,
+    tools: std::collections::HashMap<String, agcodex_mcp_types::Tool>,
 ) -> PlainHistoryCell {
     let mut lines: Vec<Line<'static>> = vec![
         Line::from("/mcp".magenta()),

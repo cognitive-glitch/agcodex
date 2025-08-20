@@ -41,7 +41,7 @@ pub(crate) fn get_model_info(model_family: &ModelFamily) -> Option<ModelInfo> {
         }),
 
         // https://platform.openai.com/docs/models/codex-mini-latest
-        "codex-mini-latest" => Some(ModelInfo {
+        "agcodex-mini-latest" => Some(ModelInfo {
             context_window: 200_000,
             max_output_tokens: 100_000,
         }),
@@ -83,7 +83,7 @@ pub(crate) fn get_model_info(model_family: &ModelFamily) -> Option<ModelInfo> {
             max_output_tokens: 100_000,
         }),
 
-        _ if slug.starts_with("codex-") => Some(ModelInfo {
+        _ if slug.starts_with("agcodex-") => Some(ModelInfo {
             context_window: 200_000,
             max_output_tokens: 100_000,
         }),

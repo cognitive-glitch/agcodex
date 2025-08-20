@@ -1,6 +1,8 @@
 //! Retrieval scaffolding for the Context Engine.
 
-use super::{embeddings::EmbeddingVector, semantic_index::FileId, semantic_index::SymbolInfo};
+use super::embeddings::EmbeddingVector;
+use super::semantic_index::FileId;
+use super::semantic_index::SymbolInfo;
 
 #[derive(Debug, Clone, Default)]
 pub struct RetrievalQuery {

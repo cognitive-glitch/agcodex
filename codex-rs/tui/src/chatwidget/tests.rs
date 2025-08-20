@@ -1,30 +1,30 @@
 use super::*;
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
-use codex_core::config::Config;
-use codex_core::config::ConfigOverrides;
-use codex_core::config::ConfigToml;
-use codex_core::plan_tool::PlanItemArg;
-use codex_core::plan_tool::StepStatus;
-use codex_core::plan_tool::UpdatePlanArgs;
-use codex_core::protocol::AgentMessageDeltaEvent;
-use codex_core::protocol::AgentMessageEvent;
-use codex_core::protocol::AgentReasoningDeltaEvent;
-use codex_core::protocol::AgentReasoningEvent;
-use codex_core::protocol::ApplyPatchApprovalRequestEvent;
-use codex_core::protocol::Event;
-use codex_core::protocol::EventMsg;
-use codex_core::protocol::ExecCommandBeginEvent;
-use codex_core::protocol::ExecCommandEndEvent;
-use codex_core::protocol::FileChange;
-use codex_core::protocol::PatchApplyBeginEvent;
-use codex_core::protocol::PatchApplyEndEvent;
-use codex_core::protocol::TaskCompleteEvent;
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
-use crossterm::event::KeyModifiers;
+use agcodex_core::config::Config;
+use agcodex_core::config::ConfigOverrides;
+use agcodex_core::config::ConfigToml;
+use agcodex_core::plan_tool::PlanItemArg;
+use agcodex_core::plan_tool::StepStatus;
+use agcodex_core::plan_tool::UpdatePlanArgs;
+use agcodex_core::protocol::AgentMessageDeltaEvent;
+use agcodex_core::protocol::AgentMessageEvent;
+use agcodex_core::protocol::AgentReasoningDeltaEvent;
+use agcodex_core::protocol::AgentReasoningEvent;
+use agcodex_core::protocol::ApplyPatchApprovalRequestEvent;
+use agcodex_core::protocol::Event;
+use agcodex_core::protocol::EventMsg;
+use agcodex_core::protocol::ExecCommandBeginEvent;
+use agcodex_core::protocol::ExecCommandEndEvent;
+use agcodex_core::protocol::FileChange;
+use agcodex_core::protocol::PatchApplyBeginEvent;
+use agcodex_core::protocol::PatchApplyEndEvent;
+use agcodex_core::protocol::TaskCompleteEvent;
 use insta::assert_snapshot;
 use pretty_assertions::assert_eq;
+use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyModifiers;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -35,7 +35,7 @@ use tokio::sync::mpsc::unbounded_channel;
 
 fn test_config() -> Config {
     // Use base defaults to avoid depending on host state.
-    codex_core::config::Config::load_from_base_config_with_overrides(
+    agcodex_core::config::Config::load_from_base_config_with_overrides(
         ConfigToml::default(),
         ConfigOverrides::default(),
         std::env::temp_dir(),
@@ -206,7 +206,7 @@ fn exec_history_cell_shows_working_then_completed() {
             command: vec!["bash".into(), "-lc".into(), "echo done".into()],
             cwd: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             parsed_cmd: vec![
-                codex_core::parse_command::ParsedCommand::Unknown {
+                agcodex_core::parse_command::ParsedCommand::Unknown {
                     cmd: "echo done".into(),
                 }
                 .into(),
@@ -251,7 +251,7 @@ fn exec_history_cell_shows_working_then_failed() {
             command: vec!["bash".into(), "-lc".into(), "false".into()],
             cwd: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             parsed_cmd: vec![
-                codex_core::parse_command::ParsedCommand::Unknown {
+                agcodex_core::parse_command::ParsedCommand::Unknown {
                     cmd: "false".into(),
                 }
                 .into(),
@@ -528,7 +528,7 @@ fn apply_patch_approval_sends_op_with_submission_id() {
             assert_eq!(id, "sub-123");
             assert!(matches!(
                 decision,
-                codex_core::protocol::ReviewDecision::Approved
+                agcodex_core::protocol::ReviewDecision::Approved
             ));
             found = true;
             break;
@@ -578,7 +578,7 @@ fn apply_patch_full_flow_integration_like() {
             assert_eq!(id, "sub-xyz");
             assert!(matches!(
                 decision,
-                codex_core::protocol::ReviewDecision::Approved
+                agcodex_core::protocol::ReviewDecision::Approved
             ));
         }
         other => panic!("unexpected op forwarded: {other:?}"),
@@ -613,7 +613,7 @@ fn apply_patch_full_flow_integration_like() {
 fn apply_patch_untrusted_shows_approval_modal() {
     let (mut chat, _rx, _op_rx) = make_chatwidget_manual();
     // Ensure approval policy is untrusted (OnRequest)
-    chat.config.approval_policy = codex_core::protocol::AskForApproval::OnRequest;
+    chat.config.approval_policy = agcodex_core::protocol::AskForApproval::OnRequest;
 
     // Simulate a patch approval request from backend
     let mut changes = HashMap::new();
@@ -658,7 +658,7 @@ fn apply_patch_request_shows_diff_summary() {
     let (mut chat, rx, _op_rx) = make_chatwidget_manual();
 
     // Ensure we are in OnRequest so an approval is surfaced
-    chat.config.approval_policy = codex_core::protocol::AskForApproval::OnRequest;
+    chat.config.approval_policy = agcodex_core::protocol::AskForApproval::OnRequest;
 
     // Simulate backend asking to apply a patch adding two lines to README.md
     let mut changes = HashMap::new();

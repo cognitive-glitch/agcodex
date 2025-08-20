@@ -2,17 +2,17 @@
 
 use std::collections::HashMap;
 
-use codex_core::exec::ExecParams;
-use codex_core::exec::ExecToolCallOutput;
-use codex_core::exec::SandboxType;
-use codex_core::exec::process_exec_tool_call;
-use codex_core::protocol::SandboxPolicy;
-use codex_core::spawn::CODEX_SANDBOX_ENV_VAR;
+use agcodex_core::exec::ExecParams;
+use agcodex_core::exec::ExecToolCallOutput;
+use agcodex_core::exec::SandboxType;
+use agcodex_core::exec::process_exec_tool_call;
+use agcodex_core::protocol::SandboxPolicy;
+use agcodex_core::spawn::CODEX_SANDBOX_ENV_VAR;
 use tempfile::TempDir;
 
-use codex_core::error::Result;
+use agcodex_core::error::Result;
 
-use codex_core::get_platform_sandbox;
+use agcodex_core::get_platform_sandbox;
 
 fn skip_test() -> bool {
     if std::env::var(CODEX_SANDBOX_ENV_VAR) == Ok("seatbelt".to_string()) {

@@ -1,11 +1,11 @@
 [package]
 edition.workspace = true
-name = "codex-core"
+name = "agcodex-core"
 version = { workspace = true }
 license = { workspace = true }
 
 [lib]
-name = "codex_core"
+name = "agcodex_core"
 path = "src/lib.rs"
 
 [lints]
@@ -16,16 +16,16 @@ async-channel = { workspace = true }
 base64 = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
-codex-apply-patch = { path = "../apply-patch" }
-codex-login = { path = "../login" }
-codex-mcp-client = { path = "../mcp-client" }
-codex-protocol = { path = "../protocol" }
+agcodex-apply-patch = { path = "../apply-patch" }
+agcodex-login = { path = "../login" }
+agcodex-mcp-client = { path = "../mcp-client" }
+agcodex-protocol = { path = "../protocol" }
 dirs = { workspace = true }
 env-flags = { workspace = true }
 eventsource-stream = { workspace = true }
 futures = { workspace = true }
 libc = { workspace = true }
-mcp-types = { path = "../mcp-types" }
+agcodex-mcp-types = { path = "../mcp-types" }
 mime_guess = { workspace = true }
 os_info = { workspace = true }
 rand = { workspace = true }

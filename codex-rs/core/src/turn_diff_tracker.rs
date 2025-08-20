@@ -4,7 +4,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::error::{CodexErr, Result};
+use crate::error::CodexErr;
+use crate::error::Result;
 use sha1::digest::Output;
 use uuid::Uuid;
 

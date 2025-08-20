@@ -1,6 +1,6 @@
 [package]
 edition.workspace = true
-name = "mcp-types"
+name = "agcodex-mcp-types"
 version = { workspace = true }
 license = { workspace = true }
 

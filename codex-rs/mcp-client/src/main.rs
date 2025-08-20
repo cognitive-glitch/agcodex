@@ -13,14 +13,14 @@
 use std::ffi::OsString;
 use std::time::Duration;
 
+use agcodex_mcp_client::McpClient;
+use agcodex_mcp_types::ClientCapabilities;
+use agcodex_mcp_types::Implementation;
+use agcodex_mcp_types::InitializeRequestParams;
+use agcodex_mcp_types::ListToolsRequestParams;
+use agcodex_mcp_types::MCP_SCHEMA_VERSION;
 use anyhow::Context;
 use anyhow::Result;
-use codex_mcp_client::McpClient;
-use mcp_types::ClientCapabilities;
-use mcp_types::Implementation;
-use mcp_types::InitializeRequestParams;
-use mcp_types::ListToolsRequestParams;
-use mcp_types::MCP_SCHEMA_VERSION;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
             elicitation: None,
         },
         client_info: Implementation {
-            name: "codex-mcp-client".to_owned(),
+            name: "agcodex-mcp-client".to_owned(),
             version: env!("CARGO_PKG_VERSION").to_owned(),
             title: Some("Codex".to_string()),
         },

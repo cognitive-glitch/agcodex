@@ -43,9 +43,9 @@ pub enum ParsedCommand {
 
 // Convert core's parsed command enum into the protocol's simplified type so
 // events can carry the canonical representation across process boundaries.
-impl From<ParsedCommand> for codex_protocol::parse_command::ParsedCommand {
+impl From<ParsedCommand> for agcodex_protocol::parse_command::ParsedCommand {
     fn from(v: ParsedCommand) -> Self {
-        use codex_protocol::parse_command::ParsedCommand as P;
+        use agcodex_protocol::parse_command::ParsedCommand as P;
         match v {
             ParsedCommand::Read { cmd, name } => P::Read { cmd, name },
             ParsedCommand::ListFiles { cmd, path } => P::ListFiles { cmd, path },

@@ -2,8 +2,8 @@ use serde::Deserialize;
 use std::path::PathBuf;
 
 use crate::protocol::AskForApproval;
-use codex_protocol::config_types::ReasoningEffort;
-use codex_protocol::config_types::ReasoningSummary;
+use agcodex_protocol::config_types::ReasoningEffort;
+use agcodex_protocol::config_types::ReasoningSummary;
 
 /// Collection of common configuration options that a user can define as a unit
 /// in `config.toml`.

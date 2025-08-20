@@ -1,5 +1,5 @@
-use crossterm::event::KeyEvent;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::layout::Rect;
 use ratatui::widgets::WidgetRef;
 

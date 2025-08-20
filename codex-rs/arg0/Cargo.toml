@@ -1,11 +1,11 @@
 [package]
 edition.workspace = true
-name = "codex-arg0"
+name = "agcodex-arg0"
 version = { workspace = true }
 license = { workspace = true }
 
 [lib]
-name = "codex_arg0"
+name = "agcodex_arg0"
 path = "src/lib.rs"
 
 [lints]
@@ -13,8 +13,8 @@ workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-codex-apply-patch = { path = "../apply-patch" }
-codex-core = { path = "../core" }
-codex-linux-sandbox = { path = "../linux-sandbox" }
+agcodex-apply-patch = { path = "../apply-patch" }
+agcodex-core = { path = "../core" }
+agcodex-linux-sandbox = { path = "../linux-sandbox" }
 dotenvy = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }

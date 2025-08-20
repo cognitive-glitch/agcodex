@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use codex_protocol::mcp_protocol::GitSha;
+use agcodex_protocol::mcp_protocol::GitSha;
 use futures::future::join_all;
 use serde::Deserialize;
 use serde::Serialize;

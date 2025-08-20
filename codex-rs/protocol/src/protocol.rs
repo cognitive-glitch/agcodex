@@ -10,8 +10,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
-use mcp_types::CallToolResult;
-use mcp_types::Tool as McpTool;
+use agcodex_mcp_types::CallToolResult;
+use agcodex_mcp_types::Tool as McpTool;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_bytes::ByteBuf;

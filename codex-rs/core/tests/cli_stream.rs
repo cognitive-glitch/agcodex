@@ -1,5 +1,5 @@
+use agcodex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
 use assert_cmd::Command as AssertCommand;
-use codex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
 use std::time::Duration;
 use std::time::Instant;
 use tempfile::TempDir;
@@ -526,7 +526,7 @@ async fn integration_git_info_unit_test() {
         .unwrap();
 
     // 3. Test git info collection directly
-    let git_info = codex_core::git_info::collect_git_info(&git_repo).await;
+    let git_info = agcodex_core::git_info::collect_git_info(&git_repo).await;
 
     // 4. Verify git info is present and contains expected data
     assert!(git_info.is_some(), "Git info should be collected");
@@ -571,7 +571,7 @@ async fn integration_git_info_unit_test() {
 
     // 5. Test serialization to ensure it works in SessionMeta
     let serialized = serde_json::to_string(&git_info).unwrap();
-    let deserialized: codex_core::git_info::GitInfo = serde_json::from_str(&serialized).unwrap();
+    let deserialized: agcodex_core::git_info::GitInfo = serde_json::from_str(&serialized).unwrap();
 
     assert_eq!(git_info.commit_hash, deserialized.commit_hash);
     assert_eq!(git_info.branch, deserialized.branch);

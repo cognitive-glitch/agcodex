@@ -1,6 +1,6 @@
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::widgets::WidgetRef;
 
 use crate::app_event_sender::AppEventSender;

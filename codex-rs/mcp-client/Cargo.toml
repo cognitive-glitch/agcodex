@@ -1,5 +1,5 @@
 [package]
-name = "codex-mcp-client"
+name = "agcodex-mcp-client"
 version = { workspace = true }
 license = { workspace = true }
 edition.workspace = true
@@ -9,7 +9,7 @@ workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-mcp-types = { path = "../mcp-types" }
+agcodex-mcp-types = { path = "../mcp-types" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tracing = { workspace = true, features = ["log"] }

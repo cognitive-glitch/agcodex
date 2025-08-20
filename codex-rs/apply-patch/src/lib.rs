@@ -7,7 +7,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str::Utf8Error;
 
-use error::{PatchError, Result};
+use error::PatchError;
+use error::Result;
 pub use parser::Hunk;
 pub use parser::ParseError;
 use parser::ParseError::*;

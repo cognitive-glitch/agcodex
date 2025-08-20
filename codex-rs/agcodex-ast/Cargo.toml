@@ -1,0 +1,96 @@
+[package]
+name = "agcodex-ast"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# Core tree-sitter
+tree-sitter = { workspace = true }
+tree-sitter-highlight = "0.25"
+tree-sitter-tags = "0.25"
+
+# Language parsers - Core languages
+tree-sitter-rust = { workspace = true }
+tree-sitter-python = { workspace = true }
+tree-sitter-javascript = { workspace = true }
+tree-sitter-typescript = { workspace = true }
+tree-sitter-go = { workspace = true }
+tree-sitter-java = { workspace = true }
+tree-sitter-c = { workspace = true }
+tree-sitter-cpp = { workspace = true }
+tree-sitter-c-sharp = { workspace = true }
+
+# Web languages
+tree-sitter-html = { workspace = true }
+tree-sitter-css = { workspace = true }
+tree-sitter-json = { workspace = true }
+tree-sitter-yaml = { workspace = true }
+tree-sitter-toml = { workspace = true }
+
+# Scripting languages
+tree-sitter-bash = { workspace = true }
+tree-sitter-ruby = { workspace = true }
+tree-sitter-php = { workspace = true }
+tree-sitter-lua = { workspace = true }
+
+# Functional languages
+tree-sitter-haskell = { workspace = true }
+tree-sitter-elixir = { workspace = true }
+tree-sitter-scala = { workspace = true }
+tree-sitter-ocaml = { workspace = true }
+tree-sitter-clojure = { workspace = true }
+
+# Systems languages
+tree-sitter-zig = { workspace = true }
+tree-sitter-swift = { workspace = true }
+# tree-sitter-kotlin = { workspace = true } # Version conflict with tree-sitter 0.25
+tree-sitter-objc = { workspace = true }
+
+# Config/Build languages
+tree-sitter-dockerfile = { workspace = true }
+tree-sitter-hcl = { workspace = true }
+tree-sitter-nix = { workspace = true }
+tree-sitter-make = { workspace = true }
+
+# Documentation
+tree-sitter-markdown = { workspace = true }
+tree-sitter-latex = { workspace = true }
+tree-sitter-rst = { workspace = true }
+
+# Utility dependencies from workspace
+lru = { workspace = true }
+dashmap = { workspace = true }
+rayon = "1.10"
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+once_cell = { workspace = true }
+ahash = "0.8"
+bytes = { workspace = true }
+memmap2 = "0.9"
+
+# Compression for AI Distiller
+flate2 = "1.0"
+bincode = { workspace = true }
+
+# Path handling
+camino = "1.1"
+walkdir = { workspace = true }
+
+# AST tools from workspace
+ast-grep-core = { workspace = true }
+ast-grep-language = { workspace = true }
+
+# Async support
+tokio = { workspace = true, features = ["full"] }
+
+[dev-dependencies]
+criterion = "0.7"
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }
+insta = { workspace = true }

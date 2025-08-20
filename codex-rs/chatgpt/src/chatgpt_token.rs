@@ -1,10 +1,10 @@
-use codex_login::AuthMode;
-use codex_login::CodexAuth;
+use agcodex_login::AuthMode;
+use agcodex_login::CodexAuth;
 use std::path::Path;
 use std::sync::LazyLock;
 use std::sync::RwLock;
 
-use codex_login::TokenData;
+use agcodex_login::TokenData;
 
 static CHATGPT_TOKEN: LazyLock<RwLock<Option<TokenData>>> = LazyLock::new(|| RwLock::new(None));
 

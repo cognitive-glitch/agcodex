@@ -1,15 +1,15 @@
 [package]
 edition.workspace = true
-name = "codex-exec"
+name = "agcodex-exec"
 version = { workspace = true }
 license = { workspace = true }
 
 [[bin]]
-name = "codex-exec"
+name = "agcodex-exec"
 path = "src/main.rs"
 
 [lib]
-name = "codex_exec"
+name = "agcodex_exec"
 path = "src/lib.rs"
 
 [lints]
@@ -19,15 +19,15 @@ workspace = true
 anyhow = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-codex-arg0 = { path = "../arg0" }
-codex-common = { path = "../common", features = [
+agcodex-arg0 = { path = "../arg0" }
+agcodex-common = { path = "../common", features = [
     "cli",
     "elapsed",
     "sandbox_summary",
 ] }
-codex-core = { path = "../core" }
-codex-ollama = { path = "../ollama" }
-codex-protocol = { path = "../protocol" }
+agcodex-core = { path = "../core" }
+agcodex-ollama = { path = "../ollama" }
+agcodex-protocol = { path = "../protocol" }
 owo-colors = { workspace = true }
 serde_json = { workspace = true }
 shlex = { workspace = true }

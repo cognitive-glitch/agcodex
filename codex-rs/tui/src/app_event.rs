@@ -1,14 +1,14 @@
-use codex_core::protocol::Event;
-use codex_file_search::FileMatch;
-use crossterm::event::KeyEvent;
+use agcodex_core::protocol::Event;
+use agcodex_file_search::FileMatch;
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::text::Line;
 use std::time::Duration;
 
 use crate::app::ChatWidgetArgs;
 use crate::slash_command::SlashCommand;
-use codex_core::protocol::AskForApproval;
-use codex_core::protocol::SandboxPolicy;
-use codex_core::protocol_config_types::ReasoningEffort;
+use agcodex_core::protocol::AskForApproval;
+use agcodex_core::protocol::SandboxPolicy;
+use agcodex_core::protocol_config_types::ReasoningEffort;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -35,7 +35,7 @@ pub(crate) enum AppEvent {
 
     /// Forward an `Op` to the Agent. Using an `AppEvent` for this avoids
     /// bubbling channels through layers of widgets.
-    CodexOp(codex_core::protocol::Op),
+    CodexOp(agcodex_core::protocol::Op),
 
     /// Dispatch a recognized slash command from the UI (composer) to the app
     /// layer so it can be handled centrally.
@@ -78,4 +78,7 @@ pub(crate) enum AppEvent {
 
     /// Update the current sandbox policy in the running app and widget.
     UpdateSandboxPolicy(SandboxPolicy),
+
+    /// Cycle to the next operating mode (Plan → Build → Review → Plan).
+    CycleModes,
 }

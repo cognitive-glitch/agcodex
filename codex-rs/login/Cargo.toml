@@ -1,6 +1,6 @@
 [package]
 edition.workspace = true
-name = "codex-login"
+name = "agcodex-login"
 version = { workspace = true }
 license = { workspace = true }
 

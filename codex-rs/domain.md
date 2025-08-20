@@ -339,7 +339,7 @@ strip = true
 
 ### Hierarchical Configuration
 ```
-~/.codex/config.toml
+~/.agcodex/config.toml
 ├── Model configuration (provider, API keys)
 ├── TUI settings (layout, keybindings, themes)
 ├── MCP server configurations

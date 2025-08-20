@@ -3,13 +3,13 @@
 
 use std::time::Duration;
 
-use codex_core::ConversationManager;
-use codex_core::ModelProviderInfo;
-use codex_core::protocol::EventMsg;
-use codex_core::protocol::InputItem;
-use codex_core::protocol::Op;
-use codex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
-use codex_login::CodexAuth;
+use agcodex_core::ConversationManager;
+use agcodex_core::ModelProviderInfo;
+use agcodex_core::protocol::EventMsg;
+use agcodex_core::protocol::InputItem;
+use agcodex_core::protocol::Op;
+use agcodex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
+use agcodex_login::CodexAuth;
 use core_test_support::load_default_config_for_test;
 use core_test_support::load_sse_fixture;
 use core_test_support::load_sse_fixture_with_id;
@@ -79,7 +79,7 @@ async fn retries_on_early_close() {
         // provider is not set.
         env_key: Some("PATH".into()),
         env_key_instructions: None,
-        wire_api: codex_core::WireApi::Responses,
+        wire_api: agcodex_core::WireApi::Responses,
         query_params: None,
         http_headers: None,
         env_http_headers: None,
@@ -90,8 +90,8 @@ async fn retries_on_early_close() {
         requires_openai_auth: false,
     };
 
-    let codex_home = TempDir::new().unwrap();
-    let mut config = load_default_config_for_test(&codex_home);
+    let agcodex_home = TempDir::new().unwrap();
+    let mut config = load_default_config_for_test(&agcodex_home);
     config.model_provider = model_provider;
     let conversation_manager = ConversationManager::default();
     let codex = conversation_manager

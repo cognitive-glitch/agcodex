@@ -1,6 +1,6 @@
 use crate::citation_regex::CITATION_REGEX;
-use codex_core::config::Config;
-use codex_core::config_types::UriBasedFileOpener;
+use agcodex_core::config::Config;
+use agcodex_core::config_types::UriBasedFileOpener;
 use ratatui::text::Line;
 use ratatui::text::Span;
 use std::borrow::Cow;
@@ -413,7 +413,7 @@ mod tests {
 
     #[test]
     fn append_markdown_preserves_full_text_line() {
-        use codex_core::config_types::UriBasedFileOpener;
+        use agcodex_core::config_types::UriBasedFileOpener;
         use std::path::Path;
         let src = "Hi! How can I help with codex-rs today? Want me to explore the repo, run tests, or work on a specific change?\n";
         let cwd = Path::new("/");

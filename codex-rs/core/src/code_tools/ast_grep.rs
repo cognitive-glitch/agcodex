@@ -2,7 +2,8 @@
 //! Note: Tree-sitter is the primary structural engine; AST-Grep is offered as
 //! internal optional tooling.
 
-use super::{CodeTool, ToolError};
+use super::CodeTool;
+use super::ToolError;
 
 #[derive(Debug, Clone, Default)]
 pub struct AstGrep;

@@ -1,11 +1,11 @@
 [package]
 edition.workspace = true
-name = "codex-ansi-escape"
+name = "agcodex-ansi-escape"
 version = { workspace = true }
 license = { workspace = true }
 
 [lib]
-name = "codex_ansi_escape"
+name = "agcodex_ansi_escape"
 path = "src/lib.rs"
 
 [lints]

@@ -11,11 +11,12 @@ use std::collections::HashSet;
 use std::ffi::OsString;
 use std::time::Duration;
 
-use crate::error::{CodexErr, Result};
-use codex_mcp_client::McpClient;
-use mcp_types::ClientCapabilities;
-use mcp_types::Implementation;
-use mcp_types::Tool;
+use crate::error::CodexErr;
+use crate::error::Result;
+use agcodex_mcp_client::McpClient;
+use agcodex_mcp_types::ClientCapabilities;
+use agcodex_mcp_types::Implementation;
+use agcodex_mcp_types::Tool;
 
 use serde_json::json;
 use sha1::Digest;
@@ -135,7 +136,7 @@ impl McpConnectionManager {
                 match client_res {
                     Ok(client) => {
                         // Initialize the client.
-                        let params = mcp_types::InitializeRequestParams {
+                        let params = agcodex_mcp_types::InitializeRequestParams {
                             capabilities: ClientCapabilities {
                                 experimental: None,
                                 roots: None,
@@ -149,7 +150,7 @@ impl McpConnectionManager {
                                 version: env!("CARGO_PKG_VERSION").to_owned(),
                                 title: Some("Codex".into()),
                             },
-                            protocol_version: mcp_types::MCP_SCHEMA_VERSION.to_owned(),
+                            protocol_version: agcodex_mcp_types::MCP_SCHEMA_VERSION.to_owned(),
                         };
                         let initialize_notification_params = None;
                         let timeout = Some(Duration::from_secs(10));
@@ -205,7 +206,7 @@ impl McpConnectionManager {
         tool: &str,
         arguments: Option<serde_json::Value>,
         timeout: Option<Duration>,
-    ) -> Result<mcp_types::CallToolResult> {
+    ) -> Result<agcodex_mcp_types::CallToolResult> {
         let client = self
             .clients
             .get(server)
@@ -284,7 +285,7 @@ fn is_valid_mcp_server_name(server_name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mcp_types::ToolInputSchema;
+    use agcodex_mcp_types::ToolInputSchema;
 
     fn create_test_tool(server_name: &str, tool_name: &str) -> ToolInfo {
         ToolInfo {

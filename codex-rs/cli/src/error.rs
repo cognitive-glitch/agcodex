@@ -21,7 +21,7 @@ pub enum CliError {
     Io(#[from] io::Error),
 
     #[error(transparent)]
-    Core(#[from] codex_core::error::CodexErr),
+    Core(#[from] agcodex_core::error::CodexErr),
 
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),

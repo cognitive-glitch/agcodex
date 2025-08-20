@@ -1,6 +1,6 @@
 [package]
 edition.workspace = true
-name = "codex-protocol-ts"
+name = "agcodex-protocol-ts"
 version = { workspace = true }
 license = { workspace = true }
 
@@ -8,15 +8,15 @@ license = { workspace = true }
 workspace = true
 
 [lib]
-name = "codex_protocol_ts"
+name = "agcodex_protocol_ts"
 path = "src/lib.rs"
 
 [[bin]]
-name = "codex-protocol-ts"
+name = "agcodex-protocol-ts"
 path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-codex-protocol = { path = "../protocol" }
+agcodex-protocol = { path = "../protocol" }
 ts-rs = { workspace = true }
 clap = { workspace = true, features = ["derive"] }

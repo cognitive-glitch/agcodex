@@ -8,16 +8,16 @@ use std::sync::MutexGuard;
 use std::sync::atomic::AtomicU64;
 use std::time::Duration;
 
+use agcodex_apply_patch::ApplyPatchAction;
+use agcodex_apply_patch::MaybeApplyPatchVerified;
+use agcodex_apply_patch::maybe_parse_apply_patch_verified;
+use agcodex_login::CodexAuth;
+use agcodex_mcp_types::CallToolResult;
+use agcodex_protocol::protocol::TurnAbortReason;
+use agcodex_protocol::protocol::TurnAbortedEvent;
 use async_channel::Receiver;
 use async_channel::Sender;
-use codex_apply_patch::ApplyPatchAction;
-use codex_apply_patch::MaybeApplyPatchVerified;
-use codex_apply_patch::maybe_parse_apply_patch_verified;
-use codex_login::CodexAuth;
-use codex_protocol::protocol::TurnAbortReason;
-use codex_protocol::protocol::TurnAbortedEvent;
 use futures::prelude::*;
-use mcp_types::CallToolResult;
 use serde::Serialize;
 use serde_json;
 use tokio::sync::oneshot;
@@ -42,10 +42,11 @@ use crate::config::Config;
 use crate::config_types::ShellEnvironmentPolicy;
 use crate::conversation_history::ConversationHistory;
 use crate::environment_context::EnvironmentContext;
+use crate::error::CodexErr;
 use crate::error::Result as CodexResult;
+use crate::error::Result;
 use crate::error::SandboxErr;
 use crate::error::get_error_message_ui;
-use crate::error::{CodexErr, Result};
 use crate::exec::ExecParams;
 use crate::exec::ExecToolCallOutput;
 use crate::exec::SandboxType;
@@ -105,8 +106,8 @@ use crate::shell;
 use crate::turn_diff_tracker::TurnDiffTracker;
 use crate::user_notification::UserNotification;
 use crate::util::backoff;
-use codex_protocol::config_types::ReasoningEffort as ReasoningEffortConfig;
-use codex_protocol::config_types::ReasoningSummary as ReasoningSummaryConfig;
+use agcodex_protocol::config_types::ReasoningEffort as ReasoningEffortConfig;
+use agcodex_protocol::config_types::ReasoningSummary as ReasoningSummaryConfig;
 
 // A convenience extension trait for acquiring mutex locks where poisoning is
 // unrecoverable and should abort the program. This avoids scattered `.unwrap()`
@@ -1186,7 +1187,7 @@ async fn submission_loop(
                                 offset,
                                 log_id,
                                 entry: entry_opt.map(|e| {
-                                    codex_protocol::message_history::HistoryEntry {
+                                    agcodex_protocol::message_history::HistoryEntry {
                                         session_id: e.session_id,
                                         ts: e.ts,
                                         text: e.text,

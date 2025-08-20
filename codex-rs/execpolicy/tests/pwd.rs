@@ -1,15 +1,15 @@
-extern crate codex_execpolicy;
+extern crate agcodex_execpolicy;
 
 use std::vec;
 
-use codex_execpolicy::Error;
-use codex_execpolicy::ExecCall;
-use codex_execpolicy::MatchedExec;
-use codex_execpolicy::MatchedFlag;
-use codex_execpolicy::Policy;
-use codex_execpolicy::PositionalArg;
-use codex_execpolicy::ValidExec;
-use codex_execpolicy::get_default_policy;
+use agcodex_execpolicy::Error;
+use agcodex_execpolicy::ExecCall;
+use agcodex_execpolicy::MatchedExec;
+use agcodex_execpolicy::MatchedFlag;
+use agcodex_execpolicy::Policy;
+use agcodex_execpolicy::PositionalArg;
+use agcodex_execpolicy::ValidExec;
+use agcodex_execpolicy::get_default_policy;
 
 #[expect(clippy::expect_used)]
 fn setup() -> Policy {

@@ -95,7 +95,7 @@ pub enum CodexErr {
     #[error("sandbox error: {0}")]
     Sandbox(#[from] SandboxErr),
 
-    #[error("codex-linux-sandbox was required but not provided")]
+    #[error("agcodex-linux-sandbox was required but not provided")]
     LandlockSandboxExecutableNotProvided,
 
     // -----------------------------------------------------------------

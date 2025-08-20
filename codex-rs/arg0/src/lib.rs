@@ -2,7 +2,7 @@ use std::future::Future;
 use std::path::Path;
 use std::path::PathBuf;
 
-use codex_core::CODEX_APPLY_PATCH_ARG1;
+use agcodex_core::CODEX_APPLY_PATCH_ARG1;
 
 /// While we want to deploy the Codex CLI as a single executable for simplicity,
 /// we also want to expose some of its functionality as distinct CLIs, so we use
@@ -41,7 +41,7 @@ where
 
     if exe_name == "codex-linux-sandbox" {
         // Safety: [`run_main`] never returns.
-        codex_linux_sandbox::run_main();
+        agcodex_linux_sandbox::run_main();
     }
 
     let argv1 = args.next().unwrap_or_default();
@@ -51,7 +51,7 @@ where
             Some(patch_arg) => {
                 let mut stdout = std::io::stdout();
                 let mut stderr = std::io::stderr();
-                match codex_apply_patch::apply_patch(&patch_arg, &mut stdout, &mut stderr) {
+                match agcodex_apply_patch::apply_patch(&patch_arg, &mut stdout, &mut stderr) {
                     Ok(()) => 0,
                     Err(_) => 1,
                 }
@@ -84,12 +84,12 @@ where
 
 const ILLEGAL_ENV_VAR_PREFIX: &str = "CODEX_";
 
-/// Load env vars from ~/.codex/.env and `$(pwd)/.env`.
+/// Load env vars from ~/.agcodex/.env and `$(pwd)/.env`.
 ///
 /// Security: Do not allow `.env` files to create or modify any variables
 /// with names starting with `CODEX_`.
 fn load_dotenv() {
-    if let Ok(codex_home) = codex_core::config::find_codex_home()
+    if let Ok(codex_home) = agcodex_core::config::find_agcodex_home()
         && let Ok(iter) = dotenvy::from_path_iter(codex_home.join(".env"))
     {
         set_filtered(iter);

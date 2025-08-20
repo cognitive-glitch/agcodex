@@ -1,4 +1,4 @@
-use codex_core::config::Config;
+use agcodex_core::config::Config;
 use ratatui::text::Line;
 
 use super::HeaderEmitter;

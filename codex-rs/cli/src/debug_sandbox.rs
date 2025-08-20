@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
-use codex_common::CliConfigOverrides;
-use codex_core::config::Config;
-use codex_core::config::ConfigOverrides;
-use codex_core::exec_env::create_env;
-use codex_core::landlock::spawn_command_under_linux_sandbox;
-use codex_core::seatbelt::spawn_command_under_seatbelt;
-use codex_core::spawn::StdioPolicy;
-use codex_protocol::config_types::SandboxMode;
+use agcodex_common::CliConfigOverrides;
+use agcodex_core::config::Config;
+use agcodex_core::config::ConfigOverrides;
+use agcodex_core::exec_env::create_env;
+use agcodex_core::landlock::spawn_command_under_linux_sandbox;
+use agcodex_core::seatbelt::spawn_command_under_seatbelt;
+use agcodex_core::spawn::StdioPolicy;
+use agcodex_protocol::config_types::SandboxMode;
 
 use crate::LandlockCommand;
 use crate::SeatbeltCommand;
@@ -87,7 +87,7 @@ async fn run_command_under_sandbox(
             #[expect(clippy::expect_used)]
             let codex_linux_sandbox_exe = config
                 .codex_linux_sandbox_exe
-                .expect("codex-linux-sandbox executable not found");
+                .expect("agcodex-linux-sandbox executable not found");
             spawn_command_under_linux_sandbox(
                 codex_linux_sandbox_exe,
                 command,

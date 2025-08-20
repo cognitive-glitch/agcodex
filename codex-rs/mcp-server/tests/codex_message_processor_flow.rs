@@ -1,29 +1,29 @@
 use std::path::Path;
 
-use codex_core::protocol::AskForApproval;
-use codex_core::protocol::SandboxPolicy;
-use codex_core::protocol_config_types::ReasoningEffort;
-use codex_core::protocol_config_types::ReasoningSummary;
-use codex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
-use codex_protocol::mcp_protocol::AddConversationListenerParams;
-use codex_protocol::mcp_protocol::AddConversationSubscriptionResponse;
-use codex_protocol::mcp_protocol::EXEC_COMMAND_APPROVAL_METHOD;
-use codex_protocol::mcp_protocol::NewConversationParams;
-use codex_protocol::mcp_protocol::NewConversationResponse;
-use codex_protocol::mcp_protocol::RemoveConversationListenerParams;
-use codex_protocol::mcp_protocol::RemoveConversationSubscriptionResponse;
-use codex_protocol::mcp_protocol::SendUserMessageParams;
-use codex_protocol::mcp_protocol::SendUserMessageResponse;
-use codex_protocol::mcp_protocol::SendUserTurnParams;
-use codex_protocol::mcp_protocol::SendUserTurnResponse;
+use agcodex_core::protocol::AskForApproval;
+use agcodex_core::protocol::SandboxPolicy;
+use agcodex_core::protocol_config_types::ReasoningEffort;
+use agcodex_core::protocol_config_types::ReasoningSummary;
+use agcodex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
+use agcodex_mcp_types::JSONRPCNotification;
+use agcodex_mcp_types::JSONRPCResponse;
+use agcodex_mcp_types::RequestId;
+use agcodex_protocol::mcp_protocol::AddConversationListenerParams;
+use agcodex_protocol::mcp_protocol::AddConversationSubscriptionResponse;
+use agcodex_protocol::mcp_protocol::EXEC_COMMAND_APPROVAL_METHOD;
+use agcodex_protocol::mcp_protocol::NewConversationParams;
+use agcodex_protocol::mcp_protocol::NewConversationResponse;
+use agcodex_protocol::mcp_protocol::RemoveConversationListenerParams;
+use agcodex_protocol::mcp_protocol::RemoveConversationSubscriptionResponse;
+use agcodex_protocol::mcp_protocol::SendUserMessageParams;
+use agcodex_protocol::mcp_protocol::SendUserMessageResponse;
+use agcodex_protocol::mcp_protocol::SendUserTurnParams;
+use agcodex_protocol::mcp_protocol::SendUserTurnResponse;
 use mcp_test_support::McpProcess;
 use mcp_test_support::create_final_assistant_message_sse_response;
 use mcp_test_support::create_mock_chat_completions_server;
 use mcp_test_support::create_shell_sse_response;
 use mcp_test_support::to_response;
-use mcp_types::JSONRPCNotification;
-use mcp_types::JSONRPCResponse;
-use mcp_types::RequestId;
 use pretty_assertions::assert_eq;
 use std::env;
 use tempfile::TempDir;
@@ -113,7 +113,7 @@ async fn test_codex_jsonrpc_conversation_flow() {
     let send_user_id = mcp
         .send_send_user_message_request(SendUserMessageParams {
             conversation_id,
-            items: vec![codex_protocol::mcp_protocol::InputItem::Text {
+            items: vec![agcodex_protocol::mcp_protocol::InputItem::Text {
                 text: "text".to_string(),
             }],
         })
@@ -263,7 +263,7 @@ async fn test_send_user_turn_changes_approval_policy_behavior() {
     let send_user_id = mcp
         .send_send_user_message_request(SendUserMessageParams {
             conversation_id,
-            items: vec![codex_protocol::mcp_protocol::InputItem::Text {
+            items: vec![agcodex_protocol::mcp_protocol::InputItem::Text {
                 text: "run python".to_string(),
             }],
         })
@@ -293,7 +293,7 @@ async fn test_send_user_turn_changes_approval_policy_behavior() {
     // Approve so the first turn can complete
     mcp.send_response(
         request.id,
-        serde_json::json!({ "decision": codex_core::protocol::ReviewDecision::Approved }),
+        serde_json::json!({ "decision": agcodex_core::protocol::ReviewDecision::Approved }),
     )
     .await
     .expect("send approval response");
@@ -311,7 +311,7 @@ async fn test_send_user_turn_changes_approval_policy_behavior() {
     let send_turn_id = mcp
         .send_send_user_turn_request(SendUserTurnParams {
             conversation_id,
-            items: vec![codex_protocol::mcp_protocol::InputItem::Text {
+            items: vec![agcodex_protocol::mcp_protocol::InputItem::Text {
                 text: "run python again".to_string(),
             }],
             cwd: working_directory.clone(),

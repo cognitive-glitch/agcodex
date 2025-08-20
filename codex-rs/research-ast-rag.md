@@ -572,7 +572,7 @@ pub struct CodebaseIndex {
 ### Configuration
 
 ```toml
-# ~/.codex/config.toml
+# ~/.agcodex/config.toml
 [code_intelligence]
 enabled = true
 incremental_indexing = true

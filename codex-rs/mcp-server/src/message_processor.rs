@@ -9,26 +9,26 @@ use crate::codex_tool_config::create_tool_for_codex_tool_call_param;
 use crate::codex_tool_config::create_tool_for_codex_tool_call_reply_param;
 use crate::error_code::INVALID_REQUEST_ERROR_CODE;
 use crate::outgoing_message::OutgoingMessageSender;
-use codex_protocol::mcp_protocol::ClientRequest;
+use agcodex_protocol::mcp_protocol::ClientRequest;
 
-use codex_core::ConversationManager;
-use codex_core::config::Config as CodexConfig;
-use codex_core::protocol::Submission;
-use mcp_types::CallToolRequestParams;
-use mcp_types::CallToolResult;
-use mcp_types::ClientRequest as McpClientRequest;
-use mcp_types::ContentBlock;
-use mcp_types::JSONRPCError;
-use mcp_types::JSONRPCErrorError;
-use mcp_types::JSONRPCNotification;
-use mcp_types::JSONRPCRequest;
-use mcp_types::JSONRPCResponse;
-use mcp_types::ListToolsResult;
-use mcp_types::ModelContextProtocolRequest;
-use mcp_types::RequestId;
-use mcp_types::ServerCapabilitiesTools;
-use mcp_types::ServerNotification;
-use mcp_types::TextContent;
+use agcodex_core::ConversationManager;
+use agcodex_core::config::Config as CodexConfig;
+use agcodex_core::protocol::Submission;
+use agcodex_mcp_types::CallToolRequestParams;
+use agcodex_mcp_types::CallToolResult;
+use agcodex_mcp_types::ClientRequest as McpClientRequest;
+use agcodex_mcp_types::ContentBlock;
+use agcodex_mcp_types::JSONRPCError;
+use agcodex_mcp_types::JSONRPCErrorError;
+use agcodex_mcp_types::JSONRPCNotification;
+use agcodex_mcp_types::JSONRPCRequest;
+use agcodex_mcp_types::JSONRPCResponse;
+use agcodex_mcp_types::ListToolsResult;
+use agcodex_mcp_types::ModelContextProtocolRequest;
+use agcodex_mcp_types::RequestId;
+use agcodex_mcp_types::ServerCapabilitiesTools;
+use agcodex_mcp_types::ServerNotification;
+use agcodex_mcp_types::TextContent;
 use serde_json::json;
 use tokio::sync::Mutex;
 use tokio::task;
@@ -52,13 +52,13 @@ impl MessageProcessor {
     ) -> Self {
         let outgoing = Arc::new(outgoing);
         let conversation_manager = Arc::new(ConversationManager::default());
-        let codex_message_processor = CodexMessageProcessor::new(
+        let agcodex_message_processor = CodexMessageProcessor::new(
             conversation_manager.clone(),
             outgoing.clone(),
             codex_linux_sandbox_exe.clone(),
         );
         Self {
-            codex_message_processor,
+            codex_message_processor: agcodex_message_processor,
             outgoing,
             initialized: false,
             codex_linux_sandbox_exe,
@@ -186,7 +186,7 @@ impl MessageProcessor {
     async fn handle_initialize(
         &mut self,
         id: RequestId,
-        params: <mcp_types::InitializeRequest as ModelContextProtocolRequest>::Params,
+        params: <agcodex_mcp_types::InitializeRequest as ModelContextProtocolRequest>::Params,
     ) {
         tracing::info!("initialize -> params: {:?}", params);
 
@@ -204,8 +204,8 @@ impl MessageProcessor {
         self.initialized = true;
 
         // Build a minimal InitializeResult. Fill with placeholders.
-        let result = mcp_types::InitializeResult {
-            capabilities: mcp_types::ServerCapabilities {
+        let result = agcodex_mcp_types::InitializeResult {
+            capabilities: agcodex_mcp_types::ServerCapabilities {
                 completions: None,
                 experimental: None,
                 logging: None,
@@ -217,14 +217,14 @@ impl MessageProcessor {
             },
             instructions: None,
             protocol_version: params.protocol_version.clone(),
-            server_info: mcp_types::Implementation {
+            server_info: agcodex_mcp_types::Implementation {
                 name: "codex-mcp-server".to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 title: Some("Codex".to_string()),
             },
         };
 
-        self.send_response::<mcp_types::InitializeRequest>(id, result)
+        self.send_response::<agcodex_mcp_types::InitializeRequest>(id, result)
             .await;
     }
 
@@ -238,17 +238,17 @@ impl MessageProcessor {
     async fn handle_ping(
         &self,
         id: RequestId,
-        params: <mcp_types::PingRequest as mcp_types::ModelContextProtocolRequest>::Params,
+        params: <agcodex_mcp_types::PingRequest as agcodex_mcp_types::ModelContextProtocolRequest>::Params,
     ) {
         tracing::info!("ping -> params: {:?}", params);
         let result = json!({});
-        self.send_response::<mcp_types::PingRequest>(id, result)
+        self.send_response::<agcodex_mcp_types::PingRequest>(id, result)
             .await;
     }
 
     fn handle_list_resources(
         &self,
-        params: <mcp_types::ListResourcesRequest as mcp_types::ModelContextProtocolRequest>::Params,
+        params: <agcodex_mcp_types::ListResourcesRequest as agcodex_mcp_types::ModelContextProtocolRequest>::Params,
     ) {
         tracing::info!("resources/list -> params: {:?}", params);
     }
@@ -256,42 +256,42 @@ impl MessageProcessor {
     fn handle_list_resource_templates(
         &self,
         params:
-            <mcp_types::ListResourceTemplatesRequest as mcp_types::ModelContextProtocolRequest>::Params,
+            <agcodex_mcp_types::ListResourceTemplatesRequest as agcodex_mcp_types::ModelContextProtocolRequest>::Params,
     ) {
         tracing::info!("resources/templates/list -> params: {:?}", params);
     }
 
     fn handle_read_resource(
         &self,
-        params: <mcp_types::ReadResourceRequest as mcp_types::ModelContextProtocolRequest>::Params,
+        params: <agcodex_mcp_types::ReadResourceRequest as agcodex_mcp_types::ModelContextProtocolRequest>::Params,
     ) {
         tracing::info!("resources/read -> params: {:?}", params);
     }
 
     fn handle_subscribe(
         &self,
-        params: <mcp_types::SubscribeRequest as mcp_types::ModelContextProtocolRequest>::Params,
+        params: <agcodex_mcp_types::SubscribeRequest as agcodex_mcp_types::ModelContextProtocolRequest>::Params,
     ) {
         tracing::info!("resources/subscribe -> params: {:?}", params);
     }
 
     fn handle_unsubscribe(
         &self,
-        params: <mcp_types::UnsubscribeRequest as mcp_types::ModelContextProtocolRequest>::Params,
+        params: <agcodex_mcp_types::UnsubscribeRequest as agcodex_mcp_types::ModelContextProtocolRequest>::Params,
     ) {
         tracing::info!("resources/unsubscribe -> params: {:?}", params);
     }
 
     fn handle_list_prompts(
         &self,
-        params: <mcp_types::ListPromptsRequest as mcp_types::ModelContextProtocolRequest>::Params,
+        params: <agcodex_mcp_types::ListPromptsRequest as agcodex_mcp_types::ModelContextProtocolRequest>::Params,
     ) {
         tracing::info!("prompts/list -> params: {:?}", params);
     }
 
     fn handle_get_prompt(
         &self,
-        params: <mcp_types::GetPromptRequest as mcp_types::ModelContextProtocolRequest>::Params,
+        params: <agcodex_mcp_types::GetPromptRequest as agcodex_mcp_types::ModelContextProtocolRequest>::Params,
     ) {
         tracing::info!("prompts/get -> params: {:?}", params);
     }
@@ -299,7 +299,7 @@ impl MessageProcessor {
     async fn handle_list_tools(
         &self,
         id: RequestId,
-        params: <mcp_types::ListToolsRequest as mcp_types::ModelContextProtocolRequest>::Params,
+        params: <agcodex_mcp_types::ListToolsRequest as agcodex_mcp_types::ModelContextProtocolRequest>::Params,
     ) {
         tracing::trace!("tools/list -> {params:?}");
         let result = ListToolsResult {
@@ -310,14 +310,14 @@ impl MessageProcessor {
             next_cursor: None,
         };
 
-        self.send_response::<mcp_types::ListToolsRequest>(id, result)
+        self.send_response::<agcodex_mcp_types::ListToolsRequest>(id, result)
             .await;
     }
 
     async fn handle_call_tool(
         &self,
         id: RequestId,
-        params: <mcp_types::CallToolRequest as mcp_types::ModelContextProtocolRequest>::Params,
+        params: <agcodex_mcp_types::CallToolRequest as agcodex_mcp_types::ModelContextProtocolRequest>::Params,
     ) {
         tracing::info!("tools/call -> params: {:?}", params);
         let CallToolRequestParams { name, arguments } = params;
@@ -338,7 +338,7 @@ impl MessageProcessor {
                     is_error: Some(true),
                     structured_content: None,
                 };
-                self.send_response::<mcp_types::CallToolRequest>(id, result)
+                self.send_response::<agcodex_mcp_types::CallToolRequest>(id, result)
                     .await;
             }
         }
@@ -360,7 +360,7 @@ impl MessageProcessor {
                             is_error: Some(true),
                             structured_content: None,
                         };
-                        self.send_response::<mcp_types::CallToolRequest>(id, result)
+                        self.send_response::<agcodex_mcp_types::CallToolRequest>(id, result)
                             .await;
                         return;
                     }
@@ -375,7 +375,7 @@ impl MessageProcessor {
                         is_error: Some(true),
                         structured_content: None,
                     };
-                    self.send_response::<mcp_types::CallToolRequest>(id, result)
+                    self.send_response::<agcodex_mcp_types::CallToolRequest>(id, result)
                         .await;
                     return;
                 }
@@ -392,7 +392,7 @@ impl MessageProcessor {
                     is_error: Some(true),
                     structured_content: None,
                 };
-                self.send_response::<mcp_types::CallToolRequest>(id, result)
+                self.send_response::<agcodex_mcp_types::CallToolRequest>(id, result)
                     .await;
                 return;
             }
@@ -441,7 +441,7 @@ impl MessageProcessor {
                         is_error: Some(true),
                         structured_content: None,
                     };
-                    self.send_response::<mcp_types::CallToolRequest>(request_id, result)
+                    self.send_response::<agcodex_mcp_types::CallToolRequest>(request_id, result)
                         .await;
                     return;
                 }
@@ -459,7 +459,7 @@ impl MessageProcessor {
                     is_error: Some(true),
                     structured_content: None,
                 };
-                self.send_response::<mcp_types::CallToolRequest>(request_id, result)
+                self.send_response::<agcodex_mcp_types::CallToolRequest>(request_id, result)
                     .await;
                 return;
             }
@@ -477,7 +477,7 @@ impl MessageProcessor {
                     is_error: Some(true),
                     structured_content: None,
                 };
-                self.send_response::<mcp_types::CallToolRequest>(request_id, result)
+                self.send_response::<agcodex_mcp_types::CallToolRequest>(request_id, result)
                     .await;
                 return;
             }
@@ -528,14 +528,14 @@ impl MessageProcessor {
 
     fn handle_set_level(
         &self,
-        params: <mcp_types::SetLevelRequest as mcp_types::ModelContextProtocolRequest>::Params,
+        params: <agcodex_mcp_types::SetLevelRequest as agcodex_mcp_types::ModelContextProtocolRequest>::Params,
     ) {
         tracing::info!("logging/setLevel -> params: {:?}", params);
     }
 
     fn handle_complete(
         &self,
-        params: <mcp_types::CompleteRequest as mcp_types::ModelContextProtocolRequest>::Params,
+        params: <agcodex_mcp_types::CompleteRequest as agcodex_mcp_types::ModelContextProtocolRequest>::Params,
     ) {
         tracing::info!("completion/complete -> params: {:?}", params);
     }
@@ -546,7 +546,7 @@ impl MessageProcessor {
 
     async fn handle_cancelled_notification(
         &self,
-        params: <mcp_types::CancelledNotification as mcp_types::ModelContextProtocolNotification>::Params,
+        params: <agcodex_mcp_types::CancelledNotification as agcodex_mcp_types::ModelContextProtocolNotification>::Params,
     ) {
         let request_id = params.request_id;
         // Create a stable string form early for logging and submission id.
@@ -581,7 +581,7 @@ impl MessageProcessor {
         let err = codex_arc
             .submit_with_id(Submission {
                 id: request_id_string,
-                op: codex_core::protocol::Op::Interrupt,
+                op: agcodex_core::protocol::Op::Interrupt,
             })
             .await;
         if let Err(e) = err {
@@ -597,14 +597,14 @@ impl MessageProcessor {
 
     fn handle_progress_notification(
         &self,
-        params: <mcp_types::ProgressNotification as mcp_types::ModelContextProtocolNotification>::Params,
+        params: <agcodex_mcp_types::ProgressNotification as agcodex_mcp_types::ModelContextProtocolNotification>::Params,
     ) {
         tracing::info!("notifications/progress -> params: {:?}", params);
     }
 
     fn handle_resource_list_changed(
         &self,
-        params: <mcp_types::ResourceListChangedNotification as mcp_types::ModelContextProtocolNotification>::Params,
+        params: <agcodex_mcp_types::ResourceListChangedNotification as agcodex_mcp_types::ModelContextProtocolNotification>::Params,
     ) {
         tracing::info!(
             "notifications/resources/list_changed -> params: {:?}",
@@ -614,28 +614,28 @@ impl MessageProcessor {
 
     fn handle_resource_updated(
         &self,
-        params: <mcp_types::ResourceUpdatedNotification as mcp_types::ModelContextProtocolNotification>::Params,
+        params: <agcodex_mcp_types::ResourceUpdatedNotification as agcodex_mcp_types::ModelContextProtocolNotification>::Params,
     ) {
         tracing::info!("notifications/resources/updated -> params: {:?}", params);
     }
 
     fn handle_prompt_list_changed(
         &self,
-        params: <mcp_types::PromptListChangedNotification as mcp_types::ModelContextProtocolNotification>::Params,
+        params: <agcodex_mcp_types::PromptListChangedNotification as agcodex_mcp_types::ModelContextProtocolNotification>::Params,
     ) {
         tracing::info!("notifications/prompts/list_changed -> params: {:?}", params);
     }
 
     fn handle_tool_list_changed(
         &self,
-        params: <mcp_types::ToolListChangedNotification as mcp_types::ModelContextProtocolNotification>::Params,
+        params: <agcodex_mcp_types::ToolListChangedNotification as agcodex_mcp_types::ModelContextProtocolNotification>::Params,
     ) {
         tracing::info!("notifications/tools/list_changed -> params: {:?}", params);
     }
 
     fn handle_logging_message(
         &self,
-        params: <mcp_types::LoggingMessageNotification as mcp_types::ModelContextProtocolNotification>::Params,
+        params: <agcodex_mcp_types::LoggingMessageNotification as agcodex_mcp_types::ModelContextProtocolNotification>::Params,
     ) {
         tracing::info!("notifications/message -> params: {:?}", params);
     }

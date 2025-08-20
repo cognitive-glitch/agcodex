@@ -1,12 +1,12 @@
 #![cfg(target_os = "linux")]
-use codex_core::config_types::ShellEnvironmentPolicy;
-use codex_core::error::CodexErr;
-use codex_core::error::SandboxErr;
-use codex_core::exec::ExecParams;
-use codex_core::exec::SandboxType;
-use codex_core::exec::process_exec_tool_call;
-use codex_core::exec_env::create_env;
-use codex_core::protocol::SandboxPolicy;
+use agcodex_core::config_types::ShellEnvironmentPolicy;
+use agcodex_core::error::CodexErr;
+use agcodex_core::error::SandboxErr;
+use agcodex_core::exec::ExecParams;
+use agcodex_core::exec::SandboxType;
+use agcodex_core::exec::process_exec_tool_call;
+use agcodex_core::exec_env::create_env;
+use agcodex_core::protocol::SandboxPolicy;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tempfile::NamedTempFile;
@@ -53,7 +53,7 @@ async fn run_cmd(cmd: &[&str], writable_roots: &[PathBuf], timeout_ms: u64) {
         exclude_tmpdir_env_var: true,
         exclude_slash_tmp: true,
     };
-    let sandbox_program = env!("CARGO_BIN_EXE_codex-linux-sandbox");
+    let sandbox_program = env!("CARGO_BIN_EXE_agcodex-linux-sandbox");
     let codex_linux_sandbox_exe = Some(PathBuf::from(sandbox_program));
     let res = process_exec_tool_call(
         params,
@@ -145,7 +145,7 @@ async fn assert_network_blocked(cmd: &[&str]) {
     };
 
     let sandbox_policy = SandboxPolicy::new_read_only_policy();
-    let sandbox_program = env!("CARGO_BIN_EXE_codex-linux-sandbox");
+    let sandbox_program = env!("CARGO_BIN_EXE_agcodex-linux-sandbox");
     let codex_linux_sandbox_exe: Option<PathBuf> = Some(PathBuf::from(sandbox_program));
     let result = process_exec_tool_call(
         params,

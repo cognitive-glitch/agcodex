@@ -4,7 +4,7 @@
 use std::time::Duration;
 use std::time::Instant;
 
-use codex_core::protocol::Op;
+use agcodex_core::protocol::Op;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Color;
@@ -23,7 +23,7 @@ use crate::shimmer::shimmer_spans;
 // We render the live text using markdown so it visually matches the history
 // cells. Before rendering we strip any ANSI escape sequences to avoid writing
 // raw control bytes into the back buffer.
-use codex_ansi_escape::ansi_escape_line;
+use agcodex_ansi_escape::ansi_escape_line;
 
 pub(crate) struct StatusIndicatorWidget {
     /// Latest text to display (truncated to the available width at render
