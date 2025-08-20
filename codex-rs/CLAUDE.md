@@ -4,7 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is the Rust implementation of Codex - a TUI-first coding agent from OpenAI that runs locally. The project prioritizes the Terminal User Interface (TUI) as the primary interaction method, with all features accessible through keyboard shortcuts and visual panels. The project is structured as a Cargo workspace with the TUI crate as the main user-facing component.
+**AGCodex** is a complete overhaul of the original Codex project - an independent, TUI-first AI coding assistant that runs locally. This is NOT a migration but a completely rebranded and redesigned system with enhanced AST-based intelligence, configurable operating modes, and comprehensive language support via tree-sitter.
+
+### Key Transformation Goals
+- **Complete rebranding**: codex → agcodex across all crates and repositories
+- **Three operating modes**: Plan (read-only), Build (full access), Review (quality focus)
+- **50+ language support**: Comprehensive tree-sitter integration out of the box
+- **AST-RAG intelligence**: Hierarchical retrieval with 90%+ code compression
+- **Session persistence**: Efficient storage at ~/.agcodex/history with Zstd compression
+- **GPT-5 best practices**: Structured XML-like prompts, high reasoning/verbosity defaults
+- **Native tool integration**: fd-find and ripgrep as Rust libraries, not shell commands
 
 ## Current Implementation State
 
@@ -18,8 +27,14 @@ This is the Rust implementation of Codex - a TUI-first coding agent from OpenAI 
 
 ### Critical Gaps (Must Implement)
 - **Error Handling**: 21 anyhow uses vs 4 thiserror (needs complete migration)
-- **AST Intelligence**: Only basic tree-sitter, no ast-grep, no semantic search
-- **Session Management**: No save/load, checkpoints, undo/redo, or message jump
+- **AST Intelligence**: Need full tree-sitter (50+ langs), ast-grep, AI Distiller-style compaction
+- **Session Management**: No persistence at ~/.agcodex/history, missing smooth switching UX
+- **Operating Modes**: No Plan/Build/Review modes, poor profile UX needs replacement
+- **Mode Switching**: Missing Shift+Tab for instant mode cycling in TUI
+- **Embeddings**: No configurable Light/Medium/Hard intelligence options
+- **Location Awareness**: No precise file:line:column metadata in embeddings
+- **Native Tools**: fd-find and ripgrep need native integration as internal tools
+- **Defaults**: Need HIGH reasoning effort and verbosity as defaults
 - **Multi-Agent**: No orchestrator, worktree management, or coordination
 - **Type Safety**: Minimal newtype/builder/typestate patterns
 - **TUI Features**: Missing Ctrl+J, Ctrl+H, Ctrl+S, Ctrl+A, Ctrl+Z/Y functionality
@@ -70,46 +85,57 @@ fd --type file --min-depth 2 --max-depth 2 -g 'Cargo.toml' -x cargo check --mani
 ### Running the Application
 ```bash
 # Launch TUI (primary interface)
-cargo run --bin codex
+cargo run --bin agcodex
 
 # Launch TUI with initial prompt
-cargo run --bin codex -- "explain this codebase to me"
+cargo run --bin agcodex -- "explain this codebase to me"
 
 # TUI with specific model preference (can be changed in TUI)
-cargo run --bin codex -- --model o3
+cargo run --bin agcodex -- --model o3
+
+# Launch in specific mode (Plan/Build/Review)
+cargo run --bin agcodex --mode plan    # Read-only analysis mode
+cargo run --bin agcodex --mode build   # Full access mode (default)
+cargo run --bin agcodex --mode review  # Quality review mode
 
 # Secondary modes (not primary workflow):
-cargo run --bin codex exec -- "your task here"  # Headless mode
-cargo run --bin codex mcp                        # MCP server mode
+cargo run --bin agcodex exec -- "your task here"  # Headless mode
+cargo run --bin agcodex mcp                        # MCP server mode
 ```
 
 ### TUI Controls Once Launched
+- **`Shift+Tab`** - **MODE SWITCHING**: Cycle between Plan/Build/Review modes
 - **`/`** - Command palette (search for any action)
 - **`Ctrl+N`** - New conversation
-- **`Ctrl+S`** - Session management
+- **`Ctrl+S`** - Session management (save/load from ~/.agcodex/history)
 - **`Ctrl+A`** - Agent panel
-- **`Ctrl+H`** - History browser
-- **`Ctrl+J`** - Jump to message
+- **`Ctrl+H`** - History browser with timeline visualization
+- **`Ctrl+J`** - Jump to message with context restoration
+- **`Ctrl+Z/Y`** - Undo/redo conversation turns
+- **`Ctrl+B`** - Branch conversation from current point
 - **`Ctrl+?`** - Show all keybindings
 - **`Esc`** - Close panel/cancel operation
 - **`Tab`** - Cycle through UI elements
+- **`F5`** - Create checkpoint
+- **`F6`** - Restore checkpoint
 
 ## Architecture and Code Organization
 
-### Workspace Structure (19 Crates)
+### Workspace Structure (20 Crates)
 The codebase is organized as a Cargo workspace with the following crates:
 
 #### Core Components
-- **`tui/`**: PRIMARY INTERFACE - Terminal UI implementation using Ratatui (first-party)
-- **`core/`**: Business logic and main functionality. The heart of Codex operations.
+- **`tui/`**: PRIMARY INTERFACE - Terminal UI with mode switching (Plan/Build/Review)
+- **`core/`**: Business logic with AST-RAG engine and tree-sitter integration
 - **`cli/`**: Command-line interface entry point (mainly launches TUI)
 - **`exec/`**: Headless/non-interactive execution mode (secondary)
+- **`persistence/`**: Session management with ~/.agcodex/history storage (NEW)
 
 #### Communication & Protocol
 - **`protocol/`**: Communication protocol definitions
 - **`protocol-ts/`**: TypeScript protocol bindings
 - **`mcp-client/`**: MCP client for connecting to servers
-- **`mcp-server/`**: MCP server mode for Codex
+- **`mcp-server/`**: MCP server mode for AGCodex
 - **`mcp-types/`**: Shared MCP type definitions
 
 #### Security & Sandboxing
@@ -117,8 +143,8 @@ The codebase is organized as a Cargo workspace with the following crates:
 - **`linux-sandbox/`**: Linux-specific sandboxing using Landlock/seccomp
 
 #### Utilities & Integration
-- **`file-search/`**: File discovery and fuzzy search functionality (nucleo-matcher)
-- **`apply-patch/`**: Code modification and patching functionality
+- **`file-search/`**: Enhanced with tree-sitter AST search and native fd-find/ripgrep
+- **`apply-patch/`**: AST-based patching with precise location metadata
 - **`ansi-escape/`**: ANSI escape sequence handling
 - **`common/`**: Shared utilities across crates
 - **`login/`**: Authentication management
@@ -148,10 +174,12 @@ The codebase is organized as a Cargo workspace with the following crates:
 - Safety checks and approval workflows
 
 #### 4. Configuration System (`core/src/config*.rs`)
-- `config.rs`: Main configuration loading and management
-- `config_types.rs`: Type definitions for configuration
+- `config.rs`: Main configuration loading from ~/.agcodex/config.toml
+- `config_types.rs`: Type definitions with HIGH reasoning/verbosity defaults
 - `config_profile.rs`: Profile-based configuration support
+- `config_modes.rs`: Plan/Build/Review mode configurations (NEW)
 - TOML-based configuration with model provider definitions
+- Configurable embedding options: Light/Medium/Hard intelligence levels
 
 #### 5. MCP Integration (`core/src/mcp_*.rs`)
 - `mcp_connection_manager.rs`: MCP server connection management
@@ -170,20 +198,243 @@ The codebase is organized as a Cargo workspace with the following crates:
 
 ## Refactoring Priority Roadmap
 
-### Phase 1: Foundation (HIGH PRIORITY)
-1. **Complete anyhow→thiserror migration** (21 files affected)
-2. **Add AST intelligence** (tree-sitter + ast-grep integration)
-3. **Implement SessionManager** with save/load/checkpoint capabilities
+### Phase 1: Foundation & Rebranding (IMMEDIATE)
+1. **Complete rebranding**: codex → agcodex across all 19+ crates
+2. **Implement operating modes**: Plan/Build/Review with Shift+Tab switching
+3. **Session persistence**: Create ~/.agcodex/history with Zstd compression
+4. **Set HIGH defaults**: reasoning_effort=high, verbosity=high in config
+5. **Complete anyhow→thiserror migration** (21 files affected)
 
-### Phase 2: Core Features (HIGH PRIORITY)
-4. **Message Navigation** (Ctrl+J jump with context restoration)
-5. **History Browser** (Ctrl+H with timeline visualization)
-6. **Multi-Agent Orchestrator** with git worktree support
+### Phase 2: AST Intelligence (HIGH PRIORITY)
+1. **Tree-sitter integration**: Add all 50+ language parsers
+2. **AST-RAG engine**: Hierarchical retrieval (File→Class→Function)
+3. **AI Distiller compaction**: 90%+ code compression
+4. **Location-aware embeddings**: Precise file:line:column metadata
+5. **Native tool integration**: fd-find and ripgrep as Rust libraries
 
-### Phase 3: Enhancement (MEDIUM PRIORITY)
-7. **Type system improvements** (newtype, builder, typestate patterns)
-8. **Tool integration module** (unified interface for rg/fd/ast-grep)
-9. **Notification system** (terminal bell, desktop notifications)
+### Phase 3: Core TUI Features (HIGH PRIORITY)
+1. **Message Navigation** (Ctrl+J jump with context restoration)
+2. **History Browser** (Ctrl+H with timeline visualization)
+3. **Session switching**: Smooth UX for switching between sessions
+4. **Multi-Agent Orchestrator** with git worktree support
+5. **Notification system** (terminal bell, desktop notifications)
+
+### Phase 4: Enhancement (MEDIUM PRIORITY)
+1. **Type system improvements** (newtype, builder, typestate patterns)
+2. **Configurable intelligence**: Light/Medium/Hard embedding options
+3. **GPT-5 prompt optimization**: XML-structured prompts
+4. **AST-based edit tools**: Precise patches with location metadata
+
+## AGCodex Operating Modes
+
+### Plan Mode (Read-Only)
+```rust
+// Activated by: Shift+Tab or --mode plan
+pub struct PlanMode {
+    capabilities: vec![
+        Capability::ReadFiles,
+        Capability::SearchCode,
+        Capability::AnalyzeAST,
+        Capability::GenerateDiagrams,
+        Capability::ProposePlans,
+    ],
+    restrictions: vec![
+        Restriction::NoFileWrites,
+        Restriction::NoExecutions,
+        Restriction::NoExternalAPIs,
+    ],
+    visual_indicator: "📋 PLAN",
+    status_color: Color::Blue,
+}
+```
+
+### Build Mode (Full Access)
+```rust
+// Activated by: Shift+Tab or --mode build (default)
+pub struct BuildMode {
+    capabilities: vec![
+        Capability::All,  // Full access to all operations
+    ],
+    visual_indicator: "🔨 BUILD",
+    status_color: Color::Green,
+}
+```
+
+### Review Mode (Quality Focus)
+```rust
+// Activated by: Shift+Tab or --mode review
+pub struct ReviewMode {
+    capabilities: vec![
+        Capability::ReadFiles,
+        Capability::RunTests,
+        Capability::Lint,
+        Capability::SecurityScan,
+        Capability::GenerateReports,
+    ],
+    restrictions: vec![
+        Restriction::NoDestructiveOps,
+    ],
+    visual_indicator: "🔍 REVIEW",
+    status_color: Color::Yellow,
+}
+```
+
+### Mode Manager Implementation
+```rust
+// agcodex-core/src/modes.rs
+pub struct ModeManager {
+    current_mode: OperatingMode,
+    mode_history: Vec<(OperatingMode, DateTime<Utc>)>,
+    restrictions: ModeRestrictions,
+}
+
+pub struct ModeRestrictions {
+    pub allow_file_write: bool,
+    pub allow_command_exec: bool,
+    pub allow_network_access: bool,
+    pub allow_git_operations: bool,
+    pub max_file_size: Option<usize>,
+}
+
+impl ModeManager {
+    pub fn switch_mode(&mut self, new_mode: OperatingMode) {
+        self.mode_history.push((self.current_mode, Utc::now()));
+        self.current_mode = new_mode;
+        self.restrictions = match new_mode {
+            OperatingMode::Plan => ModeRestrictions {
+                allow_file_write: false,
+                allow_command_exec: false,
+                allow_network_access: true,  // For research
+                allow_git_operations: false,
+                max_file_size: None,
+            },
+            OperatingMode::Build => ModeRestrictions {
+                allow_file_write: true,
+                allow_command_exec: true,
+                allow_network_access: true,
+                allow_git_operations: true,
+                max_file_size: None,
+            },
+            OperatingMode::Review => ModeRestrictions {
+                allow_file_write: true,  // Limited
+                allow_command_exec: false,
+                allow_network_access: true,
+                allow_git_operations: false,
+                max_file_size: Some(10_000),  // Small edits only
+            },
+        };
+    }
+    
+    pub fn get_prompt(&self) -> &str {
+        match self.current_mode {
+            OperatingMode::Plan => r#"
+<mode>PLAN MODE - Read Only</mode>
+You are analyzing and planning. You CAN:
+✓ Read any file
+✓ Search code using ripgrep and fd-find
+✓ Analyze AST structure with tree-sitter
+✓ Create detailed implementation plans
+
+You CANNOT:
+✗ Edit or write files
+✗ Execute commands that modify state
+"#,
+            OperatingMode::Build => r#"
+<mode>BUILD MODE - Full Access</mode>
+You have complete development capabilities:
+✓ Read, write, edit files
+✓ Execute commands
+✓ Use all tools
+✓ Full AST-based editing
+"#,
+            OperatingMode::Review => r#"
+<mode>REVIEW MODE - Quality Focus</mode>
+You are reviewing code quality. You CAN:
+✓ Read and analyze code
+✓ Suggest improvements
+✓ Make small fixes (< 100 lines)
+Focus on: bugs, performance, best practices, security
+"#,
+        }
+    }
+}
+```
+
+## AGCodex Subagent System
+
+### Overview
+AGCodex features a sophisticated subagent system that enables specialized AI assistants for task-specific workflows. Each subagent operates with its own context, custom prompts, and tool permissions.
+
+### Invoking Subagents
+```
+@agent-code-reviewer - Proactive code quality analysis
+@agent-refactorer - Systematic code restructuring
+@agent-debugger - Deep debugging and root cause analysis
+@agent-test-writer - Comprehensive test generation
+@agent-performance - Performance optimization specialist
+@agent-security - Security vulnerability analysis
+@agent-docs - Documentation generation
+@agent-architect - System design and architecture
+```
+
+### Subagent Configuration
+```yaml
+# ~/.agcodex/agents/code-reviewer.yaml
+name: code-reviewer
+description: Proactively reviews code for quality, security, and maintainability
+mode_override: review  # Forces Review mode when active
+tools:
+  - Read
+  - AST-Search
+  - Ripgrep
+  - Tree-sitter-analyze
+intelligence: hard  # Maximum AST analysis
+prompt: |
+  You are a senior code reviewer with AST-based analysis.
+  Focus on:
+  - Syntactic correctness via tree-sitter validation
+  - Security vulnerabilities (OWASP Top 10)
+  - Performance bottlenecks (O(n²) or worse)
+  - Memory leaks and resource management
+  - Error handling completeness
+```
+
+### Subagent Storage
+```
+~/.agcodex/
+├── agents/              # User-level subagents
+│   ├── global/         # Available everywhere
+│   └── templates/      # Reusable templates
+└── .agcodex/
+    └── agents/         # Project-specific subagents
+```
+
+### Advanced Subagent Features
+
+#### Mode-Aware Subagents
+```rust
+pub struct SubAgent {
+    name: String,
+    mode_preference: Option<OperatingMode>,
+    intelligence_override: Option<IntelligenceMode>,
+    ast_requirements: Vec<Language>,
+    tool_whitelist: Vec<Tool>,
+}
+```
+
+#### Subagent Chaining
+```
+# Sequential execution
+@agent-architect -> @agent-code-generator -> @agent-test-writer
+
+# Parallel analysis
+@agent-security + @agent-performance + @agent-code-reviewer
+```
+
+#### Context Inheritance
+- Subagents inherit AST indices from parent context
+- Location-aware embeddings preserved across subagent calls
+- Session history accessible but isolated
 
 ## Critical Refactoring Requirements
 
@@ -230,18 +481,76 @@ fn search_ast(query: &str) -> Result<Vec<Match>, FileSearchError> {
 
 **Required Enhancements**:
 
-#### A. Tree-sitter Integration
+#### A. Complete Tree-sitter Integration (50+ Languages)
 ```toml
-# Add to file-search/Cargo.toml
+# agcodex-ast/Cargo.toml
 [dependencies]
 tree-sitter = "0.24"
+
+# Core Languages (Most Used)
 tree-sitter-rust = "0.23"
 tree-sitter-python = "0.23"
 tree-sitter-javascript = "0.23"
 tree-sitter-typescript = "0.23"
 tree-sitter-go = "0.23"
-tree-sitter-cpp = "0.23"
 tree-sitter-java = "0.23"
+tree-sitter-cpp = "0.23"
+tree-sitter-c = "0.20"
+tree-sitter-c-sharp = "0.23"
+
+# Web Languages
+tree-sitter-html = "0.23"
+tree-sitter-css = "0.23"
+tree-sitter-json = "0.24"
+tree-sitter-yaml = "0.6"
+tree-sitter-toml = "0.6"
+tree-sitter-xml = "0.7"
+
+# Scripting Languages
+tree-sitter-bash = "0.23"
+tree-sitter-lua = "0.2"
+tree-sitter-ruby = "0.23"
+tree-sitter-php = "0.23"
+tree-sitter-perl = "0.6"
+
+# Functional Languages
+tree-sitter-haskell = "0.23"
+tree-sitter-ocaml = "0.23"
+tree-sitter-elixir = "0.3"
+tree-sitter-erlang = "0.8"
+tree-sitter-clojure = "0.2"
+tree-sitter-scala = "0.23"
+
+# Systems Languages
+tree-sitter-zig = "0.23"
+tree-sitter-nim = "0.2"
+tree-sitter-swift = "0.5"
+tree-sitter-kotlin = "0.3"
+tree-sitter-objective-c = "3.0"
+
+# Config/Data Languages
+tree-sitter-dockerfile = "0.2"
+tree-sitter-sql = "0.3"
+tree-sitter-graphql = "0.1"
+tree-sitter-protobuf = "0.1"
+
+# Documentation
+tree-sitter-markdown = "0.3"
+tree-sitter-rst = "0.4"
+tree-sitter-latex = "0.4"
+
+# Infrastructure
+tree-sitter-hcl = "0.1"  # Terraform
+tree-sitter-nix = "0.1"
+tree-sitter-make = "0.1"
+tree-sitter-cmake = "0.5"
+
+# Other Popular Languages
+tree-sitter-r = "0.2"
+tree-sitter-julia = "0.23"
+tree-sitter-dart = "0.2"
+tree-sitter-vue = "0.2"
+tree-sitter-svelte = "0.11"
 ```
 
 #### B. AST-grep Integration
@@ -338,23 +647,89 @@ impl Connection<Connected> {
 }
 ```
 
-### 4. Tool Integration Module
+### 4. Native Tool Integration
 
-**Required Structure**:
+#### fd-find Integration
+```rust
+// agcodex-tools/src/fd_find.rs
+use ignore::WalkBuilder;
+use regex::Regex;
+
+pub struct FdFind {
+    base_path: PathBuf,
+    walker: WalkBuilder,
+    filters: FdFilters,
+}
+
+impl FdFind {
+    pub fn search_parallel(&self) -> Vec<PathBuf> {
+        use rayon::prelude::*;
+        let results = Mutex::new(Vec::new());
+        
+        self.walker.build_parallel().run(|| {
+            Box::new(move |entry| {
+                if let Ok(entry) = entry {
+                    if self.matches_filters(entry.path()) {
+                        results.lock().unwrap().push(entry.path().to_path_buf());
+                    }
+                }
+                ignore::WalkState::Continue
+            })
+        });
+        
+        results.into_inner().unwrap()
+    }
+}
+```
+
+#### ripgrep Integration
+```rust
+// agcodex-tools/src/ripgrep.rs
+use grep_regex::{RegexMatcher, RegexMatcherBuilder};
+use grep_searcher::{BinaryDetection, SearcherBuilder};
+
+pub struct RipGrep {
+    matcher: RegexMatcher,
+    searcher: SearcherBuilder,
+    config: RgConfig,
+}
+
+impl RipGrep {
+    pub fn search_with_ast_context(&self, path: &Path, ast: &Tree) -> Vec<Match> {
+        let basic_matches = self.search_file(path)?;
+        
+        // Enrich with AST context
+        basic_matches.into_iter()
+            .map(|mut m| {
+                if let Some(node) = find_node_at_position(ast, m.line, m.column) {
+                    m.score *= get_node_importance(&node);
+                    m.context_before.push(format!("// In {}", node.kind()));
+                }
+                m
+            })
+            .collect()
+    }
+}
+```
+
+### 5. Tool Integration Module
+
+**Unified Structure**:
 ```rust
 // core/src/code_tools/
 pub mod code_tools {
-    pub mod ripgrep;      // rg wrapper for fast text search
-    pub mod fd_find;      // fd wrapper for file discovery  
-    pub mod ast_grep;     // ast-grep wrapper for structural search
-    pub mod tree_sitter;  // Enhanced tree-sitter operations
-    pub mod comby;        // Structural code transformations
+    pub mod ripgrep;      // Native ripgrep integration
+    pub mod fd_find;      // Native fd integration
+    pub mod ast_grep;     // AST-based structural search
+    pub mod tree_sitter;  // 50+ language parsers
+    pub mod comby;        // Structural transformations
     
     // Unified interface
     pub trait CodeTool {
         type Query;
         type Result;
         fn search(&self, query: Self::Query) -> Result<Self::Result, ToolError>;
+        fn search_parallel(&self, queries: Vec<Self::Query>) -> Vec<Self::Result>;
     }
 }
 ```
@@ -521,6 +896,224 @@ pub mod notifications {
 }
 ```
 
+## AST-RAG Implementation Details
+
+### Indexing Pipeline
+```rust
+pub struct ASTIndexer {
+    parser_pool: ParserPool,        // Parallel parsers for 50+ languages
+    chunk_store: ChunkStore,        // Hierarchical chunk storage
+    vector_db: LanceDB,            // Vector embeddings
+    symbol_graph: SymbolGraph,     // Relationship tracking
+}
+
+impl ASTIndexer {
+    pub async fn index_codebase(&self, root: &Path) -> IndexStats {
+        // Parallel file discovery and parsing
+        let files = self.discover_files(root)?;
+        let parsed = files.par_iter()
+            .filter_map(|p| self.parse_file(p).ok())
+            .collect();
+        
+        // Hierarchical chunking: File -> Class -> Function
+        let chunks = self.extract_semantic_chunks(&parsed);
+        
+        // Generate location-aware embeddings
+        let embeddings = self.generate_embeddings(&chunks).await?;
+        
+        // Store with precise metadata
+        self.vector_db.insert_batch(embeddings).await?;
+        
+        IndexStats {
+            files_indexed: files.len(),
+            chunks_created: chunks.len(),
+            compression_ratio: 0.92,  // Target: 90%+
+        }
+    }
+}
+```
+
+### Semantic Chunking Strategy
+```rust
+pub enum ChunkLevel {
+    File,      // Overview and imports
+    Class,     // Class/module signatures
+    Function,  // Function bodies
+    Block,     // Complex code blocks
+}
+
+pub struct CodeChunk {
+    level: ChunkLevel,
+    content: String,  // AI Distiller compacted
+    location: SourceLocation {
+        file_path: PathBuf,
+        start_line: usize,
+        start_column: usize,
+        end_line: usize,
+        end_column: usize,
+        byte_range: Range<usize>,
+    },
+    metadata: ChunkMetadata {
+        language: String,
+        symbols: Vec<String>,
+        imports: Vec<String>,
+        complexity: f32,
+        compressed_size: usize,
+        original_size: usize,
+    },
+}
+```
+
+### Intelligence Modes Configuration
+
+#### Light Mode (Fast, Minimal Resources)
+```toml
+[intelligence.light]
+embedding_model = "nomic-embed-text-v1.5"
+chunk_size = 256
+max_chunks = 1000
+cache_size_mb = 100
+indexing = "on_demand"
+compression_level = "basic"  # 70% compression
+```
+
+#### Medium Mode (Balanced, Default)
+```toml
+[intelligence.medium]
+embedding_model = "all-MiniLM-L6-v2"
+chunk_size = 512
+max_chunks = 10000
+cache_size_mb = 500
+indexing = "background"
+compression_level = "standard"  # 85% compression
+include_ast = true
+```
+
+#### Hard Mode (Maximum Intelligence)
+```toml
+[intelligence.hard]
+embedding_model = "codebert-base"
+chunk_size = 1024
+max_chunks = 100000
+cache_size_mb = 2000
+indexing = "aggressive"
+compression_level = "maximum"  # 95% compression
+include_ast = true
+include_call_graph = true
+include_data_flow = true
+```
+
+## Session Persistence Implementation
+
+### Storage Format Architecture
+```rust
+pub enum StorageFormat {
+    Bincode,      // Metadata and indices (fastest)
+    MessagePack,  // Messages (compact)
+    Arrow,        // Tabular data (analytics)
+    LanceDB,      // Vector embeddings (similarity)
+    Zstd,         // Compression wrapper
+}
+
+pub struct SessionStore {
+    base_dir: PathBuf,  // ~/.agcodex/history
+    formats: HashMap<DataType, StorageFormat>,
+    compressor: ZstdCompressor,
+}
+
+impl SessionStore {
+    pub async fn save_efficient(&self, session: &Session) -> Result<()> {
+        // Serialize metadata with bincode
+        let meta = bincode::serialize(&session.metadata)?;
+        
+        // Serialize messages with MessagePack
+        let msgs = rmp_serde::to_vec(&session.messages)?;
+        
+        // Compress with Zstd level 3 (balanced)
+        let compressed_meta = zstd::encode_all(&meta[..], 3)?;
+        let compressed_msgs = zstd::encode_all(&msgs[..], 3)?;
+        
+        // Write with version header
+        let mut file = File::create(self.session_path(session.id))?;
+        file.write_all(b"AGCX")?;  // Magic bytes
+        file.write_all(&VERSION.to_le_bytes())?;
+        file.write_all(&compressed_meta)?;
+        file.write_all(&compressed_msgs)?;
+        
+        Ok(())
+    }
+}
+```
+
+### Fast Session Loading
+```rust
+pub struct FastSessionLoader {
+    cache: Arc<MemoryMappedCache>,
+    preload_queue: VecDeque<Uuid>,
+}
+
+impl FastSessionLoader {
+    pub async fn load_lazy(&self, id: Uuid) -> LazySession {
+        // Memory-mapped metadata (instant)
+        let metadata = self.cache.get_metadata(id)?;
+        
+        // Load only recent messages
+        let recent = self.load_recent_messages(id, 20).await?;
+        
+        // Lazy-load rest on demand
+        LazySession {
+            metadata,
+            recent_messages: recent,
+            loader: Box::new(move || self.load_full(id)),
+        }
+    }
+}
+```
+
+## Implementation Timeline
+
+### Week 1: Foundation & Core
+- **Day 1-2**: Complete rebranding (codex → agcodex)
+- **Day 3**: Implement Plan/Build/Review modes with Shift+Tab
+- **Day 4**: Add all 50+ tree-sitter languages
+- **Day 5**: Native fd-find and ripgrep integration
+
+### Week 2: Intelligence Layer
+- **Day 1-2**: AST-RAG indexing pipeline
+- **Day 3**: Location-aware embeddings with metadata
+- **Day 4**: AST-based edit tools
+- **Day 5**: Session persistence with Zstd
+
+### Week 3: Polish & Testing
+- **Day 1**: Subagent system implementation
+- **Day 2**: TUI enhancements and visual indicators
+- **Day 3**: Complete anyhow → thiserror migration
+- **Day 4-5**: Testing, benchmarks, optimization
+
+## Performance Targets
+
+### Speed Metrics
+- **Mode switch**: <50ms
+- **Language detection**: <10ms with 100% accuracy
+- **File search**: <100ms for 10k files
+- **Code search**: <200ms for 1GB codebase
+- **AST parsing**: <10ms per file (cached)
+- **Session save/load**: <500ms
+- **Subagent spawn**: <100ms
+
+### Efficiency Metrics
+- **Code compression**: 90-95% (AI Distiller)
+- **Cache hit rate**: >90% for hot paths
+- **Memory usage**: <2GB for 100k chunks
+- **Initial indexing**: 2-5 min for 1M LOC
+- **Incremental updates**: <1s per file change
+
+### Quality Metrics
+- **Location precision**: Exact line:column
+- **Retrieval accuracy**: 85-95% relevant chunks
+- **Edit validity**: 100% syntactically correct
+- **Test coverage**: >80% for new code
+
 ## Development Guidelines
 
 ### Error Handling Best Practices
@@ -565,12 +1158,12 @@ pub type Result<T> = std::result::Result<T, ModuleError>;
 
 ### macOS
 - Sandbox: Apple Seatbelt (`sandbox-exec`)
-- Test: `codex debug seatbelt [COMMAND]`
+- Test: `agcodex debug seatbelt [COMMAND]`
 - Keychain integration for credential storage
 
 ### Linux
 - Sandbox: Landlock (kernel 5.13+) and seccomp
-- Test: `codex debug landlock [COMMAND]`
+- Test: `agcodex debug landlock [COMMAND]`
 - May require adjustments in containers
 
 ### Windows
@@ -690,21 +1283,28 @@ pub enum AppEvent {
 ```bash
 # CPU profiling
 cargo install flamegraph
-cargo flamegraph --bin codex -- exec "test command"
+cargo flamegraph --bin agcodex -- exec "test command"
 
 # Memory profiling  
 cargo install cargo-bloat
-cargo bloat --release --bin codex
+cargo bloat --release --bin agcodex
 
 # Benchmark specific functions
 cargo bench --bench context_engine
+
+# AST performance
+cargo bench --bench ast_indexer
+cargo bench --bench tree_sitter_parsing
+
+# Session performance
+cargo bench --bench session_persistence
 ```
 
 ## MCP (Model Context Protocol) Notes
 
-- Client config: `~/.codex/config.toml` under `[mcp_servers]`
-- Server mode: `codex mcp`
-- Debug with: `npx @modelcontextprotocol/inspector codex mcp`
+- Client config: `~/.agcodex/config.toml` under `[mcp_servers]`
+- Server mode: `agcodex mcp`
+- Debug with: `npx @modelcontextprotocol/inspector agcodex mcp`
 - Supports tool discovery and invocation
 
 ## Critical Path Optimizations
@@ -877,9 +1477,97 @@ impl QuickActionsMenu {
 }
 ```
 
-### TUI Configuration
+### Complete AGCodex Configuration
 ```toml
-# ~/.codex/config.toml
+# ~/.agcodex/config.toml
+
+[general]
+app_name = "AGCodex"
+version = "1.0.0"
+default_mode = "build"
+reasoning_effort = "high"      # ALWAYS HIGH
+verbosity = "high"             # ALWAYS HIGH
+
+[intelligence]
+enabled = true
+mode = "medium"  # light/medium/hard
+cache_dir = "~/.agcodex/history/cache"
+
+[intelligence.light]
+embedding_model = "nomic-embed-text-v1.5"
+chunk_size = 256
+cache_size_mb = 100
+
+[intelligence.medium]
+embedding_model = "all-MiniLM-L6-v2"
+chunk_size = 512
+cache_size_mb = 500
+include_ast = true
+
+[intelligence.hard]
+embedding_model = "codebert-base"
+chunk_size = 1024
+cache_size_mb = 2000
+include_ast = true
+include_call_graph = true
+
+[sessions]
+auto_save = true
+auto_save_interval = "30s"
+base_dir = "~/.agcodex/history"
+compression = "zstd"
+max_sessions = 100
+
+[tools]
+fd_find.enabled = true
+fd_find.parallel = true
+ripgrep.enabled = true
+ripgrep.cache = true
+ast.enabled = true
+ast.languages = "*"  # All 50+ languages
+
+[ast_edit]
+enabled = true
+validation = "strict"
+backup_before_edit = true
+max_batch_edits = 100
+
+[embeddings]
+include_locations = true
+metadata_level = "full"
+context_before = 3
+context_after = 3
+
+[compaction]
+preserve_mappings = true
+precision = "high"
+default_level = "medium"
+
+# Operating modes configuration
+[modes]
+default = "build"
+allow_switching = true
+switch_key = "Shift+Tab"
+
+[modes.plan]
+read_only = true
+color = "blue"
+icon = "📋"
+prompt_suffix = "You are in PLAN MODE. Create detailed plans but do not execute."
+
+[modes.build]
+full_access = true
+color = "green"
+icon = "🔨"
+prompt_suffix = ""  # No restrictions
+
+[modes.review]
+quality_focus = true
+color = "yellow"
+icon = "🔍"
+max_edit_size = 10000
+prompt_suffix = "Focus on code quality, best practices, and potential issues."
+
 [tui]
 default_layout = "enhanced"  # "classic" or "enhanced"
 auto_checkpoint_interval = "5m"
@@ -923,7 +1611,7 @@ agent_list_position = "right"  # "left" or "right"
 
 ```rust
 // tui/tests/integration/
-use codex_tui::test_utils::*;
+use agcodex_tui::test_utils::*;
 
 #[tokio::test]
 async fn test_message_jump() {
@@ -944,14 +1632,20 @@ async fn test_message_jump() {
 }
 ```
 
-## Summary: TUI-First Refactoring Goals
+## Summary: AGCodex Transformation Goals
 
-This refactoring transforms Codex into a **TUI-first application** where all interactions happen through the terminal interface:
+This overhaul transforms Codex into **AGCodex** - a powerful, independent AI coding assistant with:
 
-### Core Refactoring Tasks
-1. **Error Handling**: Complete migration from `anyhow` to `thiserror` with domain-specific error types
-2. **AST Intelligence**: Tree-sitter and ast-grep integration for semantic code understanding
-3. **Type Safety**: Newtype, builder, and typestate patterns for compile-time guarantees
+### Core Transformation Tasks
+1. **Complete Rebranding**: codex → agcodex across all crates and binaries
+2. **Operating Modes**: Plan/Build/Review with Shift+Tab switching
+3. **Tree-sitter Integration**: 50+ languages with AST-RAG and AI Distiller compaction
+4. **Session Persistence**: ~/.agcodex/history with efficient Zstd compression
+5. **Native Tools**: fd-find and ripgrep as internal Rust libraries
+6. **High Defaults**: reasoning_effort=high, verbosity=high for GPT-5
+7. **Location Awareness**: Precise file:line:column in all embeddings
+8. **Error Handling**: Complete migration from `anyhow` to `thiserror`
+9. **Type Safety**: Newtype, builder, and typestate patterns
 
 ### TUI-Exclusive Features (No CLI Commands Needed)
 1. **Session Management**
@@ -991,10 +1685,33 @@ This refactoring transforms Codex into a **TUI-first application** where all int
 - `tui/src/widgets/message_jump.rs` - Jump to message widget
 - `tui/src/notifications.rs` - Notification system
 
-### Design Philosophy
-- **TUI is primary**: All features must be accessible through TUI
-- **No CLI fallback needed**: TUI provides complete functionality
-- **Keyboard-driven**: Every action has a keybinding
-- **Visual feedback**: Progress bars, status indicators, previews
-- **Non-blocking**: Background operations with progress indication
+## Risk Mitigation
+
+1. **Backward Compatibility**: Maintain API compatibility during migration
+2. **Feature Flags**: Gradual rollout with `--experimental` flags
+3. **Incremental Migration**: Phase-by-phase implementation
+4. **Performance Monitoring**: Continuous benchmarking against targets
+5. **Rollback Strategy**: Git tags at each milestone
+6. **Testing Coverage**: Minimum 80% for all new code
+
+## Key Innovations
+
+1. **Simple Three-Mode System**: Plan/Build/Review with Shift+Tab
+2. **50+ Language Support**: Comprehensive tree-sitter out of the box
+3. **AST-RAG Architecture**: Hierarchical retrieval with 90%+ compression
+4. **Location-Aware Everything**: Precise file:line:column in all operations
+5. **Native Tool Integration**: fd-find and ripgrep as Rust libraries
+6. **Efficient Persistence**: Zstd compression with lazy loading
+7. **Subagent System**: `@agent-name` invocation with isolated contexts
+8. **GPT-5 Optimized**: XML-structured prompts, high defaults
+
+### AGCodex Design Philosophy
+- **Simple modes, powerful features**: Plan/Build/Review cover all use cases
+- **TUI is primary**: All features accessible through TUI with Shift+Tab mode switching
+- **Language-universal**: 50+ languages supported out of the box
+- **Precision over guessing**: Exact location metadata for all operations
+- **Fast over perfect**: 90%+ compression, caching, approximation when sensible
+- **Visual feedback**: Mode indicators, progress bars, status colors
+- **GPT-5 optimized**: Structured prompts, high reasoning/verbosity defaults
+- **Independent project**: No migration from Codex, fresh ~/.agcodex structure
 - **Context-aware**: Never lose user's place when navigating

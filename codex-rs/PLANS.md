@@ -5,24 +5,27 @@
 2. [Core Philosophy](#core-philosophy)
 3. [Phase 1: Complete Rebranding](#phase-1-complete-rebranding)
 4. [Phase 2: Operating Modes System](#phase-2-operating-modes-system)
-5. [Phase 3: Comprehensive Tree-sitter Integration](#phase-3-comprehensive-tree-sitter-integration)
-6. [Phase 4: Internal Tools Integration](#phase-4-internal-tools-integration)
-7. [Phase 5: AST-RAG for Large Codebases](#phase-5-ast-rag-for-large-codebases)
-8. [Phase 6: AST-Based Edit Tools](#phase-6-ast-based-edit-tools)
-9. [Phase 7: Session Persistence](#phase-7-session-persistence)
-10. [Phase 8: Configuration System](#phase-8-configuration-system)
-11. [Implementation Timeline](#implementation-timeline)
-12. [Success Metrics](#success-metrics)
+5. [Phase 3: AGCodex Subagent System](#phase-3-agcodex-subagent-system)
+6. [Phase 4: Comprehensive Tree-sitter Integration](#phase-4-comprehensive-tree-sitter-integration)
+7. [Phase 5: Internal Tools Integration](#phase-5-internal-tools-integration)
+8. [Phase 6: AST-RAG for Large Codebases](#phase-6-ast-rag-for-large-codebases)
+9. [Phase 7: AST-Based Edit Tools](#phase-7-ast-based-edit-tools)
+10. [Phase 8: Session Persistence](#phase-8-session-persistence)
+11. [Phase 9: Configuration System](#phase-9-configuration-system)
+12. [Implementation Timeline](#implementation-timeline)
+13. [Success Metrics](#success-metrics)
 
 ## Executive Summary
 
 AGCodex is a complete overhaul of the original Codex project, transforming it into an independent, powerful AI coding assistant with:
 - **Three simple operating modes**: Plan (read-only), Build (full access), Review (quality focus)
+- **Sophisticated subagent system**: Specialized AI assistants invoked via `@agent-name`
 - **50+ language support** via comprehensive tree-sitter integration
 - **AST-based intelligence** for precise code understanding and modification
 - **Efficient session persistence** with 90%+ compression
 - **GPT-5 best practices** with high reasoning and verbosity defaults
 - **Location-aware embeddings** for precise agentic coding
+- **Native tool integration**: fd-find and ripgrep as Rust libraries
 
 ## Core Philosophy
 
@@ -287,7 +290,284 @@ impl Widget for ModeIndicator {
 }
 ```
 
-## Phase 3: Comprehensive Tree-sitter Integration
+## Phase 3: AGCodex Subagent System
+
+### 3.1 Subagent Architecture
+
+```rust
+// agcodex-core/src/subagents/mod.rs
+pub struct SubAgent {
+    name: String,
+    description: String,
+    mode_preference: Option<OperatingMode>,
+    intelligence_override: Option<IntelligenceMode>,
+    ast_requirements: Vec<Language>,
+    tool_whitelist: Vec<Tool>,
+    custom_prompt: String,
+}
+
+pub struct SubAgentManager {
+    agents: HashMap<String, SubAgent>,
+    active_agents: Vec<AgentId>,
+    context_isolation: bool,
+}
+
+impl SubAgentManager {
+    pub fn invoke(&mut self, agent_name: &str) -> Result<AgentSession> {
+        // Validate agent exists
+        let agent = self.agents.get(agent_name)?;
+        
+        // Create isolated context
+        let context = IsolatedContext::new();
+        
+        // Apply agent configuration
+        context.set_mode(agent.mode_preference);
+        context.set_intelligence(agent.intelligence_override);
+        context.set_tools(agent.tool_whitelist.clone());
+        
+        // Start agent session
+        Ok(AgentSession {
+            agent: agent.clone(),
+            context,
+            start_time: Utc::now(),
+        })
+    }
+}
+```
+
+### 3.2 Subagent Invocation
+
+```rust
+// User invocation patterns
+pub enum InvocationPattern {
+    Direct(String),        // @agent-code-reviewer
+    Sequential(Vec<String>), // @agent-architect -> @agent-code-generator
+    Parallel(Vec<String>),   // @agent-security + @agent-performance
+    Conditional {           // @agent-debugger if errors
+        agent: String,
+        condition: Condition,
+    },
+}
+
+// Parse user input for agent invocations
+pub fn parse_agent_invocation(input: &str) -> Vec<InvocationPattern> {
+    let mut patterns = Vec::new();
+    
+    // Direct invocation: @agent-name
+    let direct_regex = Regex::new(r"@agent-([a-z-]+)").unwrap();
+    for cap in direct_regex.captures_iter(input) {
+        patterns.push(InvocationPattern::Direct(cap[1].to_string()));
+    }
+    
+    // Sequential: @agent1 -> @agent2
+    let seq_regex = Regex::new(r"@agent-([a-z-]+)\s*->\s*@agent-([a-z-]+)").unwrap();
+    // ... parse sequential patterns
+    
+    // Parallel: @agent1 + @agent2
+    let par_regex = Regex::new(r"@agent-([a-z-]+)\s*\+\s*@agent-([a-z-]+)").unwrap();
+    // ... parse parallel patterns
+    
+    patterns
+}
+```
+
+### 3.3 Built-in Subagents
+
+```yaml
+# ~/.agcodex/agents/code-reviewer.yaml
+name: code-reviewer
+description: Proactively reviews code for quality, security, and maintainability
+mode_override: review
+tools:
+  - Read
+  - AST-Search
+  - Ripgrep
+  - Tree-sitter-analyze
+intelligence: hard
+prompt: |
+  You are a senior code reviewer with AST-based analysis.
+  
+  Review checklist:
+  - Syntactic correctness via tree-sitter validation
+  - Security vulnerabilities (OWASP Top 10)
+  - Performance bottlenecks (O(n²) or worse)
+  - Memory leaks and resource management
+  - Error handling completeness
+  - Code duplication detection
+  - Type safety verification
+  
+  Provide feedback organized by:
+  - Critical issues (must fix)
+  - Warnings (should fix)
+  - Suggestions (consider improving)
+```
+
+```yaml
+# ~/.agcodex/agents/refactorer.yaml
+name: refactorer
+description: Systematic code restructuring with AST preservation
+mode_override: build
+tools:
+  - Read
+  - Edit
+  - AST-Edit
+  - Tree-sitter-refactor
+  - Comby
+intelligence: hard
+prompt: |
+  You are a refactoring specialist using AST-based transformations.
+  
+  Refactoring approach:
+  1. Analyze current structure with tree-sitter
+  2. Identify refactoring opportunities
+  3. Create AST-preserving transformations
+  4. Apply changes with location tracking
+  5. Verify syntactic correctness
+  
+  Focus on:
+  - Extract method/variable
+  - Rename with full reference tracking
+  - Move to appropriate modules
+  - Remove dead code
+  - Simplify complex expressions
+```
+
+```yaml
+# ~/.agcodex/agents/test-writer.yaml
+name: test-writer
+description: Comprehensive test generation with coverage analysis
+mode_override: build
+tools:
+  - Read
+  - Write
+  - AST-Analyze
+  - Coverage-Check
+intelligence: medium
+prompt: |
+  You are a test generation specialist.
+  
+  Test creation process:
+  1. Analyze function signatures with AST
+  2. Identify edge cases and boundaries
+  3. Generate comprehensive test cases
+  4. Include positive and negative tests
+  5. Add property-based tests where applicable
+  
+  Test types:
+  - Unit tests for individual functions
+  - Integration tests for modules
+  - Property-based tests for invariants
+  - Fuzz tests for robustness
+  - Performance benchmarks
+```
+
+### 3.4 Subagent Storage Structure
+
+```
+~/.agcodex/
+├── agents/                    # User-level subagents
+│   ├── global/               # Available everywhere
+│   │   ├── code-reviewer.yaml
+│   │   ├── refactorer.yaml
+│   │   ├── debugger.yaml
+│   │   ├── test-writer.yaml
+│   │   ├── performance.yaml
+│   │   ├── security.yaml
+│   │   ├── docs.yaml
+│   │   └── architect.yaml
+│   └── templates/            # Reusable templates
+│       ├── basic-reviewer.yaml
+│       ├── basic-tester.yaml
+│       └── basic-debugger.yaml
+└── .agcodex/                 # Project root
+    └── agents/               # Project-specific subagents
+        ├── domain-expert.yaml
+        ├── legacy-migrator.yaml
+        └── custom-linter.yaml
+```
+
+### 3.5 Subagent Context Management
+
+```rust
+pub struct IsolatedContext {
+    // Separate from main conversation
+    messages: Vec<Message>,
+    
+    // Inherits AST indices but isolated changes
+    ast_index: Arc<ASTIndex>,
+    
+    // Own embedding cache
+    embeddings: HashMap<ChunkId, Embedding>,
+    
+    // Tool restrictions
+    allowed_tools: HashSet<Tool>,
+    
+    // Mode enforcement
+    operating_mode: OperatingMode,
+}
+
+impl IsolatedContext {
+    pub fn inherit_from_parent(&mut self, parent: &Context) {
+        // Inherit read-only data
+        self.ast_index = parent.ast_index.clone();
+        
+        // Copy relevant embeddings
+        for (id, embedding) in &parent.embeddings {
+            if self.is_relevant(embedding) {
+                self.embeddings.insert(*id, embedding.clone());
+            }
+        }
+    }
+    
+    pub fn merge_back(&self, parent: &mut Context) -> Result<()> {
+        // Selective merge of changes
+        for message in &self.messages {
+            if message.is_result() {
+                parent.add_subagent_result(message.clone());
+            }
+        }
+        
+        Ok(())
+    }
+}
+```
+
+### 3.6 Subagent Performance Optimization
+
+```rust
+pub struct SubAgentCache {
+    // Cache compiled prompts
+    prompt_cache: HashMap<String, CompiledPrompt>,
+    
+    // Cache agent configurations
+    config_cache: HashMap<String, SubAgentConfig>,
+    
+    // Preload frequently used agents
+    preloaded: HashSet<String>,
+}
+
+impl SubAgentCache {
+    pub async fn preload_common_agents(&mut self) {
+        let common = vec![
+            "code-reviewer",
+            "refactorer",
+            "debugger",
+            "test-writer",
+        ];
+        
+        for agent_name in common {
+            let config = self.load_config(agent_name).await?;
+            let prompt = self.compile_prompt(&config.prompt).await?;
+            
+            self.config_cache.insert(agent_name.to_string(), config);
+            self.prompt_cache.insert(agent_name.to_string(), prompt);
+            self.preloaded.insert(agent_name.to_string());
+        }
+    }
+}
+```
+
+## Phase 4: Comprehensive Tree-sitter Integration
 
 ### 3.1 Full Language Support (50+ Languages)
 
@@ -447,7 +727,7 @@ impl CodeUnderstander {
 }
 ```
 
-## Phase 4: Internal Tools Integration
+## Phase 5: Internal Tools Integration
 
 ### 4.1 Native fd-find Integration
 
@@ -584,7 +864,7 @@ impl Tool for ASTSearchTool {
 }
 ```
 
-## Phase 5: AST-RAG for Large Codebases
+## Phase 6: AST-RAG for Large Codebases
 
 ### 5.1 Indexing Pipeline
 
@@ -792,7 +1072,7 @@ impl ContextAssembler {
 }
 ```
 
-## Phase 6: AST-Based Edit Tools
+## Phase 7: AST-Based Edit Tools
 
 ### 6.1 Location-Aware Edit Tool
 
@@ -991,7 +1271,7 @@ impl AgentEditInterface {
 }
 ```
 
-## Phase 7: Session Persistence
+## Phase 8: Session Persistence
 
 ### 7.1 Efficient Storage Formats
 
@@ -1089,7 +1369,7 @@ pub const SESSION_KEYS: &[KeyBinding] = &[
 ];
 ```
 
-## Phase 8: Configuration System
+## Phase 9: Configuration System
 
 ### 8.1 Main Configuration
 
@@ -1205,68 +1485,92 @@ suffix = "Focus on code quality, best practices, and potential issues."
 
 ## Implementation Timeline
 
-### Week 1: Foundation
+### Week 1: Foundation & Core
 **Day 1-2: Rebranding & Setup**
 - Complete codex → agcodex renaming
 - Create ~/.agcodex directory structure
 - Set up new Cargo workspace
+- Initialize subagent directories
 
 **Day 3: Operating Modes**
 - Implement Plan/Build/Review modes
 - Add Shift+Tab switching
 - Create mode restrictions
+- Add mode manager with prompts
 
-**Day 4: Tree-sitter Integration**
-- Add all language dependencies
+**Day 4: Subagent System**
+- Implement SubAgentManager
+- Create @agent-name parser
+- Add context isolation
+- Create built-in agents
+
+**Day 5: Tree-sitter Integration**
+- Add all 50+ language dependencies
 - Implement LanguageRegistry
 - Create auto-detection
+- Add language-specific parsers
 
-**Day 5: Internal Tools**
-- Integrate fd-find natively
-- Integrate ripgrep natively
-- Connect with AST engine
+### Week 2: Intelligence Layer
+**Day 1: Internal Tools**
+- Native fd-find integration
+- Native ripgrep integration
+- Unified tool interface
+- AST-enhanced search
 
-### Week 2: Intelligence
-**Day 1-2: AST-RAG System**
+**Day 2: AST-RAG System**
 - Implement indexing pipeline
 - Create semantic chunker
-- Set up vector database
+- Set up LanceDB vectors
+- Add hierarchical retrieval
 
 **Day 3: Location-Aware Embeddings**
-- Add metadata tracking
+- Add precise metadata tracking
 - Implement compaction mapping
 - Create retrieval system
+- Add context assembly
 
 **Day 4: AST Edit Tools**
 - Build AST-based editor
 - Add location tracking
-- Create agent interface
+- Create patch validation
+- Implement batch edits
 
 **Day 5: Session Persistence**
-- Implement efficient storage
+- Implement Zstd compression
 - Add lazy loading
-- Create session UI
+- Create fast switching
+- Memory-mapped indices
 
 ### Week 3: Polish & Testing
-**Day 1: Configuration**
-- Create config system
-- Add mode configs
-- Set up defaults
+**Day 1: Configuration System**
+- Create complete config structure
+- Add intelligence modes (light/medium/hard)
+- Set HIGH defaults
+- Mode-specific configs
 
-**Day 2: UI Polish**
-- Enhance status bars
-- Add visual indicators
-- Improve transitions
+**Day 2: TUI Enhancements**
+- Add mode indicators
+- Visual status bars
+- Notification system
+- Subagent UI
 
 **Day 3: Error Migration**
 - Complete anyhow → thiserror
-- Add domain errors
-- Improve error handling
+- Add domain-specific errors
+- Improve error recovery
+- Add error context
 
-**Day 4-5: Testing**
-- Unit tests
-- Integration tests
-- Performance benchmarks
+**Day 4: Integration Testing**
+- Subagent invocation tests
+- Mode switching tests
+- AST-RAG retrieval tests
+- Session persistence tests
+
+**Day 5: Performance & Optimization**
+- Benchmark all components
+- Optimize hot paths
+- Cache optimization
+- Final performance tuning
 
 ## Success Metrics
 
@@ -1306,37 +1610,45 @@ suffix = "Focus on code quality, best practices, and potential issues."
 - **Review Mode**: Code quality focus
 - All switchable with Shift+Tab
 
-### 2. Comprehensive Language Support
+### 2. Sophisticated Subagent System
+- **@agent-name invocation**: Direct agent calling in prompts
+- **Isolated contexts**: Each agent has separate context
+- **Mode overrides**: Agents can enforce specific modes
+- **Tool restrictions**: Granular permission control
+- **Chaining support**: Sequential and parallel execution
+
+### 3. Comprehensive Language Support
 - 50+ languages out of the box
 - Auto-detection from file extensions
 - Universal code understanding
+- Language-specific optimizations
 
-### 3. AST-RAG Architecture
+### 4. AST-RAG Architecture
 - Hierarchical search (File → Class → Function)
 - Smart chunking at semantic boundaries
 - Location-aware embeddings
 
-### 4. Precise AST-Based Editing
+### 5. Precise AST-Based Editing
 - Every edit validated by AST
 - Exact source location tracking
 - Batch edit support
 
-### 5. Efficient Session Persistence
+### 6. Efficient Session Persistence
 - 90%+ compression with Zstd
 - Lazy loading for fast switching
 - Memory-mapped indices
 
-### 6. Native Tool Integration
+### 7. Native Tool Integration
 - fd-find and ripgrep built-in
 - AST-enhanced search
 - Parallel processing
 
-### 7. GPT-5 Best Practices
+### 8. GPT-5 Best Practices
 - Structured prompts with XML tags
 - High reasoning and verbosity defaults
 - Clear mode-specific instructions
 
-### 8. AI Distiller Approach
+### 9. AI Distiller Approach
 - 90-98% code compression
 - Preserve essential structure
 - Token-efficient context
@@ -1353,11 +1665,19 @@ suffix = "Focus on code quality, best practices, and potential issues."
 ## Conclusion
 
 This comprehensive plan transforms Codex into AGCodex - a powerful, simple, and efficient AI coding assistant that:
-- Supports all major programming languages
-- Provides precise, AST-based code understanding
-- Offers clear operating modes for different tasks
-- Maintains exact location information for accurate edits
-- Compresses code efficiently for AI consumption
-- Persists sessions with minimal overhead
+- Supports all major programming languages via tree-sitter
+- Features sophisticated subagent system with @agent-name invocation
+- Provides precise, AST-based code understanding and editing
+- Offers clear operating modes (Plan/Build/Review) for different tasks
+- Maintains exact location information (file:line:column) for accurate edits
+- Compresses code efficiently (90%+) for AI consumption
+- Persists sessions with minimal overhead using Zstd compression
+- Integrates native tools (fd-find, ripgrep) for maximum performance
 
-The system is designed to be both powerful for advanced users and simple enough for beginners, with visual feedback, smart defaults, and predictable behavior throughout.
+The system is designed to be both powerful for advanced users and simple enough for beginners, with:
+- Visual feedback through mode indicators and status bars
+- Smart defaults (HIGH reasoning/verbosity for GPT-5)
+- Predictable behavior with clear mode restrictions
+- Intuitive subagent invocation via @agent-name
+- Fast performance meeting all target metrics
+- Comprehensive language support out of the box
