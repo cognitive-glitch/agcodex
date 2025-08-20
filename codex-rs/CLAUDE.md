@@ -37,6 +37,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Mode Switching**: Missing Shift+Tab for instant mode cycling in TUI
   - **Plan created**: ModeIndicator widget and integration strategy ready
 - **Embeddings**: No configurable Light/Medium/Hard intelligence options
+  - **Plan created**: Multi-provider support with complete separation from chat models
 - **Location Awareness**: No precise file:line:column metadata in embeddings
   - **Plan created**: SourceLocation type design complete
 - **Internal Agent Tools**: AST-based analysis, search, and transformation tools
@@ -427,30 +428,35 @@ Create modular context engine with: ast_compactor (code compression), semantic_i
 #### Light Mode (Fast, Minimal Resources)
 ```toml
 [intelligence.light]
-embedding_model = "nomic-embed-text-v1.5"
 chunk_size = 256
 max_chunks = 1000
 cache_size_mb = 100
 indexing = "on_demand"
 compression_level = "basic"  # 70% compression
+# Embedding models (if enabled):
+# OpenAI: text-embedding-3-small (256 dims)
+# Gemini: gemini-embedding-001 (256 dims)
+# Voyage: voyage-3.5-lite
 ```
 
 #### Medium Mode (Balanced, Default)
 ```toml
 [intelligence.medium]
-embedding_model = "all-MiniLM-L6-v2"
 chunk_size = 512
 max_chunks = 10000
 cache_size_mb = 500
 indexing = "background"
 compression_level = "standard"  # 85% compression
 include_ast = true
+# Embedding models (if enabled):
+# OpenAI: text-embedding-3-small (1536 dims)
+# Gemini: gemini-embedding-001 (768 dims)
+# Voyage: voyage-3.5
 ```
 
 #### Hard Mode (Maximum Intelligence)
 ```toml
 [intelligence.hard]
-embedding_model = "codebert-base"
 chunk_size = 1024
 max_chunks = 100000
 cache_size_mb = 2000
@@ -459,7 +465,65 @@ compression_level = "maximum"  # 95% compression
 include_ast = true
 include_call_graph = true
 include_data_flow = true
+# Embedding models (if enabled):
+# OpenAI: text-embedding-3-large (3072 dims)
+# Gemini: gemini-embedding-exp-03-07 (1536 dims)
+# Voyage: voyage-3-large
 ```
+
+## Embeddings System (Optional, Independent)
+
+### Core Design
+- **Complete Separation**: 100% independent from chat/LLM models
+- **Disabled by Default**: Opt-in feature with zero overhead when disabled
+- **Multi-Provider Support**: OpenAI, Gemini, and Voyage AI
+- **Independent Authentication**: Separate API keys from chat models
+
+### Configuration
+```toml
+# ~/.agcodex/config.toml
+
+# Embeddings disabled by default (zero overhead)
+[embeddings]
+enabled = false  # Set to true to enable
+provider = "auto"  # auto, openai, gemini, voyage
+
+[embeddings.openai]
+model = "text-embedding-3-small"
+dimensions = 1536
+# API key from OPENAI_EMBEDDING_KEY env var
+
+[embeddings.gemini]
+model = "gemini-embedding-001"
+dimensions = 768
+# API key from GEMINI_API_KEY env var
+
+[embeddings.voyage]
+model = "voyage-3.5"
+input_type = "document"
+# API key from VOYAGE_API_KEY env var
+```
+
+### Environment Variables
+- `OPENAI_EMBEDDING_KEY` - Separate from `OPENAI_API_KEY` for chat
+- `GEMINI_API_KEY` - Used for Gemini embeddings
+- `VOYAGE_API_KEY` - Voyage AI embeddings only
+
+### Separate Authentication File
+```json
+// ~/.agcodex/embeddings_auth.json
+{
+  "openai_embedding_key": "sk-...",
+  "gemini_embedding_key": "...",
+  "voyage_embedding_key": "..."
+}
+```
+
+### When Embeddings Are Disabled
+- AST-based search works perfectly
+- Tree-sitter semantic analysis fully functional
+- Symbol search and definition finding unaffected
+- Zero performance or memory overhead
 
 ## Session Persistence Implementation
 
@@ -601,7 +665,8 @@ Priority areas for optimization:
 
 **Key Settings**:
 - `reasoning_effort = "high"` and `verbosity = "high"` (ALWAYS)
-- Intelligence modes: light/medium/hard with different embedding models
+- Intelligence modes: light/medium/hard for AST processing
+- Embeddings: Disabled by default, optional multi-provider support
 - Session auto-save with Zstd compression
 - Mode switching via Shift+Tab (Plan/Build/Review)
 - Internal agent tools enabled (ast_search, ast_transform, ast_analyze)

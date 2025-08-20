@@ -11,9 +11,10 @@
 8. [Phase 6: AST-RAG for Large Codebases](#phase-6-ast-rag-for-large-codebases)
 9. [Phase 7: AST-Based Edit Tools](#phase-7-ast-based-edit-tools)
 10. [Phase 8: Session Persistence](#phase-8-session-persistence)
-11. [Phase 9: Configuration System](#phase-9-configuration-system)
-12. [Implementation Timeline](#implementation-timeline)
-13. [Success Metrics](#success-metrics)
+11. [Phase 9: Independent Embeddings System](#phase-9-independent-embeddings-system)
+12. [Phase 10: Configuration System](#phase-10-configuration-system)
+13. [Implementation Timeline](#implementation-timeline)
+14. [Success Metrics](#success-metrics)
 
 ## Executive Summary
 
@@ -79,6 +80,7 @@ codex → agcodex
 ```
 ~/.agcodex/
 ├── config.toml              # Main configuration with HIGH defaults
+├── embeddings_auth.json    # Separate embedding API keys (optional)
 ├── history/                 # Efficient session persistence
 │   ├── index.bincode       # Fast binary index
 │   ├── sessions/           # Date-organized sessions
@@ -88,7 +90,7 @@ codex → agcodex
 │   │   └── 2024-01-21/
 │   │       └── session_uuid3.zst
 │   ├── cache/              # Performance caches
-│   │   ├── embeddings/     # LanceDB vector storage
+│   │   ├── embeddings/     # LanceDB vector storage (if enabled)
 │   │   │   └── index.lance
 │   │   ├── ast/           # Cached AST data
 │   │   │   └── *.bincode.zst
@@ -104,7 +106,7 @@ codex → agcodex
 ├── tools/                  # Tool configurations
 │   ├── prompts/           # Tool-specific prompts
 │   └── configs/           # Tool settings
-├── auth/                   # Authentication tokens
+├── auth/                   # Chat model authentication tokens
 ├── logs/                   # Application logs
 └── models/                 # Model configurations
 ```
@@ -1370,7 +1372,203 @@ pub const SESSION_KEYS: &[KeyBinding] = &[
 ];
 ```
 
-## Phase 9: Configuration System
+## Phase 9: Independent Embeddings System 📄 Ready to Implement
+
+### 9.1 Core Architecture (Completely Separate from Chat)
+
+```rust
+// agcodex-core/src/embeddings/mod.rs
+pub struct EmbeddingsManager {
+    config: Option<EmbeddingsConfig>,  // None = disabled
+    providers: HashMap<String, Box<dyn EmbeddingProvider>>,
+}
+
+impl EmbeddingsManager {
+    pub fn new(config: Option<EmbeddingsConfig>) -> Self {
+        if config.is_none() {
+            return Self::disabled();  // Zero overhead
+        }
+        // Initialize only if explicitly enabled
+    }
+    
+    pub fn is_enabled(&self) -> bool {
+        self.config.is_some() && 
+        self.config.as_ref().unwrap().enabled
+    }
+    
+    pub async fn embed(&self, text: &str) -> Result<Option<Vec<f32>>> {
+        if !self.is_enabled() {
+            return Ok(None);  // Gracefully handle disabled state
+        }
+        // Embedding logic...
+    }
+}
+```
+
+### 9.2 Configuration (Disabled by Default)
+
+```toml
+# ~/.agcodex/config.toml
+
+# Default state - embeddings completely disabled
+# No [embeddings] section = no embeddings overhead
+
+# To enable embeddings:
+[embeddings]
+enabled = true  # Must explicitly enable
+provider = "auto"  # auto, openai, gemini, voyage
+
+[embeddings.openai]
+model = "text-embedding-3-small"
+dimensions = 1536
+# Uses OPENAI_EMBEDDING_KEY env var
+
+[embeddings.gemini]  
+model = "gemini-embedding-001"
+dimensions = 768
+# Uses GEMINI_API_KEY env var
+
+[embeddings.voyage]
+model = "voyage-3.5"
+input_type = "document"
+# Uses VOYAGE_API_KEY env var
+```
+
+### 9.3 Independent Authentication
+
+```rust
+// agcodex-core/src/embeddings/auth.rs
+pub struct EmbeddingsAuth {
+    // Completely separate from chat authentication
+    openai_key: Option<String>,
+    gemini_key: Option<String>,
+    voyage_key: Option<String>,
+}
+
+impl EmbeddingsAuth {
+    pub fn load() -> Self {
+        Self {
+            // Check env vars (no AGCODEX_ prefix)
+            openai_key: env::var("OPENAI_EMBEDDING_KEY").ok(),
+            gemini_key: env::var("GEMINI_API_KEY").ok(),
+            voyage_key: env::var("VOYAGE_API_KEY").ok(),
+        }
+    }
+}
+```
+
+### 9.4 Provider Implementations
+
+```rust
+// agcodex-core/src/embeddings/providers/openai.rs
+pub struct OpenAIEmbeddings {
+    client: reqwest::Client,
+    api_key: String,  // From OPENAI_EMBEDDING_KEY
+    model: String,
+    dimensions: Option<usize>,
+}
+
+// Completely independent from OpenAI chat client
+// No shared state, no dependencies on chat models
+```
+
+### 9.5 Intelligence Mode Mapping (If Embeddings Enabled)
+
+```rust
+pub fn select_model_for_intelligence(
+    mode: IntelligenceMode,
+    provider: &str,
+) -> EmbeddingModel {
+    match (mode, provider) {
+        (IntelligenceMode::Light, "openai") => {
+            EmbeddingModel::OpenAI {
+                model: "text-embedding-3-small".into(),
+                dimensions: Some(256),
+            }
+        }
+        (IntelligenceMode::Medium, "openai") => {
+            EmbeddingModel::OpenAI {
+                model: "text-embedding-3-small".into(),
+                dimensions: Some(1536),
+            }
+        }
+        (IntelligenceMode::Hard, "openai") => {
+            EmbeddingModel::OpenAI {
+                model: "text-embedding-3-large".into(),
+                dimensions: Some(3072),
+            }
+        }
+        // Similar for Gemini and Voyage...
+    }
+}
+```
+
+### 9.6 Context Engine Integration
+
+```rust
+// agcodex-core/src/context_engine/mod.rs
+pub struct ContextEngine {
+    ast_engine: ASTEngine,  // Always available
+    embeddings: Option<EmbeddingsManager>,  // Optional
+}
+
+impl ContextEngine {
+    pub fn search(&self, query: &str) -> SearchResults {
+        // AST search always works
+        let ast_results = self.ast_engine.search(query);
+        
+        // Enhance with embeddings if available
+        if let Some(embeddings) = &self.embeddings {
+            if embeddings.is_enabled() {
+                // Hybrid search
+                return self.hybrid_search(query, ast_results);
+            }
+        }
+        
+        // AST-only search (still very powerful)
+        ast_results
+    }
+}
+```
+
+### 9.7 Zero-Overhead When Disabled
+
+```rust
+impl EmbeddingsManager {
+    pub fn disabled() -> Self {
+        Self {
+            config: None,
+            providers: HashMap::new(),  // Empty, no allocations
+        }
+    }
+    
+    // All methods return immediately when disabled
+    pub async fn embed(&self, _text: &str) -> Result<Option<Vec<f32>>> {
+        if self.config.is_none() {
+            return Ok(None);  // Fast path, no work done
+        }
+        // ...
+    }
+}
+```
+
+### 9.8 Module Structure
+
+```
+agcodex-core/src/embeddings/
+├── mod.rs                 # Public API
+├── config.rs              # Configuration types
+├── auth.rs                # Separate authentication
+├── providers/
+│   ├── mod.rs
+│   ├── openai.rs         # OpenAI embeddings
+│   ├── gemini.rs         # Gemini embeddings
+│   └── voyage.rs         # Voyage AI embeddings
+├── cache.rs              # Optional caching
+└── manager.rs            # Provider selection
+```
+
+## Phase 10: Configuration System
 
 ### 8.1 Main Configuration
 
@@ -1494,6 +1692,7 @@ suffix = "Focus on code quality, best practices, and potential issues."
 - 🚧 Phase 1: Rebranding script ready to run
 - 📄 Phase 3: Subagent system ready to implement
 - 📄 Phase 6: TUI enhancements ready to implement
+- 📄 Phase 9: Independent embeddings system ready to implement
 
 ### Week 1: Foundation & Core
 **Day 1-2: Rebranding & Setup**
@@ -1564,11 +1763,13 @@ suffix = "Focus on code quality, best practices, and potential issues."
 - Notification system
 - Subagent UI
 
-**Day 3: Error Migration**
-- Complete anyhow → thiserror
-- Add domain-specific errors
-- Improve error recovery
-- Add error context
+**Day 3: Independent Embeddings System**
+- Create embeddings module structure
+- Implement provider interfaces (OpenAI, Gemini, Voyage)
+- Add disabled-by-default configuration
+- Separate authentication handling
+- Provider auto-selection logic
+- Optional caching layer
 
 **Day 4: Integration Testing**
 - Subagent invocation tests
@@ -1662,6 +1863,13 @@ suffix = "Focus on code quality, best practices, and potential issues."
 - 90-98% code compression
 - Preserve essential structure
 - Token-efficient context
+
+### 10. Independent Embeddings System
+- Completely separate from chat/LLM models
+- Disabled by default (zero overhead)
+- Multi-provider support (OpenAI, Gemini, Voyage)
+- Independent API keys for each provider
+- Graceful fallback to AST-only search
 
 ## Risk Mitigation
 

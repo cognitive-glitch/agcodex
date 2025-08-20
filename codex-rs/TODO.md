@@ -78,11 +78,18 @@ Notes:
 - [x] Implement AST-based agent tools infrastructure (2025-08-21)
       **Status**: Module structure created in code_tools
 
-## Embeddings
+## Embeddings (Independent System)
 
 - [x] Policy check: ChatGPT login tokens do NOT grant embeddings API access
 - [x] Helper to detect OpenAI embeddings availability via OPENAI_API_KEY or auth.json
-- [ ] Wire embeddings provider(s) and configuration
+- [ ] **Create independent embeddings module** (completely separate from chat)
+- [ ] **Implement multi-provider support** (OpenAI, Gemini, Voyage AI)
+- [ ] **Add disabled-by-default configuration** (zero overhead when off)
+- [ ] **Separate authentication** (OPENAI_EMBEDDING_KEY, GEMINI_API_KEY, VOYAGE_API_KEY)
+- [ ] **Provider auto-selection** based on available keys
+- [ ] **Intelligence mode mapping** for each provider
+- [ ] **Optional caching layer** with DashMap
+- [ ] **Context engine integration** (hybrid AST + embeddings when enabled)
 
 ## Testing & QA
 
@@ -98,8 +105,9 @@ Notes:
 4. ~~Create persistence crate with compression~~ ✅ Done (2025-08-21)
 5. **Run rebranding script** (codex → agcodex) - Script ready, 8,773 occurrences
 6. **TUI Mode Integration**: Wire Shift+Tab switching with ModeIndicator widget
-7. **Subagent System**: Implement @agent-name invocation and context isolation
-8. **Session Management UI**: Implement Ctrl+S save, Ctrl+O load dialogs
+7. **Independent Embeddings System**: Create optional multi-provider support
+8. **Subagent System**: Implement @agent-name invocation and context isolation
+9. **Session Management UI**: Implement Ctrl+S save, Ctrl+O load dialogs
 
 ## Conventions
 
