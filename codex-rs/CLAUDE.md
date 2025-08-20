@@ -290,85 +290,11 @@ pub struct ReviewMode {
 ```
 
 ### Mode Manager Implementation
-```rust
-// agcodex-core/src/modes.rs
-pub struct ModeManager {
-    current_mode: OperatingMode,
-    mode_history: Vec<(OperatingMode, DateTime<Utc>)>,
-    restrictions: ModeRestrictions,
-}
-
-pub struct ModeRestrictions {
-    pub allow_file_write: bool,
-    pub allow_command_exec: bool,
-    pub allow_network_access: bool,
-    pub allow_git_operations: bool,
-    pub max_file_size: Option<usize>,
-}
-
-impl ModeManager {
-    pub fn switch_mode(&mut self, new_mode: OperatingMode) {
-        self.mode_history.push((self.current_mode, Utc::now()));
-        self.current_mode = new_mode;
-        self.restrictions = match new_mode {
-            OperatingMode::Plan => ModeRestrictions {
-                allow_file_write: false,
-                allow_command_exec: false,
-                allow_network_access: true,  // For research
-                allow_git_operations: false,
-                max_file_size: None,
-            },
-            OperatingMode::Build => ModeRestrictions {
-                allow_file_write: true,
-                allow_command_exec: true,
-                allow_network_access: true,
-                allow_git_operations: true,
-                max_file_size: None,
-            },
-            OperatingMode::Review => ModeRestrictions {
-                allow_file_write: true,  // Limited
-                allow_command_exec: false,
-                allow_network_access: true,
-                allow_git_operations: false,
-                max_file_size: Some(10_000),  // Small edits only
-            },
-        };
-    }
-    
-    pub fn get_prompt(&self) -> &str {
-        match self.current_mode {
-            OperatingMode::Plan => r#"
-<mode>PLAN MODE - Read Only</mode>
-You are analyzing and planning. You CAN:
-✓ Read any file
-✓ Search code using ripgrep and fd-find
-✓ Analyze AST structure with tree-sitter
-✓ Create detailed implementation plans
-
-You CANNOT:
-✗ Edit or write files
-✗ Execute commands that modify state
-"#,
-            OperatingMode::Build => r#"
-<mode>BUILD MODE - Full Access</mode>
-You have complete development capabilities:
-✓ Read, write, edit files
-✓ Execute commands
-✓ Use all tools
-✓ Full AST-based editing
-"#,
-            OperatingMode::Review => r#"
-<mode>REVIEW MODE - Quality Focus</mode>
-You are reviewing code quality. You CAN:
-✓ Read and analyze code
-✓ Suggest improvements
-✓ Make small fixes (< 100 lines)
-Focus on: bugs, performance, best practices, security
-"#,
-        }
-    }
-}
-```
+ModeManager tracks current mode, history, and enforces restrictions:
+- **Plan Mode**: Read-only access, no file writes or command execution
+- **Build Mode**: Full access to all operations
+- **Review Mode**: Quality-focused with limited edit capabilities (<10KB)
+- Each mode provides specific prompts and capability restrictions
 
 ## AGCodex Subagent System
 
@@ -420,70 +346,18 @@ prompt: |
 ```
 
 ### Advanced Subagent Features
-
-#### Mode-Aware Subagents
-```rust
-pub struct SubAgent {
-    name: String,
-    mode_preference: Option<OperatingMode>,
-    intelligence_override: Option<IntelligenceMode>,
-    ast_requirements: Vec<Language>,
-    tool_whitelist: Vec<Tool>,
-}
-```
-
-#### Subagent Chaining
-```
-# Sequential execution
-@agent-architect -> @agent-code-generator -> @agent-test-writer
-
-# Parallel analysis
-@agent-security + @agent-performance + @agent-code-reviewer
-```
-
-#### Context Inheritance
-- Subagents inherit AST indices from parent context
-- Location-aware embeddings preserved across subagent calls
-- Session history accessible but isolated
+- **Mode-Aware**: Subagents can override operating mode and intelligence level
+- **Chaining**: Sequential (→) or parallel (+) execution
+- **Context Inheritance**: AST indices, embeddings, and session history preserved
 
 ## Critical Refactoring Requirements
 
 ### 1. Complete Migration from anyhow to thiserror
 **MANDATORY**: Replace all uses of `anyhow` with idiomatic `thiserror` patterns throughout the codebase.
-
-**Implementation Strategy**:
-```rust
-// Replace anyhow::Result with domain-specific error types
-use thiserror::Error;
-
-// Define granular error types for each domain
-#[derive(Error, Debug)]
-pub enum FileSearchError {
-    #[error("pattern not found: {pattern}")]
-    PatternNotFound { pattern: String },
-    
-    #[error("AST parsing failed for {file}")]
-    AstParseError { 
-        file: PathBuf,
-        #[source] source: tree_sitter::Error 
-    },
-    
-    #[error("invalid search query: {reason}")]
-    InvalidQuery { reason: String },
-}
-
-// Use specific error types in function signatures
-fn search_ast(query: &str) -> Result<Vec<Match>, FileSearchError> {
-    // Implementation
-}
-```
-
-**Migration Steps**:
-1. Create domain-specific error types in each crate
-2. Replace `anyhow::Result` with specific `Result<T, DomainError>`
-3. Use `#[from]` for automatic error conversion
-4. Add contextual information to error variants
-5. Remove anyhow dependency from Cargo.toml files
+- Create domain-specific error types in each crate
+- Replace `anyhow::Result` with specific `Result<T, DomainError>`
+- Use `#[from]` for automatic error conversion
+- Add contextual information to error variants
 
 ### 2. Enhanced AST-Based Code Intelligence
 
@@ -492,487 +366,61 @@ fn search_ast(query: &str) -> Result<Vec<Match>, FileSearchError> {
 **Required Enhancements**:
 
 #### A. Complete Tree-sitter Integration (50+ Languages)
-```toml
-# agcodex-ast/Cargo.toml
-[dependencies]
-tree-sitter = "0.24"
-
-# Core Languages (Most Used)
-tree-sitter-rust = "0.23"
-tree-sitter-python = "0.23"
-tree-sitter-javascript = "0.23"
-tree-sitter-typescript = "0.23"
-tree-sitter-go = "0.23"
-tree-sitter-java = "0.23"
-tree-sitter-cpp = "0.23"
-tree-sitter-c = "0.20"
-tree-sitter-c-sharp = "0.23"
-
-# Web Languages
-tree-sitter-html = "0.23"
-tree-sitter-css = "0.23"
-tree-sitter-json = "0.24"
-tree-sitter-yaml = "0.6"
-tree-sitter-toml = "0.6"
-tree-sitter-xml = "0.7"
-
-# Scripting Languages
-tree-sitter-bash = "0.23"
-tree-sitter-lua = "0.2"
-tree-sitter-ruby = "0.23"
-tree-sitter-php = "0.23"
-tree-sitter-perl = "0.6"
-
-# Functional Languages
-tree-sitter-haskell = "0.23"
-tree-sitter-ocaml = "0.23"
-tree-sitter-elixir = "0.3"
-tree-sitter-erlang = "0.8"
-tree-sitter-clojure = "0.2"
-tree-sitter-scala = "0.23"
-
-# Systems Languages
-tree-sitter-zig = "0.23"
-tree-sitter-nim = "0.2"
-tree-sitter-swift = "0.5"
-tree-sitter-kotlin = "0.3"
-tree-sitter-objective-c = "3.0"
-
-# Config/Data Languages
-tree-sitter-dockerfile = "0.2"
-tree-sitter-sql = "0.3"
-tree-sitter-graphql = "0.1"
-tree-sitter-protobuf = "0.1"
-
-# Documentation
-tree-sitter-markdown = "0.3"
-tree-sitter-rst = "0.4"
-tree-sitter-latex = "0.4"
-
-# Infrastructure
-tree-sitter-hcl = "0.1"  # Terraform
-tree-sitter-nix = "0.1"
-tree-sitter-make = "0.1"
-tree-sitter-cmake = "0.5"
-
-# Other Popular Languages
-tree-sitter-r = "0.2"
-tree-sitter-julia = "0.23"
-tree-sitter-dart = "0.2"
-tree-sitter-vue = "0.2"
-tree-sitter-svelte = "0.11"
-```
+Add comprehensive tree-sitter language support for: Core (Rust, Python, JS/TS, Go, Java, C/C++, C#), Web (HTML, CSS, JSON, YAML), Scripting (Bash, Ruby, PHP), Functional (Haskell, Elixir, Scala), Systems (Zig, Swift, Kotlin), Config/Data (SQL, Dockerfile, HCL), and Documentation (Markdown, LaTeX).
 
 #### B. AST-grep Integration
-```toml
-# Add to core/Cargo.toml
-[dependencies]
-ast-grep-core = "0.29"
-ast-grep-language = "0.29"
-```
+Add `ast-grep-core` and `ast-grep-language` for structural code search and transformation.
 
 #### C. Smart Context Retrieval Architecture
-```rust
-// New module structure: core/src/context_engine/
-pub mod context_engine {
-    pub mod ast_compactor;     // Compress code to signatures/structure
-    pub mod semantic_index;    // Build semantic index of codebase
-    pub mod retrieval;        // Query-based context retrieval
-    pub mod embeddings;       // AST-based embeddings for similarity
-    pub mod cache;           // Cache parsed ASTs and indexes
-}
-
-// AST Compactor example
-pub struct AstCompactor {
-    // Extracts essential structure: functions, classes, types
-    // Removes implementation details for context efficiency
-}
-
-// Semantic Index example  
-pub struct SemanticIndex {
-    // Indexes symbols, dependencies, call graphs
-    // Supports fast lookup and traversal
-}
-```
+Create modular context engine with: ast_compactor (code compression), semantic_index (symbol indexing), retrieval (query-based search), embeddings (similarity), and cache (parsed AST storage).
 
 ### 3. Robust Type System Enhancements
 
 **Required Patterns**:
-
-#### A. Newtype Pattern for Domain Types
-```rust
-// Strong typing for domain concepts
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FilePath(PathBuf);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct LineNumber(u32);
-
-#[derive(Debug, Clone)]
-pub struct AstNodeId(usize);
-
-// Implement necessary traits
-impl From<PathBuf> for FilePath {
-    fn from(path: PathBuf) -> Self {
-        FilePath(path)
-    }
-}
-```
-
-#### B. Builder Pattern for Complex Types
-```rust
-pub struct QueryBuilder {
-    language: Option<Language>,
-    pattern: Option<String>,
-    scope: SearchScope,
-    max_results: Option<usize>,
-}
-
-impl QueryBuilder {
-    pub fn new() -> Self { /* ... */ }
-    pub fn language(mut self, lang: Language) -> Self { /* ... */ }
-    pub fn pattern(mut self, pattern: impl Into<String>) -> Self { /* ... */ }
-    pub fn build(self) -> Result<Query, QueryBuildError> { /* ... */ }
-}
-```
-
-#### C. Typestate Pattern for State Machines
-```rust
-// Compile-time state machine guarantees
-pub struct Connection<S> {
-    inner: TcpStream,
-    _state: PhantomData<S>,
-}
-
-pub struct Disconnected;
-pub struct Connected;
-pub struct Authenticated;
-
-impl Connection<Disconnected> {
-    pub fn connect(self) -> Result<Connection<Connected>, Error> { /* ... */ }
-}
-
-impl Connection<Connected> {
-    pub fn authenticate(self) -> Result<Connection<Authenticated>, Error> { /* ... */ }
-}
-```
+- **Newtype Pattern**: Strong typing for domain concepts (FilePath, LineNumber, AstNodeId)
+- **Builder Pattern**: Fluent APIs for complex type construction
+- **Typestate Pattern**: Compile-time state machine guarantees
 
 ### 4. Native Tool Integration
 
-#### fd-find Integration
-```rust
-// agcodex-tools/src/fd_find.rs
-use ignore::WalkBuilder;
-use regex::Regex;
+**fd-find Integration**: Native file discovery using `ignore::WalkBuilder` with parallel search support.
 
-pub struct FdFind {
-    base_path: PathBuf,
-    walker: WalkBuilder,
-    filters: FdFilters,
-}
+**ripgrep Integration**: Native text search with AST context enrichment using `grep_regex` and `grep_searcher`.
 
-impl FdFind {
-    pub fn search_parallel(&self) -> Vec<PathBuf> {
-        use rayon::prelude::*;
-        let results = Mutex::new(Vec::new());
-        
-        self.walker.build_parallel().run(|| {
-            Box::new(move |entry| {
-                if let Ok(entry) = entry {
-                    if self.matches_filters(entry.path()) {
-                        results.lock().unwrap().push(entry.path().to_path_buf());
-                    }
-                }
-                ignore::WalkState::Continue
-            })
-        });
-        
-        results.into_inner().unwrap()
-    }
-}
-```
-
-#### ripgrep Integration
-```rust
-// agcodex-tools/src/ripgrep.rs
-use grep_regex::{RegexMatcher, RegexMatcherBuilder};
-use grep_searcher::{BinaryDetection, SearcherBuilder};
-
-pub struct RipGrep {
-    matcher: RegexMatcher,
-    searcher: SearcherBuilder,
-    config: RgConfig,
-}
-
-impl RipGrep {
-    pub fn search_with_ast_context(&self, path: &Path, ast: &Tree) -> Vec<Match> {
-        let basic_matches = self.search_file(path)?;
-        
-        // Enrich with AST context
-        basic_matches.into_iter()
-            .map(|mut m| {
-                if let Some(node) = find_node_at_position(ast, m.line, m.column) {
-                    m.score *= get_node_importance(&node);
-                    m.context_before.push(format!("// In {}", node.kind()));
-                }
-                m
-            })
-            .collect()
-    }
-}
-```
-
-### 5. Tool Integration Module
-
-**Unified Structure**:
-```rust
-// core/src/code_tools/
-pub mod code_tools {
-    pub mod ripgrep;      // Native ripgrep integration
-    pub mod fd_find;      // Native fd integration
-    pub mod ast_grep;     // AST-based structural search
-    pub mod tree_sitter;  // 50+ language parsers
-    pub mod comby;        // Structural transformations
-    
-    // Unified interface
-    pub trait CodeTool {
-        type Query;
-        type Result;
-        fn search(&self, query: Self::Query) -> Result<Self::Result, ToolError>;
-        fn search_parallel(&self, queries: Vec<Self::Query>) -> Vec<Self::Result>;
-    }
-}
-```
+**Unified Tool Interface**: All tools implement `CodeTool` trait with search and parallel search methods.
 
 ### 5. Session Management and Persistence
 
 **Required Features**:
-
-#### A. Save/Load Sessions
-```rust
-// core/src/session/
-pub mod session {
-    pub mod persistence;  // Save/load conversation state
-    pub mod checkpoint;   // Automatic checkpointing
-    pub mod recovery;     // Crash recovery from checkpoints
-    
-    pub struct SessionManager {
-        autosave_interval: Duration,
-        checkpoint_dir: PathBuf,
-        max_checkpoints: usize,
-    }
-    
-    impl SessionManager {
-        pub fn save_session(&self, path: &Path) -> Result<(), SessionError>;
-        pub fn load_session(&self, path: &Path) -> Result<Session, SessionError>;
-        pub fn create_checkpoint(&self) -> Result<CheckpointId, SessionError>;
-        pub fn restore_checkpoint(&self, id: CheckpointId) -> Result<(), SessionError>;
-    }
-}
-```
-
-#### B. Undo/Redo Support
-```rust
-// Conversation history with undo stack
-pub struct ConversationHistory {
-    turns: Vec<Turn>,
-    undo_stack: Vec<ConversationState>,
-    redo_stack: Vec<ConversationState>,
-    context_snapshots: HashMap<TurnId, ContextSnapshot>,
-}
-
-impl ConversationHistory {
-    pub fn undo_last_turn(&mut self) -> Result<(), HistoryError>;
-    pub fn redo_turn(&mut self) -> Result<(), HistoryError>;
-    pub fn checkpoint_state(&mut self);
-    pub fn jump_to_turn(&mut self, turn_id: TurnId) -> Result<(), HistoryError>;
-    pub fn get_context_at_turn(&self, turn_id: TurnId) -> Result<ContextSnapshot, HistoryError>;
-}
-```
-
-#### C. Message Navigation and Context Restoration
-```rust
-// Jump to any previous message with full context restoration
-pub struct MessageNavigator {
-    history: ConversationHistory,
-    context_manager: ContextManager,
-}
-
-impl MessageNavigator {
-    // Jump to a specific message and restore its context
-    pub fn jump_to_message(&mut self, message_id: MessageId) -> Result<(), NavError>;
-    
-    // Get the context that existed before a specific message
-    pub fn get_pre_message_context(&self, message_id: MessageId) -> Result<Context, NavError>;
-    
-    // Create a new conversation branch from a previous point
-    pub fn branch_from_message(&mut self, message_id: MessageId) -> Result<BranchId, NavError>;
-    
-    // Navigate through conversation history
-    pub fn prev_message(&mut self) -> Result<MessageId, NavError>;
-    pub fn next_message(&mut self) -> Result<MessageId, NavError>;
-    pub fn go_to_turn(&mut self, turn: usize) -> Result<(), NavError>;
-}
-
-// Context snapshot for restoring state
-#[derive(Clone, Serialize, Deserialize)]
-pub struct ContextSnapshot {
-    messages: Vec<Message>,
-    system_prompt: String,
-    tool_states: HashMap<ToolId, ToolState>,
-    file_states: HashMap<PathBuf, FileSnapshot>,
-    variables: HashMap<String, Value>,
-    timestamp: SystemTime,
-}
-```
+- **SessionManager**: Auto-save, checkpointing, and recovery
+- **ConversationHistory**: Undo/redo support with context snapshots
+- **MessageNavigator**: Jump to any message with full context restoration
+- **Branching**: Create conversation branches from any point
+- **ContextSnapshot**: Complete state preservation for navigation
 
 ### 6. Multi-Agent Architecture
 
-**Required Components**:
-
-#### A. Agent Spawning and Coordination
-```rust
-// core/src/agents/
-pub mod agents {
-    pub mod orchestrator;    // Main agent coordinator
-    pub mod sub_agent;      // Sub-agent implementation
-    pub mod git_worktree;   // Git worktree-aware agents
-    pub mod communication;  // Inter-agent messaging
-    
-    pub struct AgentOrchestrator {
-        agents: HashMap<AgentId, Agent>,
-        worktrees: HashMap<WorktreeId, GitWorktree>,
-        message_bus: MessageBus,
-    }
-    
-    impl AgentOrchestrator {
-        pub async fn spawn_agent(&mut self, config: AgentConfig) -> Result<AgentId, AgentError>;
-        pub async fn spawn_worktree_agent(&mut self, worktree: &Path) -> Result<AgentId, AgentError>;
-        pub async fn coordinate_agents(&mut self, task: Task) -> Result<TaskResult, AgentError>;
-    }
-    
-    // Sub-agent with specialized capabilities
-    pub struct SubAgent {
-        id: AgentId,
-        capabilities: Vec<Capability>,
-        worktree: Option<GitWorktree>,
-    }
-}
-```
-
-#### B. Git Worktree Integration
-```rust
-// Git worktree management for multi-agent operations
-pub struct GitWorktreeManager {
-    main_worktree: PathBuf,
-    agent_worktrees: HashMap<AgentId, PathBuf>,
-}
-
-impl GitWorktreeManager {
-    pub fn create_agent_worktree(&mut self, agent_id: AgentId) -> Result<PathBuf, GitError>;
-    pub fn sync_worktrees(&self) -> Result<(), GitError>;
-    pub fn merge_agent_changes(&self, agent_id: AgentId) -> Result<(), GitError>;
-}
-```
+**Components**:
+- **AgentOrchestrator**: Spawn and coordinate multiple agents with message bus
+- **Git Worktree Integration**: Isolated worktrees for parallel development
+- **SubAgent**: Specialized agents with custom capabilities
 
 ### 7. Notification System
 
-**Terminal Bell and Desktop Notifications**:
-```rust
-// core/src/notifications/
-pub mod notifications {
-    pub mod terminal_bell;  // Terminal bell notifications
-    pub mod desktop;       // Desktop notifications
-    pub mod hooks;         // Custom notification hooks
-    
-    pub enum NotificationLevel {
-        Info,
-        Warning,
-        Error,
-        TaskComplete,
-    }
-    
-    pub struct NotificationManager {
-        terminal_bell_enabled: bool,
-        desktop_enabled: bool,
-        custom_hooks: Vec<NotificationHook>,
-    }
-    
-    impl NotificationManager {
-        pub fn notify(&self, level: NotificationLevel, message: &str);
-        pub fn ring_terminal_bell(&self);
-        pub fn send_desktop_notification(&self, title: &str, body: &str);
-    }
-}
-```
+**Features**:
+- Terminal bell notifications (`\x07`)
+- Desktop notifications via system integration
+- Custom notification hooks
+- Multiple notification levels (Info, Warning, Error, TaskComplete)
 
 ## AST-RAG Implementation Details
 
 ### Indexing Pipeline
-```rust
-pub struct ASTIndexer {
-    parser_pool: ParserPool,        // Parallel parsers for 50+ languages
-    chunk_store: ChunkStore,        // Hierarchical chunk storage
-    vector_db: LanceDB,            // Vector embeddings
-    symbol_graph: SymbolGraph,     // Relationship tracking
-}
-
-impl ASTIndexer {
-    pub async fn index_codebase(&self, root: &Path) -> IndexStats {
-        // Parallel file discovery and parsing
-        let files = self.discover_files(root)?;
-        let parsed = files.par_iter()
-            .filter_map(|p| self.parse_file(p).ok())
-            .collect();
-        
-        // Hierarchical chunking: File -> Class -> Function
-        let chunks = self.extract_semantic_chunks(&parsed);
-        
-        // Generate location-aware embeddings
-        let embeddings = self.generate_embeddings(&chunks).await?;
-        
-        // Store with precise metadata
-        self.vector_db.insert_batch(embeddings).await?;
-        
-        IndexStats {
-            files_indexed: files.len(),
-            chunks_created: chunks.len(),
-            compression_ratio: 0.92,  // Target: 90%+
-        }
-    }
-}
-```
-
-### Semantic Chunking Strategy
-```rust
-pub enum ChunkLevel {
-    File,      // Overview and imports
-    Class,     // Class/module signatures
-    Function,  // Function bodies
-    Block,     // Complex code blocks
-}
-
-pub struct CodeChunk {
-    level: ChunkLevel,
-    content: String,  // AI Distiller compacted
-    location: SourceLocation {
-        file_path: PathBuf,
-        start_line: usize,
-        start_column: usize,
-        end_line: usize,
-        end_column: usize,
-        byte_range: Range<usize>,
-    },
-    metadata: ChunkMetadata {
-        language: String,
-        symbols: Vec<String>,
-        imports: Vec<String>,
-        complexity: f32,
-        compressed_size: usize,
-        original_size: usize,
-    },
-}
-```
+- **ASTIndexer**: Parallel parsing for 50+ languages
+- **Hierarchical Chunking**: File → Class → Function → Block
+- **Location-aware Embeddings**: Precise file:line:column metadata
+- **Vector Storage**: LanceDB with symbol graph relationships
+- **Target**: 90%+ compression ratio with AI Distiller compaction
 
 ### Intelligence Modes Configuration
 
@@ -1015,70 +463,11 @@ include_data_flow = true
 
 ## Session Persistence Implementation
 
-### Storage Format Architecture
-```rust
-pub enum StorageFormat {
-    Bincode,      // Metadata and indices (fastest)
-    MessagePack,  // Messages (compact)
-    Arrow,        // Tabular data (analytics)
-    LanceDB,      // Vector embeddings (similarity)
-    Zstd,         // Compression wrapper
-}
-
-pub struct SessionStore {
-    base_dir: PathBuf,  // ~/.agcodex/history
-    formats: HashMap<DataType, StorageFormat>,
-    compressor: ZstdCompressor,
-}
-
-impl SessionStore {
-    pub async fn save_efficient(&self, session: &Session) -> Result<()> {
-        // Serialize metadata with bincode
-        let meta = bincode::serialize(&session.metadata)?;
-        
-        // Serialize messages with MessagePack
-        let msgs = rmp_serde::to_vec(&session.messages)?;
-        
-        // Compress with Zstd level 3 (balanced)
-        let compressed_meta = zstd::encode_all(&meta[..], 3)?;
-        let compressed_msgs = zstd::encode_all(&msgs[..], 3)?;
-        
-        // Write with version header
-        let mut file = File::create(self.session_path(session.id))?;
-        file.write_all(b"AGCX")?;  // Magic bytes
-        file.write_all(&VERSION.to_le_bytes())?;
-        file.write_all(&compressed_meta)?;
-        file.write_all(&compressed_msgs)?;
-        
-        Ok(())
-    }
-}
-```
-
-### Fast Session Loading
-```rust
-pub struct FastSessionLoader {
-    cache: Arc<MemoryMappedCache>,
-    preload_queue: VecDeque<Uuid>,
-}
-
-impl FastSessionLoader {
-    pub async fn load_lazy(&self, id: Uuid) -> LazySession {
-        // Memory-mapped metadata (instant)
-        let metadata = self.cache.get_metadata(id)?;
-        
-        // Load only recent messages
-        let recent = self.load_recent_messages(id, 20).await?;
-        
-        // Lazy-load rest on demand
-        LazySession {
-            metadata,
-            recent_messages: recent,
-            loader: Box::new(move || self.load_full(id)),
-        }
-    }
-}
-```
+### Storage Architecture
+- **Formats**: Bincode (metadata), MessagePack (messages), Zstd (compression)
+- **Location**: ~/.agcodex/history
+- **Fast Loading**: Memory-mapped metadata with lazy message loading
+- **Version Header**: Magic bytes "AGCX" for format detection
 
 ## Implementation Timeline
 
@@ -1126,43 +515,11 @@ impl FastSessionLoader {
 
 ## Development Guidelines
 
-### Error Handling Best Practices
-```rust
-// ALWAYS use thiserror, NEVER use anyhow
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum ModuleError {
-    #[error("operation failed: {operation}")]
-    OperationFailed { 
-        operation: String,
-        #[source] cause: Box<dyn std::error::Error + Send + Sync>,
-    },
-    
-    #[error("invalid state transition from {from} to {to}")]
-    InvalidTransition { from: String, to: String },
-    
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-}
-
-// Use Result aliases for clarity
-pub type Result<T> = std::result::Result<T, ModuleError>;
-```
-
-### Testing Requirements
-- Unit tests must be colocated with implementation
-- Integration tests in `tests/` directory
-- Use property-based testing for complex logic
-- Mock external services with `wiremock` or `mockito`
-- Minimum test coverage: 80% for new code
-
-### Performance Considerations
-- Use `Arc<str>` instead of `String` for shared immutable strings
-- Prefer `SmallVec` for small collections
-- Use `OnceCell`/`LazyLock` for lazy initialization
-- Profile with `cargo flamegraph` before optimization
-- Benchmark critical paths with `criterion`
+### Best Practices
+- **Error Handling**: ALWAYS use thiserror, NEVER use anyhow
+- **Testing**: 80% minimum coverage, colocated unit tests
+- **Performance**: Use Arc<str> for shared strings, SmallVec for small collections
+- **Profiling**: cargo flamegraph for CPU, criterion for benchmarks
 
 ## Platform-Specific Considerations
 
@@ -1191,124 +548,27 @@ pub type Result<T> = std::result::Result<T, ModuleError>;
 
 ## TUI Development Patterns
 
-### Widget Development
-```rust
-// tui/src/widgets/
-pub trait CodexWidget {
-    fn render(&mut self, area: Rect, buf: &mut Buffer);
-    fn handle_input(&mut self, key: KeyEvent) -> InputResult;
-    fn handle_mouse(&mut self, mouse: MouseEvent) -> InputResult;
-    fn get_help_text(&self) -> &str;
-}
-
-// Example: Message jump widget
-pub struct MessageJumpWidget {
-    search_input: String,
-    filtered_messages: Vec<MessageInfo>,
-    selected_index: usize,
-    preview: Option<ContextSnapshot>,
-}
-```
-
-### State Management in TUI
-```rust
-// tui/src/state.rs
-pub struct AppState {
-    mode: AppMode,
-    conversation: ConversationState,
-    agents: AgentOrchestratorState,
-    session: SessionState,
-    ui_state: UIState,
-}
-
-pub enum AppMode {
-    Normal,           // Main chat interface
-    SessionManager,   // Ctrl+S
-    HistoryBrowser,  // Ctrl+H
-    AgentPanel,      // Ctrl+A
-    MessageJump,     // Ctrl+J
-    CommandPalette,  // /
-}
-```
-
-### Event Handling Architecture
-```rust
-// tui/src/events.rs
-pub enum AppEvent {
-    // User input
-    KeyPress(KeyEvent),
-    MouseEvent(MouseEvent),
-    Resize(u16, u16),
-    
-    // Agent events
-    AgentSpawned(AgentId),
-    AgentProgress(AgentId, Progress),
-    AgentCompleted(AgentId, Result<Output, Error>),
-    
-    // Session events
-    CheckpointCreated(CheckpointId),
-    SessionSaved(PathBuf),
-    MessageJump(MessageId),
-    
-    // Notifications
-    Notification(NotificationLevel, String),
-}
-```
+### Core Components
+- **CodexWidget trait**: render, handle_input, handle_mouse, get_help_text
+- **AppState**: Manages mode, conversation, agents, session, UI state
+- **AppMode**: Normal, SessionManager (Ctrl+S), HistoryBrowser (Ctrl+H), AgentPanel (Ctrl+A), MessageJump (Ctrl+J)
+- **AppEvent**: Handles key/mouse input, agent events, session events, notifications
 
 ## Common Development Workflows
 
-### Adding TUI Feature
-1. Create widget in `tui/src/widgets/`
-2. Add state to `AppState` in `tui/src/state.rs`
-3. Add keybinding in `tui/src/input.rs`
-4. Handle events in `tui/src/events.rs`
-5. Update help text in `tui/src/help.rs`
-6. Test with mock data in `tui/tests/`
+**Adding TUI Feature**: Create widget → Add state → Add keybinding → Handle events → Update help → Test
 
-### Adding AST-based Feature
-1. Add tree-sitter grammar to Cargo.toml
-2. Create parser module in `core/src/ast/parsers/`
-3. Implement `AstParser` trait
-4. Add caching layer with `DashMap`
-5. Write property-based tests
-6. Benchmark performance impact
+**Adding AST Feature**: Add grammar → Create parser → Implement trait → Add caching → Test → Benchmark
 
-### Implementing New Tool Integration
-1. Create module in `core/src/code_tools/`
-2. Define tool-specific error types with thiserror
-3. Implement `CodeTool` trait
-4. Add configuration in `config_types.rs`
-5. Write integration tests with mocked responses
-6. Document tool capabilities and limitations
+**New Tool Integration**: Create module → Define errors → Implement CodeTool → Add config → Test → Document
 
-### Adding New Error Type
-1. Define error enum with thiserror in module
-2. Implement conversions with `#[from]`
-3. Add error recovery logic at call sites
-4. Update documentation with error conditions
-5. Add tests for error paths
+**New Error Type**: Define with thiserror → Add conversions → Recovery logic → Document → Test
 
 ## Performance Profiling
 
-```bash
-# CPU profiling
-cargo install flamegraph
-cargo flamegraph --bin agcodex -- exec "test command"
-
-# Memory profiling  
-cargo install cargo-bloat
-cargo bloat --release --bin agcodex
-
-# Benchmark specific functions
-cargo bench --bench context_engine
-
-# AST performance
-cargo bench --bench ast_indexer
-cargo bench --bench tree_sitter_parsing
-
-# Session performance
-cargo bench --bench session_persistence
-```
+- **CPU**: `cargo flamegraph --bin agcodex`
+- **Memory**: `cargo bloat --release --bin agcodex`
+- **Benchmarks**: `cargo bench --bench [context_engine|ast_indexer|session_persistence]`
 
 ## MCP (Model Context Protocol) Notes
 
@@ -1328,283 +588,24 @@ Priority areas for optimization:
 6. Session checkpointing (async background saves)
 7. Worktree operations (batch git operations)
 
-## TUI Interface Implementation (First-Party)
+## TUI Interface Implementation
 
-### TUI Session Management
-```rust
-// tui/src/session_ui.rs
-pub struct SessionUI {
-    mode: SessionMode,
-    checkpoint_indicator: CheckpointStatus,
-    history_panel: HistoryPanel,
-}
+### Key Features
+- **Session Management**: Save/load (Ctrl+S/O), undo/redo (Ctrl+Z/Y), jump to message (Ctrl+J)
+- **Agent Panel**: Spawn agents (Ctrl+Shift+A), progress bars, worktree management
+- **History Browser**: Visual timeline with branches, context preview, mouse support
+- **Notifications**: Terminal bell, visual bell, status bar notifications
+- **Enhanced Layout**: Toggleable panels, status bar, quick actions menu (Ctrl+Space)
 
-pub enum SessionMode {
-    Normal,
-    HistoryBrowse,    // Activated by Ctrl+H
-    MessageJump,      // Activated by Ctrl+J
-    SessionManager,   // Activated by Ctrl+S
-}
+### Configuration Overview (~/.agcodex/config.toml)
 
-// Key bindings for session management
-pub const SESSION_KEYS: &[KeyBinding] = &[
-    KeyBinding { key: "Ctrl+S", action: Action::OpenSessionManager },
-    KeyBinding { key: "Ctrl+Shift+S", action: Action::QuickSave },
-    KeyBinding { key: "Ctrl+O", action: Action::LoadSession },
-    KeyBinding { key: "Ctrl+Z", action: Action::UndoTurn },
-    KeyBinding { key: "Ctrl+Y", action: Action::RedoTurn },
-    KeyBinding { key: "Ctrl+J", action: Action::JumpToMessage },
-    KeyBinding { key: "Alt+↑", action: Action::PrevMessage },
-    KeyBinding { key: "Alt+↓", action: Action::NextMessage },
-    KeyBinding { key: "Ctrl+B", action: Action::BranchFromHere },
-    KeyBinding { key: "F5", action: Action::CreateCheckpoint },
-    KeyBinding { key: "F6", action: Action::RestoreCheckpoint },
-];
-```
-
-### TUI Multi-Agent Interface
-```rust
-// tui/src/agent_ui.rs
-pub struct AgentPanel {
-    agents: Vec<AgentView>,
-    orchestrator_view: OrchestratorView,
-    worktree_panel: WorktreePanel,
-}
-
-// Agent management through TUI
-impl AgentPanel {
-    pub fn render_agent_list(&self, area: Rect, buf: &mut Buffer) {
-        // Show active agents with status indicators
-        // • Agent 1 [Refactoring] ████░░░░ 60%
-        // • Agent 2 [Testing] ████████ 100% ✓
-        // • Agent 3 [Reviewing] ██░░░░░░ 25%
-    }
-    
-    pub fn render_spawn_dialog(&self) -> SpawnAgentDialog {
-        // Modal dialog for spawning new agents
-        // Shows: capabilities selector, worktree options, task assignment
-    }
-}
-
-// Key bindings for agent management
-pub const AGENT_KEYS: &[KeyBinding] = &[
-    KeyBinding { key: "Ctrl+A", action: Action::OpenAgentPanel },
-    KeyBinding { key: "Ctrl+Shift+A", action: Action::SpawnAgent },
-    KeyBinding { key: "Ctrl+W", action: Action::CreateWorktreeAgent },
-    KeyBinding { key: "Tab", action: Action::SwitchAgent },
-    KeyBinding { key: "Ctrl+M", action: Action::MergeAgentWork },
-];
-```
-
-### TUI Navigation & History Browser
-```rust
-// tui/src/history_browser.rs
-pub struct HistoryBrowser {
-    timeline_view: TimelineView,
-    context_preview: ContextPreview,
-    branch_visualization: BranchTree,
-}
-
-impl HistoryBrowser {
-    pub fn render(&mut self, area: Rect, buf: &mut Buffer) {
-        // Visual timeline with clickable messages
-        // ──●──●──●──●──●──●── [Current]
-        //      └──●──●── [Branch: feature-x]
-        
-        // Preview pane shows context at selected point
-        // Jump button to restore that context
-    }
-    
-    pub fn handle_mouse(&mut self, event: MouseEvent) {
-        // Click on timeline point to preview
-        // Double-click to jump to that message
-    }
-}
-```
-
-### TUI Notification Integration
-```rust
-// tui/src/notifications.rs
-pub struct NotificationBar {
-    notifications: VecDeque<Notification>,
-    bell_enabled: bool,
-    flash_enabled: bool,
-}
-
-impl NotificationBar {
-    pub fn render(&self, area: Rect, buf: &mut Buffer) {
-        // Status bar with notifications
-        // [🔔] Task completed | Agent 2 finished refactoring
-    }
-    
-    pub fn trigger_bell(&self) {
-        // Terminal bell: \x07
-        if self.bell_enabled {
-            print!("\x07");
-        }
-    }
-    
-    pub fn flash_screen(&self) {
-        // Visual bell for accessibility
-    }
-}
-```
-
-### TUI Layout with Advanced Features
-```rust
-// tui/src/layout.rs
-pub struct EnhancedLayout {
-    main_chat: ChatArea,
-    agent_sidebar: Option<AgentPanel>,      // Toggle with Ctrl+A
-    history_panel: Option<HistoryPanel>,    // Toggle with Ctrl+H
-    session_status: SessionStatusBar,       // Always visible
-    notification_bar: NotificationBar,      // Always visible
-}
-
-// Status bar shows:
-// [Session: project-x] [●Recording] [Checkpoint: 5m ago] [Agents: 3 active] [Ctrl+? for help]
-```
-
-### TUI Quick Actions Menu
-```rust
-// Activated by Ctrl+Space or F1
-pub struct QuickActionsMenu {
-    actions: Vec<QuickAction>,
-}
-
-impl QuickActionsMenu {
-    pub fn default_actions() -> Vec<QuickAction> {
-        vec![
-            QuickAction::JumpToMessage,
-            QuickAction::SpawnAgent,
-            QuickAction::SaveSession,
-            QuickAction::CreateCheckpoint,
-            QuickAction::UndoLastTurn,
-            QuickAction::BranchConversation,
-            QuickAction::MergeAgentWork,
-        ]
-    }
-}
-```
-
-### Complete AGCodex Configuration
-```toml
-# ~/.agcodex/config.toml
-
-[general]
-app_name = "AGCodex"
-version = "1.0.0"
-default_mode = "build"
-reasoning_effort = "high"      # ALWAYS HIGH
-verbosity = "high"             # ALWAYS HIGH
-
-[intelligence]
-enabled = true
-mode = "medium"  # light/medium/hard
-cache_dir = "~/.agcodex/history/cache"
-
-[intelligence.light]
-embedding_model = "nomic-embed-text-v1.5"
-chunk_size = 256
-cache_size_mb = 100
-
-[intelligence.medium]
-embedding_model = "all-MiniLM-L6-v2"
-chunk_size = 512
-cache_size_mb = 500
-include_ast = true
-
-[intelligence.hard]
-embedding_model = "codebert-base"
-chunk_size = 1024
-cache_size_mb = 2000
-include_ast = true
-include_call_graph = true
-
-[sessions]
-auto_save = true
-auto_save_interval = "30s"
-base_dir = "~/.agcodex/history"
-compression = "zstd"
-max_sessions = 100
-
-[tools]
-fd_find.enabled = true
-fd_find.parallel = true
-ripgrep.enabled = true
-ripgrep.cache = true
-ast.enabled = true
-ast.languages = "*"  # All 50+ languages
-
-[ast_edit]
-enabled = true
-validation = "strict"
-backup_before_edit = true
-max_batch_edits = 100
-
-[embeddings]
-include_locations = true
-metadata_level = "full"
-context_before = 3
-context_after = 3
-
-[compaction]
-preserve_mappings = true
-precision = "high"
-default_level = "medium"
-
-# Operating modes configuration
-[modes]
-default = "build"
-allow_switching = true
-switch_key = "Shift+Tab"
-
-[modes.plan]
-read_only = true
-color = "blue"
-icon = "📋"
-prompt_suffix = "You are in PLAN MODE. Create detailed plans but do not execute."
-
-[modes.build]
-full_access = true
-color = "green"
-icon = "🔨"
-prompt_suffix = ""  # No restrictions
-
-[modes.review]
-quality_focus = true
-color = "yellow"
-icon = "🔍"
-max_edit_size = 10000
-prompt_suffix = "Focus on code quality, best practices, and potential issues."
-
-[tui]
-default_layout = "enhanced"  # "classic" or "enhanced"
-auto_checkpoint_interval = "5m"
-show_agent_panel = false  # Start with agent panel hidden
-show_history_browser = false
-enable_mouse = true
-theme = "dark"
-
-[tui.notifications]
-terminal_bell = true
-visual_bell = false  # For accessibility
-desktop_notify = true
-notification_position = "bottom-right"
-
-[tui.keybindings]
-# Custom keybinding overrides
-undo = "Ctrl+Z"
-redo = "Ctrl+Shift+Z"
-jump_to_message = "Ctrl+J"
-agent_panel = "F3"
-history_browser = "F4"
-
-[tui.layout]
-sidebar_width = 30
-history_panel_height = 10
-agent_list_position = "right"  # "left" or "right"
-```
+**Key Settings**:
+- `reasoning_effort = "high"` and `verbosity = "high"` (ALWAYS)
+- Intelligence modes: light/medium/hard with different embedding models
+- Session auto-save with Zstd compression
+- Mode switching via Shift+Tab (Plan/Build/Review)
+- Native tools enabled (fd_find, ripgrep, ast)
+- TUI with enhanced layout, notifications, and customizable keybindings
 
 ## TUI-First Architecture Principles
 
@@ -1617,30 +618,6 @@ agent_list_position = "right"  # "left" or "right"
 7. **Responsive design** - Adapts to terminal size, degrades gracefully
 8. **Accessibility** - Visual bell option, high contrast themes, screen reader hints
 
-## TUI Testing Strategy
-
-```rust
-// tui/tests/integration/
-use agcodex_tui::test_utils::*;
-
-#[tokio::test]
-async fn test_message_jump() {
-    let mut app = TestApp::new();
-    app.load_fixture("conversation_with_history.json");
-    
-    // Simulate Ctrl+J
-    app.send_key(KeyCode::Char('j'), KeyModifiers::CONTROL);
-    assert_eq!(app.mode(), AppMode::MessageJump);
-    
-    // Type to search
-    app.type_text("refactor");
-    assert!(app.filtered_messages().len() > 0);
-    
-    // Select and jump
-    app.send_key(KeyCode::Enter, KeyModifiers::NONE);
-    assert_eq!(app.current_message_id(), MessageId::from("msg_123"));
-}
-```
 
 ## Summary: AGCodex Transformation Goals
 
