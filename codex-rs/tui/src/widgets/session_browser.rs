@@ -8,15 +8,32 @@
 //! - Export and management operations
 
 use agcodex_core::modes::OperatingMode;
-use agcodex_persistence::types::{SessionIndex, SessionMetadata};
-use chrono::{DateTime, Utc};
+use agcodex_persistence::types::SessionIndex;
+use agcodex_persistence::types::SessionMetadata;
+use chrono::DateTime;
+use chrono::Utc;
 use ratatui::buffer::Buffer;
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{
-    Block, Borders, Clear, List, ListItem, ListState, Paragraph, Table, Row, Cell, Widget, WidgetRef,
-};
+use ratatui::layout::Constraint;
+use ratatui::layout::Direction;
+use ratatui::layout::Layout;
+use ratatui::layout::Rect;
+use ratatui::style::Color;
+use ratatui::style::Modifier;
+use ratatui::style::Style;
+use ratatui::text::Line;
+use ratatui::text::Span;
+use ratatui::widgets::Block;
+use ratatui::widgets::Borders;
+use ratatui::widgets::Cell;
+use ratatui::widgets::Clear;
+use ratatui::widgets::List;
+use ratatui::widgets::ListItem;
+use ratatui::widgets::ListState;
+use ratatui::widgets::Paragraph;
+use ratatui::widgets::Row;
+use ratatui::widgets::Table;
+use ratatui::widgets::Widget;
+use ratatui::widgets::WidgetRef;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -543,7 +560,9 @@ impl SessionBrowser {
         );
 
         let style = if self.focused_panel == FocusedPanel::Search {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(Color::White)
         };
@@ -564,7 +583,9 @@ impl SessionBrowser {
         };
 
         let search_style = if self.search_query.is_empty() {
-            Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC)
+            Style::default()
+                .fg(Color::DarkGray)
+                .add_modifier(Modifier::ITALIC)
         } else {
             Style::default().fg(Color::White)
         };
@@ -598,16 +619,21 @@ impl SessionBrowser {
             };
 
             Paragraph::new(empty_msg)
-                .style(Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC))
+                .style(
+                    Style::default()
+                        .fg(Color::DarkGray)
+                        .add_modifier(Modifier::ITALIC),
+                )
                 .render(inner, buf);
             return;
         }
 
         // Calculate visible range
         let visible_height = inner.height as usize;
-        let start_idx = self.session_scroll_state.scroll_top.min(
-            self.filtered_sessions.len().saturating_sub(visible_height)
-        );
+        let start_idx = self
+            .session_scroll_state
+            .scroll_top
+            .min(self.filtered_sessions.len().saturating_sub(visible_height));
         let end_idx = (start_idx + visible_height).min(self.filtered_sessions.len());
 
         // Create list items
@@ -617,24 +643,28 @@ impl SessionBrowser {
             .filter_map(|(local_idx, &session_id)| {
                 let global_idx = start_idx + local_idx;
                 let metadata = self.session_index.sessions.get(&session_id)?;
-                
+
                 let is_selected = Some(global_idx) == self.session_scroll_state.selected_idx;
                 let is_favorite = metadata.is_favorite;
 
                 let (mode_icon, mode_color) = Self::mode_display(metadata.current_mode);
-                
+
                 let mut spans = vec![
                     Span::styled(
                         if is_favorite { "★ " } else { "  " },
-                        Style::default().fg(Color::Yellow)
+                        Style::default().fg(Color::Yellow),
                     ),
                     Span::styled(mode_icon, Style::default().fg(mode_color)),
                     Span::raw(" "),
                     Span::styled(
                         &metadata.title,
-                        Style::default().fg(Color::White).add_modifier(
-                            if is_selected { Modifier::BOLD } else { Modifier::empty() }
-                        )
+                        Style::default()
+                            .fg(Color::White)
+                            .add_modifier(if is_selected {
+                                Modifier::BOLD
+                            } else {
+                                Modifier::empty()
+                            }),
                     ),
                 ];
 
@@ -642,11 +672,12 @@ impl SessionBrowser {
                 spans.extend_from_slice(&[
                     Span::raw(" "),
                     Span::styled(
-                        format!("({} msgs, {})", 
+                        format!(
+                            "({} msgs, {})",
                             metadata.message_count,
                             Self::format_file_size(metadata.file_size)
                         ),
-                        Style::default().fg(Color::DarkGray)
+                        Style::default().fg(Color::DarkGray),
                     ),
                 ]);
 
@@ -682,69 +713,122 @@ impl SessionBrowser {
 
         if let Some(metadata) = self.selected_session_metadata() {
             let (mode_icon, mode_color) = Self::mode_display(metadata.current_mode);
-            
+
             let lines = vec![
                 Line::from(vec![
-                    Span::styled("Title: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "Title: ",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::styled(&metadata.title, Style::default().fg(Color::White)),
                 ]),
                 Line::from(vec![
-                    Span::styled("Mode: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "Mode: ",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::styled(mode_icon, Style::default().fg(mode_color)),
                 ]),
                 Line::from(vec![
-                    Span::styled("Model: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "Model: ",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::styled(&metadata.model, Style::default().fg(Color::White)),
                 ]),
                 Line::from(""),
                 Line::from(vec![
-                    Span::styled("Created: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "Created: ",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::styled(
                         metadata.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
-                        Style::default().fg(Color::White)
+                        Style::default().fg(Color::White),
                     ),
                 ]),
                 Line::from(vec![
-                    Span::styled("Last Accessed: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
                     Span::styled(
-                        metadata.last_accessed.format("%Y-%m-%d %H:%M:%S").to_string(),
-                        Style::default().fg(Color::White)
+                        "Last Accessed: ",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(
+                        metadata
+                            .last_accessed
+                            .format("%Y-%m-%d %H:%M:%S")
+                            .to_string(),
+                        Style::default().fg(Color::White),
                     ),
                 ]),
                 Line::from(vec![
-                    Span::styled("Duration: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "Duration: ",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::styled(
                         Self::format_duration(&metadata.created_at, &metadata.updated_at),
-                        Style::default().fg(Color::White)
+                        Style::default().fg(Color::White),
                     ),
                 ]),
                 Line::from(""),
                 Line::from(vec![
-                    Span::styled("Messages: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "Messages: ",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::styled(
                         metadata.message_count.to_string(),
-                        Style::default().fg(Color::White)
+                        Style::default().fg(Color::White),
                     ),
                 ]),
                 Line::from(vec![
-                    Span::styled("Turns: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "Turns: ",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::styled(
                         metadata.turn_count.to_string(),
-                        Style::default().fg(Color::White)
+                        Style::default().fg(Color::White),
                     ),
                 ]),
                 Line::from(vec![
-                    Span::styled("File Size: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "File Size: ",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::styled(
                         Self::format_file_size(metadata.file_size),
-                        Style::default().fg(Color::White)
+                        Style::default().fg(Color::White),
                     ),
                 ]),
                 Line::from(vec![
-                    Span::styled("Compression: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "Compression: ",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::styled(
                         format!("{:.1}%", metadata.compression_ratio * 100.0),
-                        Style::default().fg(Color::White)
+                        Style::default().fg(Color::White),
                     ),
                 ]),
             ];
@@ -753,9 +837,12 @@ impl SessionBrowser {
             if !metadata.tags.is_empty() {
                 let mut tag_lines = vec![
                     Line::from(""),
-                    Line::from(vec![
-                        Span::styled("Tags: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-                    ]),
+                    Line::from(vec![Span::styled(
+                        "Tags: ",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    )]),
                 ];
 
                 for tag in &metadata.tags {
@@ -764,7 +851,7 @@ impl SessionBrowser {
                         Span::styled(tag, Style::default().fg(Color::Green)),
                     ]));
                 }
-                
+
                 let mut all_lines = lines;
                 all_lines.extend(tag_lines);
                 Paragraph::new(all_lines).render(inner, buf);
@@ -778,7 +865,11 @@ impl SessionBrowser {
             }
         } else {
             Paragraph::new("No session selected")
-                .style(Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC))
+                .style(
+                    Style::default()
+                        .fg(Color::DarkGray)
+                        .add_modifier(Modifier::ITALIC),
+                )
                 .render(inner, buf);
         }
     }
@@ -801,32 +892,39 @@ impl SessionBrowser {
 
         if self.actions.is_empty() {
             Paragraph::new("No actions available")
-                .style(Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC))
+                .style(
+                    Style::default()
+                        .fg(Color::DarkGray)
+                        .add_modifier(Modifier::ITALIC),
+                )
                 .render(inner, buf);
             return;
         }
 
-        let items: Vec<ListItem> = self.actions
+        let items: Vec<ListItem> = self
+            .actions
             .iter()
             .enumerate()
             .map(|(idx, action)| {
                 let is_selected = Some(idx) == self.action_scroll_state.selected_idx;
-                
-                let mut spans = vec![
-                    Span::styled(
-                        action.display_name(),
-                        Style::default().fg(Color::White).add_modifier(
-                            if is_selected { Modifier::BOLD } else { Modifier::empty() }
-                        )
-                    ),
-                ];
+
+                let mut spans = vec![Span::styled(
+                    action.display_name(),
+                    Style::default()
+                        .fg(Color::White)
+                        .add_modifier(if is_selected {
+                            Modifier::BOLD
+                        } else {
+                            Modifier::empty()
+                        }),
+                )];
 
                 if let Some(shortcut) = action.shortcut() {
                     spans.extend_from_slice(&[
                         Span::raw(" "),
                         Span::styled(
                             format!("({})", shortcut),
-                            Style::default().fg(Color::DarkGray)
+                            Style::default().fg(Color::DarkGray),
                         ),
                     ]);
                 }
@@ -850,20 +948,14 @@ impl SessionBrowser {
             FocusedPanel::SessionList => {
                 "↑/↓: Navigate | Enter: Open | Del: Delete | Tab: Next Panel | /: Search | V: View Mode | S: Sort"
             }
-            FocusedPanel::Preview => {
-                "Tab: Next Panel | Enter: Open Session"
-            }
-            FocusedPanel::Actions => {
-                "↑/↓: Navigate | Enter: Execute Action | Tab: Next Panel"
-            }
+            FocusedPanel::Preview => "Tab: Next Panel | Enter: Open Session",
+            FocusedPanel::Actions => "↑/↓: Navigate | Enter: Execute Action | Tab: Next Panel",
             FocusedPanel::Search => {
                 "Type to search | Enter: Confirm | Esc: Cancel | Tab: Next Panel"
             }
         };
 
-        let block = Block::default()
-            .borders(Borders::ALL)
-            .title("Help");
+        let block = Block::default().borders(Borders::ALL).title("Help");
 
         let inner = block.inner(area);
         block.render(area, buf);
@@ -878,10 +970,10 @@ impl SessionBrowser {
         // Center the dialog
         let dialog_width = 50.min(area.width.saturating_sub(4));
         let dialog_height = 7.min(area.height.saturating_sub(4));
-        
+
         let dialog_x = (area.width.saturating_sub(dialog_width)) / 2;
         let dialog_y = (area.height.saturating_sub(dialog_height)) / 2;
-        
+
         let dialog_area = Rect {
             x: area.x + dialog_x,
             y: area.y + dialog_y,
@@ -904,9 +996,17 @@ impl SessionBrowser {
             Line::from(self.confirmation_message.as_str()),
             Line::from(""),
             Line::from(vec![
-                Span::styled("Y", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "Y",
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::raw("es / "),
-                Span::styled("N", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "N",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
                 Span::raw("o"),
             ]),
         ];
@@ -921,10 +1021,10 @@ impl SessionBrowser {
         // Center the dialog
         let dialog_width = 40.min(area.width.saturating_sub(4));
         let dialog_height = 10.min(area.height.saturating_sub(4));
-        
+
         let dialog_x = (area.width.saturating_sub(dialog_width)) / 2;
         let dialog_y = (area.height.saturating_sub(dialog_height)) / 2;
-        
+
         let dialog_area = Rect {
             x: area.x + dialog_x,
             y: area.y + dialog_y,
@@ -947,19 +1047,39 @@ impl SessionBrowser {
             Line::from("Choose export format:"),
             Line::from(""),
             Line::from(vec![
-                Span::styled("1", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "1",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::raw(". Markdown (conversation only)"),
             ]),
             Line::from(vec![
-                Span::styled("2", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "2",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::raw(". Markdown (with metadata)"),
             ]),
             Line::from(vec![
-                Span::styled("3", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "3",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::raw(". JSON (complete data)"),
             ]),
             Line::from(vec![
-                Span::styled("4", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "4",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::raw(". Plain text"),
             ]),
             Line::from(""),
@@ -1002,7 +1122,7 @@ mod tests {
     fn test_session_browser_creation() {
         let session_index = SessionIndex::new();
         let browser = SessionBrowser::new(session_index);
-        
+
         assert_eq!(browser.view_mode, ViewMode::List);
         assert_eq!(browser.sort_by, SortBy::LastAccessed);
         assert_eq!(browser.focused_panel, FocusedPanel::SessionList);
@@ -1013,15 +1133,15 @@ mod tests {
     fn test_view_mode_toggle() {
         let session_index = SessionIndex::new();
         let mut browser = SessionBrowser::new(session_index);
-        
+
         assert_eq!(browser.view_mode, ViewMode::List);
-        
+
         browser.toggle_view_mode();
         assert_eq!(browser.view_mode, ViewMode::Timeline);
-        
+
         browser.toggle_view_mode();
         assert_eq!(browser.view_mode, ViewMode::Tree);
-        
+
         browser.toggle_view_mode();
         assert_eq!(browser.view_mode, ViewMode::List);
     }
@@ -1031,19 +1151,19 @@ mod tests {
         let mut session_index = SessionIndex::new();
         let metadata1 = create_test_session_metadata("Test Session 1");
         let metadata2 = create_test_session_metadata("Another Session");
-        
+
         session_index.add_session(metadata1);
         session_index.add_session(metadata2);
-        
+
         let mut browser = SessionBrowser::new(session_index);
         assert_eq!(browser.filtered_sessions.len(), 2);
-        
+
         browser.set_search_query("Test".to_string());
         assert_eq!(browser.filtered_sessions.len(), 1);
-        
+
         browser.set_search_query("Session".to_string());
         assert_eq!(browser.filtered_sessions.len(), 2);
-        
+
         browser.set_search_query("NonExistent".to_string());
         assert_eq!(browser.filtered_sessions.len(), 0);
     }
@@ -1052,18 +1172,18 @@ mod tests {
     fn test_panel_focus_cycling() {
         let session_index = SessionIndex::new();
         let mut browser = SessionBrowser::new(session_index);
-        
+
         assert_eq!(browser.focused_panel, FocusedPanel::SessionList);
-        
+
         browser.focus_next_panel();
         assert_eq!(browser.focused_panel, FocusedPanel::Preview);
-        
+
         browser.focus_next_panel();
         assert_eq!(browser.focused_panel, FocusedPanel::Actions);
-        
+
         browser.focus_next_panel();
         assert_eq!(browser.focused_panel, FocusedPanel::Search);
-        
+
         browser.focus_next_panel();
         assert_eq!(browser.focused_panel, FocusedPanel::SessionList);
     }
@@ -1080,21 +1200,21 @@ mod tests {
     fn test_sort_cycling() {
         let session_index = SessionIndex::new();
         let mut browser = SessionBrowser::new(session_index);
-        
+
         assert_eq!(browser.sort_by, SortBy::LastAccessed);
-        
+
         browser.cycle_sort();
         assert_eq!(browser.sort_by, SortBy::Created);
-        
+
         browser.cycle_sort();
         assert_eq!(browser.sort_by, SortBy::Name);
-        
+
         browser.cycle_sort();
         assert_eq!(browser.sort_by, SortBy::MessageCount);
-        
+
         browser.cycle_sort();
         assert_eq!(browser.sort_by, SortBy::Size);
-        
+
         browser.cycle_sort();
         assert_eq!(browser.sort_by, SortBy::LastAccessed);
     }

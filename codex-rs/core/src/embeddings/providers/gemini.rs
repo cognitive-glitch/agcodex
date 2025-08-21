@@ -5,10 +5,14 @@
 //! - Batch processing
 //! - Uses GEMINI_API_KEY environment variable
 
-use super::super::{EmbeddingError, EmbeddingProvider, EmbeddingVector};
+use super::super::EmbeddingError;
+use super::super::EmbeddingProvider;
+use super::super::EmbeddingVector;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
-use tokio::time::{sleep, Duration};
+use serde::Deserialize;
+use serde::Serialize;
+use tokio::time::Duration;
+use tokio::time::sleep;
 
 /// Gemini embedding provider
 pub struct GeminiProvider {
@@ -20,10 +24,7 @@ pub struct GeminiProvider {
 
 impl GeminiProvider {
     /// Create a new Gemini provider
-    pub fn new(
-        api_key: String,
-        model: String,
-    ) -> Self {
+    pub fn new(api_key: String, model: String) -> Self {
         Self {
             client: Client::new(),
             api_key,
@@ -33,11 +34,7 @@ impl GeminiProvider {
     }
 
     /// Create a new Gemini provider with custom endpoint
-    pub fn new_with_endpoint(
-        api_key: String,
-        model: String,
-        api_endpoint: String,
-    ) -> Self {
+    pub fn new_with_endpoint(api_key: String, model: String, api_endpoint: String) -> Self {
         Self {
             client: Client::new(),
             api_key,
@@ -111,14 +108,13 @@ impl EmbeddingProvider for GeminiProvider {
             },
         };
 
-        let endpoint = self.api_endpoint.as_deref().unwrap_or(
-            "https://generativelanguage.googleapis.com"
-        );
+        let endpoint = self
+            .api_endpoint
+            .as_deref()
+            .unwrap_or("https://generativelanguage.googleapis.com");
         let url = format!(
             "{}/v1/models/{}:embedContent?key={}",
-            endpoint,
-            self.model,
-            self.api_key
+            endpoint, self.model, self.api_key
         );
 
         let response = self
@@ -132,8 +128,11 @@ impl EmbeddingProvider for GeminiProvider {
 
         let status = response.status();
         if !status.is_success() {
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+
             // Try to parse Gemini error format
             if let Ok(error) = serde_json::from_str::<GeminiError>(&error_text) {
                 return Err(EmbeddingError::ApiError(format!(
@@ -143,11 +142,10 @@ impl EmbeddingProvider for GeminiProvider {
                     error.error.message
                 )));
             }
-            
+
             return Err(EmbeddingError::ApiError(format!(
                 "Gemini API error ({}): {}",
-                status,
-                error_text
+                status, error_text
             )));
         }
 
@@ -176,11 +174,11 @@ impl EmbeddingProvider for GeminiProvider {
         // Gemini doesn't support batch embedding in a single call,
         // so we need to make multiple requests
         let mut embeddings = Vec::with_capacity(texts.len());
-        
+
         for text in texts {
             let embedding = self.embed(text).await?;
             embeddings.push(embedding);
-            
+
             // Add a small delay to respect rate limits
             sleep(Duration::from_millis(100)).await;
         }
@@ -193,53 +191,37 @@ impl EmbeddingProvider for GeminiProvider {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_model_id() {
-        let provider = GeminiProvider::new(
-            "test-key".to_string(),
-            "embedding-001".to_string(),
-        );
+        let provider = GeminiProvider::new("test-key".to_string(), "embedding-001".to_string());
         assert_eq!(provider.model_id(), "gemini:embedding-001");
     }
 
     #[test]
     fn test_dimensions() {
-        let provider = GeminiProvider::new(
-            "test-key".to_string(),
-            "gemini-embedding-001".to_string(),
-        );
+        let provider =
+            GeminiProvider::new("test-key".to_string(), "gemini-embedding-001".to_string());
         assert_eq!(provider.dimensions(), 768);
 
-        let provider_old = GeminiProvider::new(
-            "test-key".to_string(),
-            "text-embedding-004".to_string(),
-        );
+        let provider_old =
+            GeminiProvider::new("test-key".to_string(), "text-embedding-004".to_string());
         assert_eq!(provider_old.dimensions(), 768);
 
-        let provider_default = GeminiProvider::new(
-            "test-key".to_string(),
-            "unknown-model".to_string(),
-        );
+        let provider_default =
+            GeminiProvider::new("test-key".to_string(), "unknown-model".to_string());
         assert_eq!(provider_default.dimensions(), 768);
     }
 
     #[test]
     fn test_is_available() {
-        let provider = GeminiProvider::new(
-            "test-key".to_string(),
-            "embedding-001".to_string(),
-        );
+        let provider = GeminiProvider::new("test-key".to_string(), "embedding-001".to_string());
         assert!(provider.is_available());
 
-        let provider_empty = GeminiProvider::new(
-            String::new(),
-            "embedding-001".to_string(),
-        );
+        let provider_empty = GeminiProvider::new(String::new(), "embedding-001".to_string());
         assert!(!provider_empty.is_available());
     }
 }

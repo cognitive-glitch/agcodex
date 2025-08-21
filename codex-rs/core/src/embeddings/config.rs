@@ -1,6 +1,7 @@
 //! Configuration for embeddings - completely independent from chat model configuration.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
 
 /// Main embeddings configuration
@@ -9,23 +10,23 @@ pub struct EmbeddingsConfig {
     /// Whether embeddings are enabled (default: false)
     #[serde(default)]
     pub enabled: bool,
-    
+
     /// Provider selection strategy
     #[serde(default = "default_provider")]
     pub provider: ProviderSelection,
-    
+
     /// OpenAI configuration (if using OpenAI)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub openai: Option<OpenAIConfig>,
-    
+
     /// Gemini configuration (if using Gemini)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gemini: Option<GeminiConfig>,
-    
+
     /// Voyage configuration (if using Voyage)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub voyage: Option<VoyageConfig>,
-    
+
     /// Cache settings
     #[serde(default)]
     pub cache: CacheConfig,
@@ -58,7 +59,7 @@ pub enum ProviderSelection {
     Voyage,
 }
 
-fn default_provider() -> ProviderSelection {
+const fn default_provider() -> ProviderSelection {
     ProviderSelection::Auto
 }
 
@@ -68,11 +69,11 @@ pub struct OpenAIConfig {
     /// Model to use (e.g., "text-embedding-3-small", "text-embedding-3-large")
     #[serde(default = "default_openai_model")]
     pub model: String,
-    
+
     /// Optional dimension override (for models that support it)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dimensions: Option<usize>,
-    
+
     /// API endpoint (for custom/proxy endpoints)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_endpoint: Option<String>,
@@ -88,7 +89,7 @@ pub struct GeminiConfig {
     /// Model to use (e.g., "gemini-embedding-001")
     #[serde(default = "default_gemini_model")]
     pub model: String,
-    
+
     /// Task type for embeddings
     #[serde(default = "default_task_type")]
     pub task_type: String,
@@ -108,7 +109,7 @@ pub struct VoyageConfig {
     /// Model to use (e.g., "voyage-3.5", "voyage-3.5-large")
     #[serde(default = "default_voyage_model")]
     pub model: String,
-    
+
     /// Input type (document, query)
     #[serde(default = "default_input_type")]
     pub input_type: String,
@@ -128,11 +129,11 @@ pub struct CacheConfig {
     /// Enable caching of embeddings
     #[serde(default = "default_true")]
     pub enabled: bool,
-    
+
     /// Maximum cache size in MB
     #[serde(default = "default_cache_size")]
     pub max_size_mb: usize,
-    
+
     /// Cache TTL in seconds
     #[serde(default = "default_cache_ttl")]
     pub ttl_seconds: u64,
@@ -148,15 +149,15 @@ impl Default for CacheConfig {
     }
 }
 
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
 
-fn default_cache_size() -> usize {
+const fn default_cache_size() -> usize {
     500
 }
 
-fn default_cache_ttl() -> u64 {
+const fn default_cache_ttl() -> u64 {
     3600
 }
 
@@ -233,17 +234,14 @@ pub fn load_embeddings_config() -> EmbeddingsConfig {
         dirs::home_dir()
             .unwrap_or_default()
             .join(".agcodex")
-            .join("config.toml")
-    ) {
-        if let Ok(config) = toml::from_str::<HashMap<String, toml::Value>>(&config_str) {
-            if let Some(embeddings) = config.get("embeddings") {
-                if let Ok(config) = embeddings.clone().try_into::<EmbeddingsConfig>() {
-                    return config;
-                }
-            }
-        }
+            .join("config.toml"),
+    ) && let Ok(config) = toml::from_str::<HashMap<String, toml::Value>>(&config_str)
+        && let Some(embeddings) = config.get("embeddings")
+        && let Ok(config) = embeddings.clone().try_into::<EmbeddingsConfig>()
+    {
+        return config;
     }
-    
+
     // Default: disabled
     EmbeddingsConfig::default()
 }
@@ -274,23 +272,23 @@ pub fn get_embedding_api_key(provider: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_default_config_is_disabled() {
         let config = EmbeddingsConfig::default();
         assert!(!config.enabled);
     }
-    
+
     #[test]
     fn test_intelligence_mode_mapping() {
         let light_openai = IntelligenceMode::Light.model_config("openai");
         assert_eq!(light_openai.model, "text-embedding-3-small");
         assert_eq!(light_openai.dimensions, Some(256));
-        
+
         let hard_openai = IntelligenceMode::Hard.model_config("openai");
         assert_eq!(hard_openai.model, "text-embedding-3-large");
         assert_eq!(hard_openai.dimensions, Some(3072));
-        
+
         let medium_gemini = IntelligenceMode::Medium.model_config("gemini");
         assert_eq!(medium_gemini.model, "gemini-embedding-001");
         assert_eq!(medium_gemini.dimensions, Some(768));

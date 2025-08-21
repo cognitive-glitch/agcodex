@@ -50,7 +50,7 @@ pub struct McpProcess {
 impl McpProcess {
     pub async fn new(codex_home: &Path) -> anyhow::Result<Self> {
         // Use assert_cmd to locate the binary path and then switch to tokio::process::Command
-        let std_cmd = StdCommand::cargo_bin("codex-mcp-server")
+        let std_cmd = StdCommand::cargo_bin("agcodex-mcp-server")
             .context("should find binary for codex-mcp-server")?;
 
         let program = std_cmd.get_program().to_owned();
@@ -65,7 +65,7 @@ impl McpProcess {
         let mut process = cmd
             .kill_on_drop(true)
             .spawn()
-            .context("codex-mcp-server proc should start")?;
+            .context("agcodex-mcp-server proc should start")?;
         let stdin = process
             .stdin
             .take()
@@ -123,7 +123,7 @@ impl McpProcess {
                         },
                     },
                     "serverInfo": {
-                        "name": "codex-mcp-server",
+                        "name": "agcodex-mcp-server",
                         "title": "Codex",
                         "version": "0.0.0"
                     },
@@ -151,7 +151,7 @@ impl McpProcess {
         params: CodexToolCallParam,
     ) -> anyhow::Result<i64> {
         let codex_tool_call_params = CallToolRequestParams {
-            name: "codex".to_string(),
+            name: "agcodex".to_string(),
             arguments: Some(serde_json::to_value(params)?),
         };
         self.send_request(

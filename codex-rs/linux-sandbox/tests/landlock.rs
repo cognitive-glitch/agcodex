@@ -6,6 +6,7 @@ use agcodex_core::exec::ExecParams;
 use agcodex_core::exec::SandboxType;
 use agcodex_core::exec::process_exec_tool_call;
 use agcodex_core::exec_env::create_env;
+use agcodex_core::modes::ModeRestrictions;
 use agcodex_core::protocol::SandboxPolicy;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -61,6 +62,7 @@ async fn run_cmd(cmd: &[&str], writable_roots: &[PathBuf], timeout_ms: u64) {
         &sandbox_policy,
         &codex_linux_sandbox_exe,
         None,
+        &ModeRestrictions::default(),
     )
     .await
     .unwrap();
@@ -153,6 +155,7 @@ async fn assert_network_blocked(cmd: &[&str]) {
         &sandbox_policy,
         &codex_linux_sandbox_exe,
         None,
+        &ModeRestrictions::default(),
     )
     .await;
 

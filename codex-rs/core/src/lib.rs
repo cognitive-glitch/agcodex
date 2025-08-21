@@ -55,6 +55,7 @@ pub mod seatbelt;
 pub mod shell;
 pub mod spawn;
 pub mod subagents;
+pub mod tools;
 pub mod turn_diff_tracker;
 pub mod user_agent;
 mod user_notification;

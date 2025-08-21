@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::codex_message_processor::CodexMessageProcessor;
-use crate::codex_tool_config::CodexToolCallParam;
-use crate::codex_tool_config::CodexToolCallReplyParam;
-use crate::codex_tool_config::create_tool_for_codex_tool_call_param;
-use crate::codex_tool_config::create_tool_for_codex_tool_call_reply_param;
+use crate::agcodex_message_processor::CodexMessageProcessor;
+use crate::agcodex_tool_config::CodexToolCallParam;
+use crate::agcodex_tool_config::CodexToolCallReplyParam;
+use crate::agcodex_tool_config::create_tool_for_codex_tool_call_param;
+use crate::agcodex_tool_config::create_tool_for_codex_tool_call_reply_param;
 use crate::error_code::INVALID_REQUEST_ERROR_CODE;
 use crate::outgoing_message::OutgoingMessageSender;
 use agcodex_protocol::mcp_protocol::ClientRequest;
@@ -63,7 +63,7 @@ impl MessageProcessor {
             initialized: false,
             codex_linux_sandbox_exe,
             conversation_manager,
-            running_requests_id_to_codex_uuid: Arc::new(Mutex::new(HashMap::new())),
+            running_requests_id_to_agcodex_uuid: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -218,7 +218,7 @@ impl MessageProcessor {
             instructions: None,
             protocol_version: params.protocol_version.clone(),
             server_info: agcodex_mcp_types::Implementation {
-                name: "codex-mcp-server".to_string(),
+                name: "agcodex-mcp-server".to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 title: Some("Codex".to_string()),
             },
@@ -323,8 +323,8 @@ impl MessageProcessor {
         let CallToolRequestParams { name, arguments } = params;
 
         match name.as_str() {
-            "codex" => self.handle_tool_call_codex(id, arguments).await,
-            "codex-reply" => {
+            "agcodex" => self.handle_tool_call_codex(id, arguments).await,
+            "agcodex-reply" => {
                 self.handle_tool_call_codex_session_reply(id, arguments)
                     .await
             }
@@ -407,7 +407,7 @@ impl MessageProcessor {
         // block the synchronous message-processing loop.
         task::spawn(async move {
             // Run the Codex session and stream events back to the client.
-            crate::codex_tool_runner::run_codex_tool_session(
+            crate::agcodex_tool_runner::run_codex_tool_session(
                 id,
                 initial_prompt,
                 config,
@@ -513,7 +513,7 @@ impl MessageProcessor {
             let running_requests_id_to_codex_uuid = running_requests_id_to_codex_uuid.clone();
 
             async move {
-                crate::codex_tool_runner::run_codex_tool_session_reply(
+                crate::agcodex_tool_runner::run_codex_tool_session_reply(
                     codex,
                     outgoing,
                     request_id,

@@ -1,6 +1,6 @@
 //! Unit tests for AGCodex rebranding verification.
 //!
-//! Ensures complete migration from "codex" to "agcodex" across all
+//! Ensures complete migration from "agcodex" to "agcodex" across all
 //! crates, binaries, documentation, and configuration files.
 
 use std::fs;
@@ -17,13 +17,13 @@ const EXCLUDED_PATHS: &[&str] = &[
     "tests/fixtures/",
 ];
 
-/// Patterns that indicate old "codex" references that should be updated
+/// Patterns that indicate old "agcodex" references that should be updated
 const OLD_PATTERNS: &[&str] = &[
-    r"\bcodex\b",           // Word boundary "codex"
+    r"\bcodex\b",           // Word boundary "agcodex"
     r"\bCodex\b",           // Word boundary "Codex"
     r"\bCODEX\b",           // Word boundary "CODEX"
-    r"codex-",              // Hyphenated references
-    r"codex_",              // Underscore references
+    r"agcodex-",              // Hyphenated references
+    r"agcodex_",              // Underscore references
     r"/codex/",             // Path references
     r"\.codex\b",           // Config directory references
 ];
@@ -39,12 +39,12 @@ const NEW_PATTERNS: &[&str] = &[
     r"\.agcodex\b",         // Config directory references
 ];
 
-/// Exception patterns that are allowed to contain "codex"
+/// Exception patterns that are allowed to contain "agcodex"
 const ALLOWED_EXCEPTIONS: &[&str] = &[
     r"//.*codex.*",        // Comments referencing old codex
     r"/\*.*codex.*\*/",    // Block comments
     r"#.*codex.*",         // Config comments
-    r"codex_conversation", // Specific module names that haven't migrated yet
+    r"agcodex_conversation", // Specific module names that haven't migrated yet
     r"create_dummy_codex_auth", // Test functions
 ];
 
@@ -59,7 +59,7 @@ fn test_cargo_toml_rebranding() {
         .expect("Failed to read Cargo.toml");
     
     // Should not contain old references
-    assert!(!content.contains("codex_cli_rs"), 
+    assert!(!content.contains("agcodex_cli_rs"), 
            "Cargo.toml still contains 'codex_cli_rs' reference");
     
     // Should contain new references
@@ -86,7 +86,7 @@ fn test_crate_names_rebranded() {
                 .expect(&format!("Failed to read {}/Cargo.toml", crate_dir));
             
             // Check for old package names
-            assert!(!content.contains(r#"name = "codex-"#),
+            assert!(!content.contains(r#"name = "agcodex-"#),
                    "{}/Cargo.toml contains old codex package name", crate_dir);
             
             // Most crates should have agcodex prefix or be agcodex itself
@@ -108,7 +108,7 @@ fn test_binary_names_rebranded() {
         
         // Binary should be named agcodex, not codex
         if content.contains("[[bin]]") {
-            assert!(!content.contains(r#"name = "codex""#),
+            assert!(!content.contains(r#"name = "agcodex""#),
                    "CLI binary still named 'codex'");
         }
     }
@@ -386,8 +386,8 @@ fn is_match_exception(content: &str, match_start: usize, matched_text: &str) -> 
         }
     }
     
-    // Allow "codex" in specific contexts
-    if matched_text == "codex" && (
+    // Allow "agcodex" in specific contexts
+    if matched_text == "agcodex" && (
         line.contains("// Legacy") ||
         line.contains("// TODO") ||
         line.contains("// Old") ||

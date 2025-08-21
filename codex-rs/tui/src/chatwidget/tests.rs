@@ -81,7 +81,7 @@ fn final_answer_without_newline_is_flushed_immediately() {
                 .flat_map(|l| l.spans.iter())
                 .map(|sp| sp.content.clone())
                 .collect::<String>();
-            s.contains("codex")
+            s.contains("agcodex")
         }),
         "expected 'codex' header to be emitted",
     );
@@ -322,7 +322,7 @@ async fn binary_size_transcript_matches_ideal_fixture() {
         };
 
         match kind {
-            "codex_event" => {
+            "agcodex_event" => {
                 if let Some(payload) = v.get("payload") {
                     let ev: Event = serde_json::from_value(payload.clone()).expect("parse");
                     chat.handle_codex_event(ev);
@@ -756,7 +756,7 @@ fn headers_emitted_on_stream_begin_for_answer_and_reasoning() {
                 .map(|sp| sp.content.clone())
                 .collect::<Vec<_>>()
                 .join("");
-            if s.contains("codex") {
+            if s.contains("agcodex") {
                 saw_codex_pre = true;
                 break;
             }
@@ -784,7 +784,7 @@ fn headers_emitted_on_stream_begin_for_answer_and_reasoning() {
                 .map(|sp| sp.content.clone())
                 .collect::<Vec<_>>()
                 .join("");
-            if s.contains("codex") {
+            if s.contains("agcodex") {
                 saw_codex_post = true;
                 break;
             }
@@ -865,7 +865,7 @@ fn multiple_agent_messages_in_single_turn_emit_multiple_headers() {
         for l in lines {
             for sp in &l.spans {
                 let s = &sp.content;
-                if s == "codex" {
+                if s == "agcodex" {
                     header_count += 1;
                 }
                 combined.push_str(s);

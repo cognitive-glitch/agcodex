@@ -7,23 +7,26 @@
 //! - Inter-agent messaging with priorities
 //! - Performance metrics tracking
 
+use crate::code_tools::ast_agent_tools::Location as SourceLocation;
 use crate::modes::OperatingMode;
 use ast::types::ParsedAst;
-use crate::code_tools::ast_agent_tools::Location as SourceLocation;
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
+use chrono::Utc;
 use dashmap::DashMap;
-use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    sync::{
-        atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering},
-        Arc,
-    },
-    time::{Duration, Instant},
-};
+use serde::Deserialize;
+use serde::Serialize;
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicU8;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
+use std::time::Duration;
+use std::time::Instant;
 use thiserror::Error;
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::RwLock;
+use tokio::sync::mpsc;
 use uuid::Uuid;
 
 /// Errors that can occur in context operations
@@ -250,6 +253,12 @@ pub struct ProgressTracker {
     stage_history: RwLock<Vec<StageHistory>>,
 }
 
+impl Default for ProgressTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ProgressTracker {
     /// Create a new progress tracker
     pub fn new() -> Self {
@@ -276,7 +285,7 @@ impl ProgressTracker {
     pub async fn next_stage(&self) -> ContextResult<()> {
         let stages = self.stages.read().await;
         let current = self.current_stage.load(Ordering::SeqCst);
-        
+
         if current < stages.len() {
             // Record completion of current stage
             if current > 0 {
@@ -287,16 +296,16 @@ impl ProgressTracker {
                     completed_at: Instant::now(),
                 });
             }
-            
+
             self.current_stage.fetch_add(1, Ordering::SeqCst);
             self.progress.store(0, Ordering::SeqCst);
-            
+
             let _ = self.tx.send(ProgressEvent::StageChanged {
                 stage: current + 1,
                 total_stages: stages.len(),
             });
         }
-        
+
         Ok(())
     }
 
@@ -304,7 +313,7 @@ impl ProgressTracker {
     pub fn update_progress(&self, progress: u8) {
         let clamped = progress.min(100);
         self.progress.store(clamped, Ordering::SeqCst);
-        
+
         let _ = self.tx.send(ProgressEvent::Progress {
             percentage: clamped,
             stage: self.current_stage.load(Ordering::SeqCst),
@@ -321,17 +330,17 @@ impl ProgressTracker {
         let stages = self.stages.read().await;
         let current_stage = self.current_stage.load(Ordering::SeqCst);
         let history = self.stage_history.read().await;
-        
+
         if stages.is_empty() || current_stage >= stages.len() {
             return None;
         }
-        
+
         // Calculate average time per stage from history
         if history.is_empty() {
             // Estimate based on current progress
             let elapsed = self.start_time.elapsed();
             let progress = self.progress.load(Ordering::SeqCst) as f64 / 100.0;
-            
+
             if progress > 0.01 {
                 let estimated_total = elapsed.as_secs_f64() / progress;
                 let remaining = estimated_total - elapsed.as_secs_f64();
@@ -344,13 +353,13 @@ impl ProgressTracker {
                 .map(|h| h.duration.as_secs_f64())
                 .sum::<f64>()
                 / history.len() as f64;
-            
+
             let remaining_stages = stages.len() - current_stage;
             let estimated_remaining = avg_stage_time * remaining_stages as f64;
-            
+
             return Some(Duration::from_secs_f64(estimated_remaining));
         }
-        
+
         None
     }
 
@@ -359,7 +368,7 @@ impl ProgressTracker {
         let stages = self.stages.read().await;
         let current_stage = self.current_stage.load(Ordering::SeqCst);
         let progress = self.progress.load(Ordering::SeqCst);
-        
+
         ProgressInfo {
             current_stage,
             total_stages: stages.len(),
@@ -395,21 +404,11 @@ struct StageHistory {
 /// Progress update message (renamed to avoid conflict with orchestrator::ProgressUpdate)
 #[derive(Debug, Clone)]
 pub enum ProgressEvent {
-    StageChanged {
-        stage: usize,
-        total_stages: usize,
-    },
-    Progress {
-        percentage: u8,
-        stage: usize,
-    },
-    Status {
-        message: String,
-    },
+    StageChanged { stage: usize, total_stages: usize },
+    Progress { percentage: u8, stage: usize },
+    Status { message: String },
     Completed,
-    Failed {
-        error: String,
-    },
+    Failed { error: String },
 }
 
 /// Current progress information
@@ -444,7 +443,7 @@ impl AgentContextSnapshot {
         let config = bincode::config::standard();
         let serialized = bincode::serde::encode_to_vec(self, config)
             .map_err(|e| ContextError::SerializationFailed(e.to_string()))?;
-        
+
         // Note: zstd compression would be added here if the crate is added to dependencies
         // For now, return uncompressed
         Ok(serialized)
@@ -464,15 +463,15 @@ impl AgentContextSnapshot {
     pub fn merge(&mut self, other: AgentContextSnapshot) -> ContextResult<()> {
         // Merge findings
         self.findings.extend(other.findings);
-        
+
         // Merge metadata (other overwrites self for conflicts)
         for (key, value) in other.metadata {
             self.metadata.insert(key, value);
         }
-        
+
         // Merge metrics
         self.metrics.merge(other.metrics);
-        
+
         self.timestamp = Utc::now();
         Ok(())
     }
@@ -540,8 +539,7 @@ impl MessageBus {
         match &message.to {
             MessageTarget::Agent(name) => {
                 if let Some(tx) = self.subscribers.get(name) {
-                    tx.send(message)
-                        .map_err(|_| ContextError::ChannelClosed)?;
+                    tx.send(message).map_err(|_| ContextError::ChannelClosed)?;
                 }
             }
             MessageTarget::Broadcast => {
@@ -629,9 +627,9 @@ impl ExecutionMetrics {
     }
 
     fn snapshot(&self) -> ExecutionMetricsSnapshot {
-        let cache_total = self.cache_hits.load(Ordering::Relaxed)
-            + self.cache_misses.load(Ordering::Relaxed);
-        
+        let cache_total =
+            self.cache_hits.load(Ordering::Relaxed) + self.cache_misses.load(Ordering::Relaxed);
+
         let cache_hit_rate = if cache_total > 0 {
             self.cache_hits.load(Ordering::Relaxed) as f64 / cache_total as f64
         } else {
@@ -684,7 +682,7 @@ impl ExecutionMetricsSnapshot {
         self.files_processed += other.files_processed;
         self.findings_generated += other.findings_generated;
         self.memory_allocated = self.memory_allocated.max(other.memory_allocated);
-        
+
         // Weighted average for cache hit rate
         let total = self.files_processed + other.files_processed;
         if total > 0 {
@@ -699,6 +697,12 @@ impl ExecutionMetricsSnapshot {
 pub struct CancellationToken {
     cancelled: AtomicBool,
     waiters: RwLock<Vec<tokio::sync::oneshot::Sender<()>>>,
+}
+
+impl Default for CancellationToken {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CancellationToken {
@@ -768,7 +772,7 @@ mod tests {
     async fn test_agent_context_creation() {
         let params = HashMap::new();
         let context = AgentContext::new(OperatingMode::Build, params);
-        
+
         assert_eq!(context.mode, OperatingMode::Build);
         assert!(!context.cancellation_token.is_cancelled());
     }
@@ -776,7 +780,7 @@ mod tests {
     #[tokio::test]
     async fn test_finding_management() {
         let context = AgentContext::new(OperatingMode::Review, HashMap::new());
-        
+
         let finding = ContextFinding {
             id: Uuid::new_v4(),
             agent: "test-agent".to_string(),
@@ -788,10 +792,12 @@ mod tests {
             confidence: 0.8,
             timestamp: Utc::now(),
         };
-        
+
         context.add_finding(finding.clone()).await.unwrap();
-        
-        let warnings = context.get_findings_by_severity(FindingSeverity::Warning).await;
+
+        let warnings = context
+            .get_findings_by_severity(FindingSeverity::Warning)
+            .await;
         assert_eq!(warnings.len(), 1);
         assert_eq!(warnings[0].message, "Test finding");
     }
@@ -799,7 +805,7 @@ mod tests {
     #[tokio::test]
     async fn test_progress_tracking() {
         let tracker = ProgressTracker::new();
-        
+
         let stages = vec![
             ProgressStage {
                 name: "Analysis".to_string(),
@@ -812,10 +818,10 @@ mod tests {
                 weight: 1.0,
             },
         ];
-        
+
         tracker.set_stages(stages).await;
         tracker.update_progress(50);
-        
+
         let info = tracker.get_info().await;
         assert_eq!(info.current_stage, 0);
         assert_eq!(info.total_stages, 2);
@@ -825,7 +831,7 @@ mod tests {
     #[tokio::test]
     async fn test_context_snapshot() {
         let mut context = AgentContext::new(OperatingMode::Plan, HashMap::new());
-        
+
         let finding = ContextFinding {
             id: Uuid::new_v4(),
             agent: "test-agent".to_string(),
@@ -837,13 +843,13 @@ mod tests {
             confidence: 1.0,
             timestamp: Utc::now(),
         };
-        
+
         context.add_finding(finding.clone()).await.unwrap();
-        
+
         let snapshot = context.snapshot().await.unwrap();
         assert_eq!(snapshot.findings.len(), 1);
         assert_eq!(snapshot.mode, OperatingMode::Plan);
-        
+
         // Test compression/decompression
         let compressed = snapshot.compress().unwrap();
         let restored = AgentContextSnapshot::decompress(&compressed).unwrap();
@@ -854,15 +860,15 @@ mod tests {
     async fn test_cancellation_token() {
         let token = CancellationToken::new();
         assert!(!token.is_cancelled());
-        
+
         let token_clone = token.clone();
         let handle = tokio::spawn(async move {
             token_clone.cancelled().await;
         });
-        
+
         tokio::time::sleep(Duration::from_millis(10)).await;
         token.cancel().await;
-        
+
         handle.await.unwrap();
         assert!(token.is_cancelled());
     }
@@ -870,9 +876,9 @@ mod tests {
     #[tokio::test]
     async fn test_message_bus() {
         let context = AgentContext::new(OperatingMode::Build, HashMap::new());
-        
+
         let mut receiver = context.subscribe("agent-1".to_string());
-        
+
         let message = AgentMessage {
             id: Uuid::new_v4(),
             from: "agent-2".to_string(),
@@ -882,9 +888,9 @@ mod tests {
             payload: serde_json::json!({"test": "data"}),
             timestamp: Utc::now(),
         };
-        
+
         context.send_message(message.clone()).await.unwrap();
-        
+
         let received = receiver.recv().await.unwrap();
         assert_eq!(received.from, "agent-2");
         assert_eq!(received.payload["test"], "data");
@@ -893,12 +899,12 @@ mod tests {
     #[tokio::test]
     async fn test_metrics_tracking() {
         let context = AgentContext::new(OperatingMode::Build, HashMap::new());
-        
+
         // Simulate processing
         context.metrics.increment_files_processed();
         context.metrics.increment_files_processed();
         context.metrics.increment_findings();
-        
+
         let metrics = context.metrics();
         assert_eq!(metrics.files_processed, 2);
         assert_eq!(metrics.findings_generated, 1);

@@ -779,7 +779,7 @@ impl Session {
             allow_git_operations: true,
             max_file_size: None,
         };
-        
+
         let result = process_exec_tool_call(
             exec_args.params,
             exec_args.sandbox_type,

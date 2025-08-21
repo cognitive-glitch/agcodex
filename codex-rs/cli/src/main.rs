@@ -33,7 +33,7 @@ use error::Result;
     // The executable is sometimes invoked via a platform‑specific name like
     // `codex-x86_64-unknown-linux-musl`, but the help output should always use
     // the generic `codex` command name that users run.
-    bin_name = "codex"
+    bin_name = "agcodex"
 )]
 struct MultitoolCli {
     #[clap(flatten)]
@@ -234,6 +234,6 @@ fn prepend_config_flags(
 
 fn print_completion(cmd: CompletionCommand) {
     let mut app = MultitoolCli::command();
-    let name = "codex";
+    let name = "agcodex";
     generate(cmd.shell, &mut app, name, &mut std::io::stdout());
 }

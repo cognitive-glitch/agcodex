@@ -1,15 +1,15 @@
-# Codex-RS Domain Knowledge
+# AGCodex-RS Domain Knowledge
 
 ## Project Overview
 
-Codex-RS is a TUI-first coding agent from OpenAI that runs locally. The project prioritizes the Terminal User Interface (TUI) as the primary interaction method, with all features accessible through keyboard shortcuts and visual panels. It's structured as a Cargo workspace with the TUI crate as the main user-facing component.
+AGCodex-RS is a TUI-first coding agent from OpenAI that runs locally. The project prioritizes the Terminal User Interface (TUI) as the primary interaction method, with all features accessible through keyboard shortcuts and visual panels. It's structured as a Cargo workspace with the TUI crate as the main user-facing component.
 
 ## Workspace Architecture
 
 The project consists of **19 specialized crates** organized as a Cargo workspace:
 
 ### Core Components
-- **`core/`** - Business logic and main functionality (heart of Codex operations)
+- **`core/`** - Business logic and main functionality (heart of AGCodex operations)
 - **`tui/`** - PRIMARY INTERFACE: Terminal UI implementation using Ratatui (first-party)
 - **`cli/`** - Command-line interface entry point (mainly launches TUI)
 - **`exec/`** - Headless/non-interactive execution mode (secondary)
@@ -42,8 +42,8 @@ The application prioritizes the Terminal UI as the primary interface, with all f
 
 ### Actor Model Architecture
 - **`ConversationManager`**: Manages multiple conversation instances
-- **`CodexConversation`**: Individual conversation actors
-- **`Codex`**: Core agent implementation
+- **`AGCodexConversation`**: Individual conversation actors
+- **`AGCodex`**: Core agent implementation
 
 ### Event-Driven Architecture
 - Event streaming between components using `tokio` channels
@@ -66,7 +66,7 @@ enum AppState<'a> {
 - `ChatWidget`: Main conversation interface
 - `FileSearchManager`: Integrated file search
 - `OnboardingScreen`: First-run experience and authentication
-- Custom widgets for Codex-specific functionality
+- Custom widgets for AGCodex-specific functionality
 
 **Event Loop Architecture:**
 - Dedicated thread for crossterm event polling
@@ -96,7 +96,7 @@ pub enum WireApi {
 **Architecture:**
 ```rust
 pub struct ConversationManager {
-    conversations: Arc<RwLock<HashMap<Uuid, Arc<CodexConversation>>>>
+    conversations: Arc<RwLock<HashMap<Uuid, Arc<AGCodexConversation>>>>
 }
 ```
 
@@ -125,7 +125,7 @@ pub struct ConversationManager {
 **Three-Crate Architecture:**
 - `mcp-types`: Shared type definitions
 - `mcp-client`: Client for connecting to MCP servers
-- `mcp-server`: Server mode for Codex as MCP provider
+- `mcp-server`: Server mode for AGCodex as MCP provider
 
 **Features:**
 - Tool discovery and invocation
@@ -391,7 +391,7 @@ cargo check --all-features --all-targets --workspace --tests
 ### Testing
 ```bash
 cargo test --no-fail-fast
-cargo test -p codex-core
+cargo test -p agcodex-core
 cargo test -- --nocapture
 cargo test --all-features --no-fail-fast
 ```
@@ -406,19 +406,19 @@ cargo clippy --all-features --all-targets --workspace --tests -- -D warnings
 ### Running
 ```bash
 # Launch TUI (primary interface)
-cargo run --bin codex
+cargo run --bin agcodex
 
 # Launch with initial prompt
-cargo run --bin codex -- "explain this codebase"
+cargo run --bin agcodex -- "explain this codebase"
 
 # Secondary modes
-cargo run --bin codex exec -- "task"  # Headless
-cargo run --bin codex mcp              # MCP server
+cargo run --bin agcodex exec -- "task"  # Headless
+cargo run --bin agcodex mcp              # MCP server
 ```
 
 ## Summary
 
-Codex-RS is a well-architected TUI-first coding agent with strong foundations but requires significant refactoring to meet the vision outlined in CLAUDE.md. The main gaps are:
+AGCodex-RS is a well-architected TUI-first coding agent with strong foundations but requires significant refactoring to meet the vision outlined in CLAUDE.md. The main gaps are:
 
 1. **Error handling** needs complete migration to thiserror
 2. **AST intelligence** needs tree-sitter/ast-grep integration

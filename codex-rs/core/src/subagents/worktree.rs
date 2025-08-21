@@ -3,16 +3,21 @@
 //! This module provides git worktree isolation for agents to work in parallel
 //! without conflicts, and handles merging their changes back together.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::process::Command;
-use tokio::sync::{Mutex, RwLock};
-use tracing::{debug, info, warn};
+use tokio::sync::Mutex;
+use tokio::sync::RwLock;
+use tracing::debug;
+use tracing::info;
+use tracing::warn;
 use uuid::Uuid;
 
-use crate::subagents::{SubagentError, SubagentResult};
+use crate::subagents::SubagentError;
+use crate::subagents::SubagentResult;
 
 /// Git worktree for agent isolation
 #[derive(Debug, Clone)]
@@ -34,7 +39,7 @@ pub struct AgentWorktree {
 }
 
 /// Conflict resolution strategy
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum ConflictStrategy {
     /// Fail on any conflict
     Fail,
@@ -79,10 +84,9 @@ impl WorktreeManager {
     /// Create a new worktree manager
     pub fn new(base_repo: PathBuf) -> SubagentResult<Self> {
         let worktree_dir = base_repo.join(".agcodex").join("worktrees");
-        
+
         // Create worktree directory if it doesn't exist
-        std::fs::create_dir_all(&worktree_dir)
-            .map_err(|e| SubagentError::Io(e))?;
+        std::fs::create_dir_all(&worktree_dir).map_err(SubagentError::Io)?;
 
         Ok(Self {
             base_repo,
@@ -99,7 +103,7 @@ impl WorktreeManager {
         base_branch: Option<&str>,
     ) -> SubagentResult<AgentWorktree> {
         let _lock = self.git_lock.lock().await;
-        
+
         let id = Uuid::new_v4();
         let branch_name = format!("agent/{}/{}", agent_name, id);
         let worktree_path = self.worktree_dir.join(&branch_name);
@@ -112,7 +116,7 @@ impl WorktreeManager {
 
         // Create the worktree
         let output = Command::new("git")
-            .args(&[
+            .args([
                 "worktree",
                 "add",
                 "-b",
@@ -123,7 +127,9 @@ impl WorktreeManager {
             .current_dir(&self.base_repo)
             .output()
             .await
-            .map_err(|e| SubagentError::ExecutionFailed(format!("Failed to create worktree: {}", e)))?;
+            .map_err(|e| {
+                SubagentError::ExecutionFailed(format!("Failed to create worktree: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -154,7 +160,7 @@ impl WorktreeManager {
     /// Remove a worktree
     pub async fn remove_worktree(&self, id: Uuid) -> SubagentResult<()> {
         let _lock = self.git_lock.lock().await;
-        
+
         let mut worktrees = self.worktrees.write().await;
         let worktree = worktrees
             .remove(&id)
@@ -164,18 +170,25 @@ impl WorktreeManager {
 
         // Remove the worktree
         let output = Command::new("git")
-            .args(&["worktree", "remove", worktree.path.to_str().unwrap()])
+            .args(["worktree", "remove", worktree.path.to_str().unwrap()])
             .current_dir(&self.base_repo)
             .output()
             .await
-            .map_err(|e| SubagentError::ExecutionFailed(format!("Failed to remove worktree: {}", e)))?;
+            .map_err(|e| {
+                SubagentError::ExecutionFailed(format!("Failed to remove worktree: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             warn!("Git worktree removal failed: {}", stderr);
             // Try force removal
             let _ = Command::new("git")
-                .args(&["worktree", "remove", "--force", worktree.path.to_str().unwrap()])
+                .args([
+                    "worktree",
+                    "remove",
+                    "--force",
+                    worktree.path.to_str().unwrap(),
+                ])
                 .current_dir(&self.base_repo)
                 .output()
                 .await;
@@ -183,7 +196,7 @@ impl WorktreeManager {
 
         // Delete the branch
         let _ = Command::new("git")
-            .args(&["branch", "-D", &worktree.branch])
+            .args(["branch", "-D", &worktree.branch])
             .current_dir(&self.base_repo)
             .output()
             .await;
@@ -192,15 +205,11 @@ impl WorktreeManager {
     }
 
     /// Commit changes in a worktree
-    pub async fn commit_changes(
-        &self,
-        worktree_id: Uuid,
-        message: &str,
-    ) -> SubagentResult<String> {
+    pub async fn commit_changes(&self, worktree_id: Uuid, message: &str) -> SubagentResult<String> {
         let worktrees = self.worktrees.read().await;
-        let worktree = worktrees
-            .get(&worktree_id)
-            .ok_or_else(|| SubagentError::ExecutionFailed(format!("Worktree {} not found", worktree_id)))?;
+        let worktree = worktrees.get(&worktree_id).ok_or_else(|| {
+            SubagentError::ExecutionFailed(format!("Worktree {} not found", worktree_id))
+        })?;
 
         let worktree_path = worktree.path.clone();
         drop(worktrees); // Release the lock
@@ -209,11 +218,13 @@ impl WorktreeManager {
 
         // Stage all changes
         let output = Command::new("git")
-            .args(&["add", "-A"])
+            .args(["add", "-A"])
             .current_dir(&worktree_path)
             .output()
             .await
-            .map_err(|e| SubagentError::ExecutionFailed(format!("Failed to stage changes: {}", e)))?;
+            .map_err(|e| {
+                SubagentError::ExecutionFailed(format!("Failed to stage changes: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -225,7 +236,7 @@ impl WorktreeManager {
 
         // Commit changes
         let output = Command::new("git")
-            .args(&["commit", "-m", message])
+            .args(["commit", "-m", message])
             .current_dir(&worktree_path)
             .output()
             .await
@@ -244,14 +255,19 @@ impl WorktreeManager {
 
         // Get the commit hash
         let output = Command::new("git")
-            .args(&["rev-parse", "HEAD"])
+            .args(["rev-parse", "HEAD"])
             .current_dir(&worktree_path)
             .output()
             .await
-            .map_err(|e| SubagentError::ExecutionFailed(format!("Failed to get commit hash: {}", e)))?;
+            .map_err(|e| {
+                SubagentError::ExecutionFailed(format!("Failed to get commit hash: {}", e))
+            })?;
 
         let commit_hash = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        debug!("Committed changes in worktree {}: {}", worktree_id, commit_hash);
+        debug!(
+            "Committed changes in worktree {}: {}",
+            worktree_id, commit_hash
+        );
 
         Ok(commit_hash)
     }
@@ -264,7 +280,7 @@ impl WorktreeManager {
         strategy: ConflictStrategy,
     ) -> SubagentResult<MergeResult> {
         let _lock = self.git_lock.lock().await;
-        
+
         info!(
             "Merging {} agent worktrees into branch '{}'",
             worktree_ids.len(),
@@ -281,11 +297,13 @@ impl WorktreeManager {
 
         // Switch to target branch in main repo
         let output = Command::new("git")
-            .args(&["checkout", target_branch])
+            .args(["checkout", target_branch])
             .current_dir(&self.base_repo)
             .output()
             .await
-            .map_err(|e| SubagentError::ExecutionFailed(format!("Failed to checkout target branch: {}", e)))?;
+            .map_err(|e| {
+                SubagentError::ExecutionFailed(format!("Failed to checkout target branch: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -306,9 +324,7 @@ impl WorktreeManager {
             };
             drop(worktrees);
 
-            let merge_result = self
-                .merge_single_branch(&worktree.branch, strategy)
-                .await?;
+            let merge_result = self.merge_single_branch(&worktree.branch, strategy).await?;
 
             if !merge_result.success {
                 result.success = false;
@@ -323,11 +339,13 @@ impl WorktreeManager {
         if result.success {
             // Get the final commit hash
             let output = Command::new("git")
-                .args(&["rev-parse", "HEAD"])
+                .args(["rev-parse", "HEAD"])
                 .current_dir(&self.base_repo)
                 .output()
                 .await
-                .map_err(|e| SubagentError::ExecutionFailed(format!("Failed to get commit hash: {}", e)))?;
+                .map_err(|e| {
+                    SubagentError::ExecutionFailed(format!("Failed to get commit hash: {}", e))
+                })?;
 
             result.commit_hash = Some(String::from_utf8_lossy(&output.stdout).trim().to_string());
         }
@@ -368,20 +386,21 @@ impl WorktreeManager {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            
+
             // Check for conflicts
             if stderr.contains("CONFLICT") || stderr.contains("Automatic merge failed") {
                 result.conflicts = self.get_conflicted_files().await?;
-                
+
                 if strategy == ConflictStrategy::Fail {
                     // Abort the merge
                     let _ = Command::new("git")
-                        .args(&["merge", "--abort"])
+                        .args(["merge", "--abort"])
                         .current_dir(&self.base_repo)
                         .output()
                         .await;
-                    
-                    result.error = Some(format!("Merge conflicts detected: {:?}", result.conflicts));
+
+                    result.error =
+                        Some(format!("Merge conflicts detected: {:?}", result.conflicts));
                 }
             } else {
                 result.error = Some(format!("Merge failed: {}", stderr));
@@ -397,11 +416,13 @@ impl WorktreeManager {
     /// Get list of conflicted files
     async fn get_conflicted_files(&self) -> SubagentResult<Vec<PathBuf>> {
         let output = Command::new("git")
-            .args(&["diff", "--name-only", "--diff-filter=U"])
+            .args(["diff", "--name-only", "--diff-filter=U"])
             .current_dir(&self.base_repo)
             .output()
             .await
-            .map_err(|e| SubagentError::ExecutionFailed(format!("Failed to get conflicts: {}", e)))?;
+            .map_err(|e| {
+                SubagentError::ExecutionFailed(format!("Failed to get conflicts: {}", e))
+            })?;
 
         let files = String::from_utf8_lossy(&output.stdout)
             .lines()
@@ -414,11 +435,13 @@ impl WorktreeManager {
     /// Get list of modified files in a merge
     async fn get_modified_files(&self, branch: &str) -> SubagentResult<Vec<PathBuf>> {
         let output = Command::new("git")
-            .args(&["diff", "--name-only", &format!("{}^", branch), branch])
+            .args(["diff", "--name-only", &format!("{}^", branch), branch])
             .current_dir(&self.base_repo)
             .output()
             .await
-            .map_err(|e| SubagentError::ExecutionFailed(format!("Failed to get modified files: {}", e)))?;
+            .map_err(|e| {
+                SubagentError::ExecutionFailed(format!("Failed to get modified files: {}", e))
+            })?;
 
         let files = String::from_utf8_lossy(&output.stdout)
             .lines()
@@ -432,13 +455,14 @@ impl WorktreeManager {
     pub async fn cleanup_old_worktrees(&self, max_age: std::time::Duration) -> SubagentResult<()> {
         let now = std::time::SystemTime::now();
         let worktrees = self.worktrees.read().await;
-        
+
         let mut to_remove = Vec::new();
         for (id, worktree) in worktrees.iter() {
-            if let Ok(age) = now.duration_since(worktree.created_at) {
-                if age > max_age && !worktree.active {
-                    to_remove.push(*id);
-                }
+            if let Ok(age) = now.duration_since(worktree.created_at)
+                && age > max_age
+                && !worktree.active
+            {
+                to_remove.push(*id);
             }
         }
         drop(worktrees);
@@ -508,10 +532,10 @@ impl WorktreePool {
         if let Some(mut worktree) = available.pop() {
             worktree.agent_name = agent_name.to_string();
             worktree.active = true;
-            
+
             let mut in_use = self.in_use.lock().await;
             in_use.insert(worktree.id, worktree.clone());
-            
+
             debug!("Reusing worktree {} for agent {}", worktree.id, agent_name);
             return Ok(worktree);
         }
@@ -529,10 +553,10 @@ impl WorktreePool {
 
         // Create a new worktree
         let worktree = self.manager.create_worktree(agent_name, None).await?;
-        
+
         let mut in_use = self.in_use.lock().await;
         in_use.insert(worktree.id, worktree.clone());
-        
+
         Ok(worktree)
     }
 
@@ -542,23 +566,23 @@ impl WorktreePool {
         if let Some(mut worktree) = in_use.remove(&id) {
             // Reset the worktree
             let output = Command::new("git")
-                .args(&["clean", "-fd"])
+                .args(["clean", "-fd"])
                 .current_dir(&worktree.path)
                 .output()
                 .await?;
 
             if output.status.success() {
                 let _ = Command::new("git")
-                    .args(&["checkout", "."])
+                    .args(["checkout", "."])
                     .current_dir(&worktree.path)
                     .output()
                     .await;
 
                 worktree.active = false;
-                
+
                 let mut available = self.available.lock().await;
                 available.push(worktree);
-                
+
                 debug!("Released worktree {} back to pool", id);
             } else {
                 // If reset fails, remove the worktree

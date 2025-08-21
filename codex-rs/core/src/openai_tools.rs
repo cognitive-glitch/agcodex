@@ -525,7 +525,9 @@ fn create_agent_invocation_tools() -> Vec<OpenAiTool> {
     agent_properties.insert(
         "agent".to_string(),
         JsonSchema::String {
-            description: Some("Agent name (e.g., 'code-reviewer', 'debugger', 'refactorer')".to_string()),
+            description: Some(
+                "Agent name (e.g., 'code-reviewer', 'debugger', 'refactorer')".to_string(),
+            ),
         },
     );
     agent_properties.insert(
@@ -545,7 +547,9 @@ fn create_agent_invocation_tools() -> Vec<OpenAiTool> {
     agent_properties.insert(
         "mode_override".to_string(),
         JsonSchema::String {
-            description: Some("Override operating mode: 'plan', 'build', or 'review' (optional)".to_string()),
+            description: Some(
+                "Override operating mode: 'plan', 'build', or 'review' (optional)".to_string(),
+            ),
         },
     );
 
@@ -730,8 +734,8 @@ mod tests {
 
     #[test]
     fn test_get_openai_tools() {
-        let model_family = find_family_for_model("codex-mini-latest")
-            .expect("codex-mini-latest should be a valid model family");
+        let model_family = find_family_for_model("agcodex-mini-latest")
+            .expect("agcodex-mini-latest should be a valid model family");
         let config = ToolsConfig::new(
             &model_family,
             AskForApproval::Never,

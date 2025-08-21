@@ -36,9 +36,9 @@ pub(crate) use chat_composer::ChatComposer;
 pub(crate) use chat_composer::InputResult;
 
 use approval_modal_view::ApprovalModalView;
-use load_dialog_view::LoadDialogView;
 pub(crate) use list_selection_view::SelectionAction;
 pub(crate) use list_selection_view::SelectionItem;
+use load_dialog_view::LoadDialogView;
 use status_indicator_view::StatusIndicatorView;
 
 /// Pane displayed in the lower half of the chat UI.
@@ -335,7 +335,10 @@ impl BottomPane<'_> {
     }
 
     /// Update the load dialog with session list
-    pub(crate) fn on_load_session_list_result(&mut self, sessions: Result<Vec<SessionMetadata>, String>) {
+    pub(crate) fn on_load_session_list_result(
+        &mut self,
+        sessions: Result<Vec<SessionMetadata>, String>,
+    ) {
         if let Some(view) = self.active_view.as_mut() {
             if let Some(load_view) = view.as_any_mut().downcast_mut::<LoadDialogView>() {
                 match sessions {

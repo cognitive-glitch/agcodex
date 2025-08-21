@@ -51,7 +51,7 @@ async fn chat_mode_stream_cli() {
     let mut cmd = AssertCommand::new("cargo");
     cmd.arg("run")
         .arg("-p")
-        .arg("codex-cli")
+        .arg("agcodex-cli")
         .arg("--quiet")
         .arg("--")
         .arg("exec")
@@ -128,7 +128,7 @@ async fn exec_cli_applies_experimental_instructions_file() {
     let mut cmd = AssertCommand::new("cargo");
     cmd.arg("run")
         .arg("-p")
-        .arg("codex-cli")
+        .arg("agcodex-cli")
         .arg("--quiet")
         .arg("--")
         .arg("exec")
@@ -191,7 +191,7 @@ async fn responses_api_stream_cli() {
     let mut cmd = AssertCommand::new("cargo");
     cmd.arg("run")
         .arg("-p")
-        .arg("codex-cli")
+        .arg("agcodex-cli")
         .arg("--quiet")
         .arg("--")
         .arg("exec")
@@ -237,7 +237,7 @@ async fn integration_creates_and_checks_session_file() {
     let mut cmd = AssertCommand::new("cargo");
     cmd.arg("run")
         .arg("-p")
-        .arg("codex-cli")
+        .arg("agcodex-cli")
         .arg("--quiet")
         .arg("--")
         .arg("exec")
@@ -254,7 +254,7 @@ async fn integration_creates_and_checks_session_file() {
     let output = cmd.output().unwrap();
     assert!(
         output.status.success(),
-        "codex-cli exec failed: {}",
+        "agcodex-cli exec failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 
@@ -401,7 +401,7 @@ async fn integration_creates_and_checks_session_file() {
     let mut cmd2 = AssertCommand::new("cargo");
     cmd2.arg("run")
         .arg("-p")
-        .arg("codex-cli")
+        .arg("agcodex-cli")
         .arg("--quiet")
         .arg("--")
         .arg("exec")

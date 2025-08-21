@@ -42,18 +42,20 @@ use tracing::debug;
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::bottom_pane::BottomPane;
-use crate::widgets::MessageJump;
 use crate::bottom_pane::BottomPaneParams;
 use crate::bottom_pane::CancellationEvent;
 use crate::bottom_pane::InputResult;
 use crate::bottom_pane::SelectionAction;
 use crate::bottom_pane::SelectionItem;
-use crate::widgets::{SaveDialog, SaveDialogAction, SaveDialogState};
 use crate::history_cell;
 use crate::history_cell::CommandOutput;
 use crate::history_cell::ExecCell;
 use crate::history_cell::HistoryCell;
 use crate::history_cell::PatchEventType;
+use crate::widgets::MessageJump;
+use crate::widgets::SaveDialog;
+use crate::widgets::SaveDialogAction;
+use crate::widgets::SaveDialogState;
 // streaming internals are provided by crate::streaming and crate::markdown_stream
 use crate::user_approval_widget::ApprovalRequest;
 mod interrupts;
@@ -565,7 +567,8 @@ impl ChatWidget<'_> {
                     } else {
                         Some(dialog_state.description.clone())
                     };
-                    self.app_event_tx.send(AppEvent::SaveSession { name, description });
+                    self.app_event_tx
+                        .send(AppEvent::SaveSession { name, description });
                 }
                 SaveDialogAction::Cancel => {
                     self.app_event_tx.send(AppEvent::CloseSaveDialog);
@@ -583,7 +586,7 @@ impl ChatWidget<'_> {
             self.handle_message_jump_key_event(key_event);
             return; // Don't process other key events when message jump is open
         }
-        
+
         if key_event.kind == KeyEventKind::Press {
             self.bottom_pane.clear_ctrl_c_quit_hint();
         }
@@ -855,7 +858,10 @@ impl ChatWidget<'_> {
     }
 
     /// Forward session list results to the load dialog
-    pub(crate) fn apply_load_session_list_result(&mut self, sessions: Result<Vec<agcodex_persistence::types::SessionMetadata>, String>) {
+    pub(crate) fn apply_load_session_list_result(
+        &mut self,
+        sessions: Result<Vec<agcodex_persistence::types::SessionMetadata>, String>,
+    ) {
         self.bottom_pane.on_load_session_list_result(sessions);
     }
 
@@ -891,54 +897,42 @@ impl ChatWidget<'_> {
     pub(crate) fn insert_str(&mut self, text: &str) {
         self.bottom_pane.insert_str(text);
     }
-    
+
     /// Open the save session dialog
     pub(crate) fn open_save_dialog(&mut self) {
         self.save_dialog_state = Some(SaveDialogState::new());
         self.mark_needs_redraw();
     }
-    
+
     /// Close the save session dialog
     pub(crate) fn close_save_dialog(&mut self) {
         self.save_dialog_state = None;
         self.mark_needs_redraw();
     }
-    
+
     /// Save the current session with the provided name and description
     pub(crate) fn save_session(&mut self, name: String, description: Option<String>) {
         let should_save = if let Some(ref mut dialog_state) = self.save_dialog_state {
             dialog_state.session_name = name.clone();
             dialog_state.description = description.clone().unwrap_or_default();
-            
+
             if !dialog_state.validate() {
                 self.mark_needs_redraw();
                 return;
             }
-            
+
             dialog_state.set_saving(true);
             true
         } else {
             false
         };
-        
+
         if should_save {
             self.mark_needs_redraw();
-            
-            // TODO: Integrate with SessionManager when persistence is fully implemented
-            // For now, simulate a save operation
-            let _session_name = name;
-            let _session_description = description;
-            
-            // Simulate async save operation
-            let tx = self.app_event_tx.clone();
-            tokio::spawn(async move {
-                // Simulate save delay
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                
-                // For now, just close the dialog after "saving"
-                // TODO: Replace with actual SessionManager integration
-                tx.send(AppEvent::CloseSaveDialog);
-            });
+
+            // Send save session event to App for SessionManager handling
+            self.app_event_tx
+                .send(AppEvent::SaveSession { name, description });
         }
     }
 
@@ -998,7 +992,8 @@ impl ChatWidget<'_> {
             }
             KeyCode::Enter => {
                 if let Some(selected) = self.message_jump.selected_message() {
-                    self.app_event_tx.send(AppEvent::JumpToMessage(selected.index));
+                    self.app_event_tx
+                        .send(AppEvent::JumpToMessage(selected.index));
                 }
             }
             KeyCode::Up => {
@@ -1075,7 +1070,7 @@ impl WidgetRef for &ChatWidget<'_> {
         if let Some(cell) = &self.active_exec_cell {
             cell.render_ref(active_cell_area, buf);
         }
-        
+
         // Render save dialog as overlay if open
         if let Some(ref dialog_state) = self.save_dialog_state {
             let dialog = SaveDialog::new(dialog_state);
@@ -1089,14 +1084,14 @@ impl WidgetRef for &ChatWidget<'_> {
             let popup_height = (area.height as f32 * 0.8) as u16;
             let popup_x = (area.width.saturating_sub(popup_width)) / 2;
             let popup_y = (area.height.saturating_sub(popup_height)) / 2;
-            
+
             let popup_area = Rect {
                 x: area.x + popup_x,
                 y: area.y + popup_y,
                 width: popup_width,
                 height: popup_height,
             };
-            
+
             (&self.message_jump).render(popup_area, buf);
         }
     }

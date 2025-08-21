@@ -55,7 +55,7 @@ async fn shell_command_interruption() -> anyhow::Result<()> {
 
     let tmp = TempDir::new()?;
     // Temporary Codex home with config pointing at the mock server.
-    let codex_home = tmp.path().join("codex_home");
+    let codex_home = tmp.path().join("agcodex_home");
     std::fs::create_dir(&codex_home)?;
     let working_directory = tmp.path().join("workdir");
     std::fs::create_dir(&working_directory)?;

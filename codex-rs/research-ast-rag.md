@@ -14,7 +14,7 @@ This research document comprehensively explores AST (Abstract Syntax Tree) and T
 7. [Vector Database Integration](#vector-database-integration)
 8. [Implementation Best Practices](#implementation-best-practices)
 9. [Real-World Implementations](#real-world-implementations)
-10. [Recommendations for Codex-RS](#recommendations-for-codex-rs)
+10. [Recommendations for AGCodex-RS](#recommendations-for-agcodex-rs)
 
 ## 1. Core Concepts
 
@@ -317,7 +317,7 @@ CREATE GIN INDEX idx_metadata ON code_embeddings(metadata);
 ### Production-Ready Architecture
 
 ```rust
-// Recommended architecture for Codex-RS
+// Recommended architecture for AGCodex-RS
 pub struct CodeIntelligenceEngine {
     // Parsing layer
     parser: TreeSitterParser,
@@ -442,7 +442,7 @@ pub struct IncrementalIndexer {
 - Storage: ~2KB per code chunk (including embeddings)
 - Accuracy: 85-92% relevant retrieval @k=10
 
-## 10. Recommendations for Codex-RS
+## 10. Recommendations for AGCodex-RS
 
 ### Immediate Implementation Steps
 
@@ -716,14 +716,14 @@ mod tests {
 
 AST/Tree-sitter based semantic embeddings represent the current state-of-the-art for code understanding in AI systems. The combination of syntax-aware chunking, intelligent compaction, and hybrid retrieval provides superior results compared to traditional text-based approaches.
 
-For Codex-RS, implementing this architecture would provide:
+For AGCodex-RS, implementing this architecture would provide:
 - **90%+ relevant code retrieval** accuracy
 - **60-80% token reduction** through compaction
 - **<100ms query latency** for large codebases
 - **Real-time incremental updates** as code changes
 - **Language-agnostic** support through tree-sitter
 
-The investment in building this infrastructure will significantly enhance Codex's ability to understand and navigate codebases, bringing it to parity with leading tools like Cursor while maintaining the open-source, local-first philosophy.
+The investment in building this infrastructure will significantly enhance AGCodex's ability to understand and navigate codebases, bringing it to parity with leading tools like Cursor while maintaining the open-source, local-first philosophy.
 
 ## References
 

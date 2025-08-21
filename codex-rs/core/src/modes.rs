@@ -142,6 +142,58 @@ impl ModeManager {
         };
     }
 
+    /// Check if a file operation is allowed in the current mode
+    pub fn can_write_file(&self, file_size: Option<usize>) -> bool {
+        if !self.restrictions.allow_file_write {
+            return false;
+        }
+
+        if let (Some(max_size), Some(size)) = (self.restrictions.max_file_size, file_size) {
+            return size <= max_size;
+        }
+
+        true
+    }
+
+    /// Check if command execution is allowed in the current mode
+    pub const fn can_execute_command(&self) -> bool {
+        self.restrictions.allow_command_exec
+    }
+
+    /// Check if git operations are allowed in the current mode
+    pub const fn can_perform_git_operations(&self) -> bool {
+        self.restrictions.allow_git_operations
+    }
+
+    /// Check if network access is allowed in the current mode
+    pub const fn can_access_network(&self) -> bool {
+        self.restrictions.allow_network_access
+    }
+
+    /// Get a user-friendly error message for disallowed operations
+    pub fn restriction_message(&self, operation: &str) -> String {
+        let mode_name = match self.current_mode {
+            OperatingMode::Plan => "Plan",
+            OperatingMode::Build => "Build",
+            OperatingMode::Review => "Review",
+        };
+
+        match self.current_mode {
+            OperatingMode::Plan => format!(
+                "Operation '{}' not allowed in Plan mode (read-only). Switch to Build mode (Shift+Tab) for full access.",
+                operation
+            ),
+            OperatingMode::Review => format!(
+                "Operation '{}' not allowed in Review mode (quality focus). Switch to Build mode (Shift+Tab) for full access.",
+                operation
+            ),
+            OperatingMode::Build => format!(
+                "Operation '{}' should be allowed in Build mode. This may be a bug.",
+                operation
+            ),
+        }
+    }
+
     pub const fn prompt_suffix(&self) -> &'static str {
         match self.current_mode {
             OperatingMode::Plan => {

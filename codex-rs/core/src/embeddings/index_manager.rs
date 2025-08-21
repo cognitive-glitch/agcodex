@@ -1,12 +1,14 @@
 //! Embedding index management with strict separation by model and repository.
-//! 
+//!
 //! CRITICAL: Never mix embeddings from different models or repositories.
 //! Each combination of (repo, model, dimensions) gets its own isolated index.
 
 use super::EmbeddingVector;
 use dashmap::DashMap;
-use std::hash::{Hash, Hasher};
-use std::path::{Path, PathBuf};
+use std::hash::Hash;
+use std::hash::Hasher;
+use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -14,13 +16,13 @@ use thiserror::Error;
 pub enum IndexError {
     #[error("Index not found for key: {0:?}")]
     IndexNotFound(IndexKey),
-    
+
     #[error("Dimension mismatch: expected {expected}, got {actual}")]
     DimensionMismatch { expected: usize, actual: usize },
-    
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("Serialization error: {0}")]
     Serialization(String),
 }
@@ -46,7 +48,7 @@ impl IndexKey {
             dimensions,
         })
     }
-    
+
     /// Generate a stable hash for filesystem storage
     pub fn storage_hash(&self) -> String {
         use std::collections::hash_map::DefaultHasher;
@@ -64,13 +66,13 @@ pub struct VectorIndex {
 }
 
 impl VectorIndex {
-    pub fn new(dimensions: usize) -> Self {
+    pub const fn new(dimensions: usize) -> Self {
         Self {
             dimensions,
             vectors: Vec::new(),
         }
     }
-    
+
     pub fn insert(&mut self, vector: Vec<f32>, metadata: ChunkMetadata) -> Result<(), IndexError> {
         if vector.len() != self.dimensions {
             return Err(IndexError::DimensionMismatch {
@@ -81,7 +83,7 @@ impl VectorIndex {
         self.vectors.push((vector, metadata));
         Ok(())
     }
-    
+
     pub fn search(&self, query: &[f32], limit: usize) -> Result<Vec<SearchResult>, IndexError> {
         if query.len() != self.dimensions {
             return Err(IndexError::DimensionMismatch {
@@ -89,9 +91,10 @@ impl VectorIndex {
                 actual: query.len(),
             });
         }
-        
+
         // Simple cosine similarity search (would use HNSW or similar in production)
-        let mut results: Vec<_> = self.vectors
+        let mut results: Vec<_> = self
+            .vectors
             .iter()
             .map(|(vec, meta)| {
                 let similarity = cosine_similarity(query, vec);
@@ -101,32 +104,34 @@ impl VectorIndex {
                 }
             })
             .collect();
-        
+
         results.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
         results.truncate(limit);
-        
+
         Ok(results)
     }
-    
+
     pub async fn save_to_disk(&self, path: &Path) -> Result<(), IndexError> {
         let data = bincode::encode_to_vec(&self.vectors, bincode::config::standard())
             .map_err(|e| IndexError::Serialization(e.to_string()))?;
         tokio::fs::write(path, data).await?;
         Ok(())
     }
-    
+
     pub async fn load_from_disk(path: &Path) -> Result<Self, IndexError> {
         let data = tokio::fs::read(path).await?;
-        let vectors: Vec<(EmbeddingVector, ChunkMetadata)> = bincode::decode_from_slice(&data, bincode::config::standard())
-            .map_err(|e| IndexError::Serialization(e.to_string()))?
-            .0;  // Extract the decoded value from the tuple
-        
+        let vectors: Vec<(EmbeddingVector, ChunkMetadata)> =
+            bincode::decode_from_slice(&data, bincode::config::standard())
+                .map_err(|e| IndexError::Serialization(e.to_string()))?
+                .0; // Extract the decoded value from the tuple
+
         // Infer dimensions from first vector
-        let dimensions = vectors.first()
-            .map(|(v, _)| v.len())
-            .unwrap_or(1536);
-        
-        Ok(Self { dimensions, vectors })
+        let dimensions = vectors.first().map(|(v, _)| v.len()).unwrap_or(1536);
+
+        Ok(Self {
+            dimensions,
+            vectors,
+        })
     }
 }
 
@@ -163,7 +168,7 @@ impl EmbeddingIndexManager {
             storage_dir,
         }
     }
-    
+
     /// Get or create an index for the given repository, model, and dimensions
     pub fn get_or_create_index(
         &self,
@@ -172,12 +177,12 @@ impl EmbeddingIndexManager {
         dimensions: usize,
     ) -> Result<Arc<VectorIndex>, IndexError> {
         let key = IndexKey::new(repo, model, dimensions)?;
-        
+
         // Check if index already exists in memory
         if let Some(index) = self.indexes.get(&key) {
             return Ok(index.clone());
         }
-        
+
         // Try to load from disk
         let storage_path = self.index_storage_path(&key);
         if storage_path.exists() {
@@ -187,13 +192,13 @@ impl EmbeddingIndexManager {
             self.indexes.insert(key, index.clone());
             return Ok(index);
         }
-        
+
         // Create new index
         let index = Arc::new(VectorIndex::new(dimensions));
         self.indexes.insert(key, index.clone());
         Ok(index)
     }
-    
+
     /// Search within a specific index
     pub fn search(
         &self,
@@ -206,49 +211,49 @@ impl EmbeddingIndexManager {
         let index = self.get_or_create_index(repo, model, dimensions)?;
         index.search(query_vector, limit)
     }
-    
+
     /// Get storage path for an index
     fn index_storage_path(&self, key: &IndexKey) -> PathBuf {
         self.storage_dir
-            .join(&key.storage_hash())
+            .join(key.storage_hash())
             .join(&key.model_id)
             .join(format!("dim_{}", key.dimensions))
             .join("index.bincode")
     }
-    
+
     /// Save all indexes to disk
     pub async fn save_all(&self) -> Result<(), IndexError> {
         for entry in self.indexes.iter() {
             let key = entry.key();
             let index = entry.value();
             let path = self.index_storage_path(key);
-            
+
             // Create directory structure
             if let Some(parent) = path.parent() {
                 tokio::fs::create_dir_all(parent).await?;
             }
-            
+
             index.save_to_disk(&path).await?;
         }
         Ok(())
     }
-    
+
     /// Get statistics about loaded indexes
     pub fn stats(&self) -> IndexManagerStats {
         let mut stats = IndexManagerStats::default();
-        
+
         for entry in self.indexes.iter() {
             stats.total_indexes += 1;
-            
+
             // Count by model
             let model = &entry.key().model_id;
             *stats.indexes_by_model.entry(model.clone()).or_insert(0) += 1;
-            
+
             // Count by dimensions
             let dims = entry.key().dimensions;
             *stats.indexes_by_dimensions.entry(dims).or_insert(0) += 1;
         }
-        
+
         stats
     }
 }
@@ -266,7 +271,7 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     let dot_product: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
     let magnitude_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
     let magnitude_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
-    
+
     if magnitude_a * magnitude_b == 0.0 {
         0.0
     } else {
@@ -278,24 +283,24 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
 mod tests {
     use super::*;
     use tempfile::tempdir;
-    
+
     #[test]
     fn test_index_key_separation() {
         let key1 = IndexKey::new(Path::new("/repo1"), "model1", 1536).unwrap();
         let key2 = IndexKey::new(Path::new("/repo1"), "model2", 1536).unwrap();
         let key3 = IndexKey::new(Path::new("/repo2"), "model1", 1536).unwrap();
         let key4 = IndexKey::new(Path::new("/repo1"), "model1", 768).unwrap();
-        
+
         // All keys should be different
         assert_ne!(key1, key2); // Different model
         assert_ne!(key1, key3); // Different repo
         assert_ne!(key1, key4); // Different dimensions
     }
-    
+
     #[test]
     fn test_dimension_mismatch_protection() {
         let mut index = VectorIndex::new(1536);
-        
+
         // Should succeed with correct dimensions
         let vec_1536 = vec![0.1; 1536];
         let metadata = ChunkMetadata {
@@ -307,7 +312,7 @@ mod tests {
             symbols: vec!["test_fn".to_string()],
         };
         assert!(index.insert(vec_1536, metadata.clone()).is_ok());
-        
+
         // Should fail with wrong dimensions
         let vec_768 = vec![0.1; 768];
         assert!(matches!(
@@ -315,36 +320,30 @@ mod tests {
             Err(IndexError::DimensionMismatch { .. })
         ));
     }
-    
+
     #[test]
     fn test_index_manager_separation() {
         let dir = tempdir().unwrap();
         let manager = EmbeddingIndexManager::new(dir.path().to_path_buf());
-        
+
         // Create indexes for different combinations
-        let index1 = manager.get_or_create_index(
-            Path::new("/repo1"),
-            "openai:text-embedding-3-small",
-            1536
-        ).unwrap();
-        
-        let index2 = manager.get_or_create_index(
-            Path::new("/repo1"),
-            "gemini:embedding-001",
-            768
-        ).unwrap();
-        
-        let index3 = manager.get_or_create_index(
-            Path::new("/repo2"),
-            "openai:text-embedding-3-small",
-            1536
-        ).unwrap();
-        
+        let index1 = manager
+            .get_or_create_index(Path::new("/repo1"), "openai:text-embedding-3-small", 1536)
+            .unwrap();
+
+        let index2 = manager
+            .get_or_create_index(Path::new("/repo1"), "gemini:embedding-001", 768)
+            .unwrap();
+
+        let index3 = manager
+            .get_or_create_index(Path::new("/repo2"), "openai:text-embedding-3-small", 1536)
+            .unwrap();
+
         // All indexes should be separate instances
         assert!(!Arc::ptr_eq(&index1, &index2));
         assert!(!Arc::ptr_eq(&index1, &index3));
         assert!(!Arc::ptr_eq(&index2, &index3));
-        
+
         // Stats should show 3 indexes
         let stats = manager.stats();
         assert_eq!(stats.total_indexes, 3);

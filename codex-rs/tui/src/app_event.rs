@@ -1,5 +1,7 @@
 use agcodex_core::protocol::Event;
-use agcodex_core::subagents::{InvocationRequest, SubagentExecution, SubagentStatus};
+use agcodex_core::subagents::InvocationRequest;
+use agcodex_core::subagents::SubagentExecution;
+use agcodex_core::subagents::SubagentStatus;
 use agcodex_file_search::FileMatch;
 use agcodex_persistence::types::SessionMetadata;
 use ratatui::crossterm::event::KeyEvent;
@@ -11,7 +13,13 @@ use crate::app::ChatWidgetArgs;
 use crate::slash_command::SlashCommand;
 // Note: These imports will be used when session browser event handling is implemented
 #[allow(unused_imports)]
-use crate::widgets::{SessionAction, ViewMode, SortBy, FocusedPanel};
+use crate::widgets::FocusedPanel;
+#[allow(unused_imports)]
+use crate::widgets::SessionAction;
+#[allow(unused_imports)]
+use crate::widgets::SortBy;
+#[allow(unused_imports)]
+use crate::widgets::ViewMode;
 use agcodex_core::protocol::AskForApproval;
 use agcodex_core::protocol::SandboxPolicy;
 use agcodex_core::protocol_config_types::ReasoningEffort;
@@ -165,10 +173,16 @@ pub(crate) enum AppEvent {
     SessionBrowserDeleteSession(Uuid),
 
     /// Session browser: export session
-    SessionBrowserExportSession { id: Uuid, format: String },
+    SessionBrowserExportSession {
+        id: Uuid,
+        format: String,
+    },
 
     /// Session browser: rename session
-    SessionBrowserRenameSession { id: Uuid, new_name: String },
+    SessionBrowserRenameSession {
+        id: Uuid,
+        new_name: String,
+    },
 
     /// Session browser: toggle favorite
     SessionBrowserToggleFavorite(Uuid),
@@ -234,8 +248,8 @@ pub(crate) enum AppEvent {
     /// Agent execution progress update
     AgentProgress {
         agent_id: Uuid,
-        progress: f32,        // 0.0 to 1.0
-        message: String,      // Current status message
+        progress: f32,   // 0.0 to 1.0
+        message: String, // Current status message
     },
 
     /// Agent execution completed
@@ -260,7 +274,7 @@ pub(crate) enum AppEvent {
     AgentPanelNavigateUp,
     AgentPanelNavigateDown,
     AgentPanelCancel,
-    
+
     /// Agent output chunk received (for streaming)
     AgentOutputChunk {
         agent_id: Uuid,

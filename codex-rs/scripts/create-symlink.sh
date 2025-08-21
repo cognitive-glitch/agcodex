@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# AGCodex Binary Symlink Script
-# Creates backward compatibility symlink: codex -> agcodex
+# AGAGCodex Binary Symlink Script
+# Creates backward compatibility symlink: agcodex -> agagcodex
 
 set -euo pipefail
 
@@ -13,7 +13,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
-echo -e "${BLUE}    AGCodex Backward Compatibility Setup       ${NC}"
+echo -e "${BLUE}    AGAGCodex Backward Compatibility Setup       ${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
 echo ""
 
@@ -26,48 +26,48 @@ if [ ! -d "$CARGO_BIN" ]; then
     exit 1
 fi
 
-echo -e "${BLUE}Checking for AGCodex binary...${NC}"
+echo -e "${BLUE}Checking for AGAGCodex binary...${NC}"
 
-if [ -f "$CARGO_BIN/agcodex" ]; then
-    echo -e "${GREEN}✓ Found agcodex at $CARGO_BIN/agcodex${NC}"
+if [ -f "$CARGO_BIN/agagcodex" ]; then
+    echo -e "${GREEN}✓ Found agagcodex at $CARGO_BIN/agagcodex${NC}"
     
-    if [ -e "$CARGO_BIN/codex" ]; then
-        if [ -L "$CARGO_BIN/codex" ]; then
+    if [ -e "$CARGO_BIN/agcodex" ]; then
+        if [ -L "$CARGO_BIN/agcodex" ]; then
             # It's a symlink, update it
             echo -e "${YELLOW}Updating existing symlink...${NC}"
-            rm "$CARGO_BIN/codex"
-            ln -s "$CARGO_BIN/agcodex" "$CARGO_BIN/codex"
-            echo -e "${GREEN}✓ Updated symlink: codex -> agcodex${NC}"
+            rm "$CARGO_BIN/agcodex"
+            ln -s "$CARGO_BIN/agagcodex" "$CARGO_BIN/agcodex"
+            echo -e "${GREEN}✓ Updated symlink: agcodex -> agagcodex${NC}"
         else
             # It's a real file
-            echo -e "${YELLOW}Warning: $CARGO_BIN/codex exists and is not a symlink${NC}"
-            echo "This might be the old Codex binary."
+            echo -e "${YELLOW}Warning: $CARGO_BIN/agcodex exists and is not a symlink${NC}"
+            echo "This might be the old AGCodex binary."
             echo ""
             read -p "Would you like to backup the old binary and create the symlink? (y/N) " -n 1 -r
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
-                mv "$CARGO_BIN/codex" "$CARGO_BIN/codex.old"
-                ln -s "$CARGO_BIN/agcodex" "$CARGO_BIN/codex"
-                echo -e "${GREEN}✓ Backed up old binary to codex.old${NC}"
-                echo -e "${GREEN}✓ Created symlink: codex -> agcodex${NC}"
+                mv "$CARGO_BIN/agcodex" "$CARGO_BIN/agcodex.old"
+                ln -s "$CARGO_BIN/agagcodex" "$CARGO_BIN/agcodex"
+                echo -e "${GREEN}✓ Backed up old binary to agcodex.old${NC}"
+                echo -e "${GREEN}✓ Created symlink: agcodex -> agagcodex${NC}"
             else
-                echo "Symlink not created. The old 'codex' command remains."
+                echo "Symlink not created. The old 'agcodex' command remains."
             fi
         fi
     else
         # Create new symlink
-        ln -s "$CARGO_BIN/agcodex" "$CARGO_BIN/codex"
-        echo -e "${GREEN}✓ Created symlink: codex -> agcodex${NC}"
+        ln -s "$CARGO_BIN/agagcodex" "$CARGO_BIN/agcodex"
+        echo -e "${GREEN}✓ Created symlink: agcodex -> agagcodex${NC}"
     fi
     
     echo ""
     echo -e "${BLUE}You can now use both commands:${NC}"
-    echo "  • agcodex (recommended)"
-    echo "  • codex (backward compatibility)"
+    echo "  • agagcodex (recommended)"
+    echo "  • agcodex (backward compatibility)"
 else
-    echo -e "${YELLOW}AGCodex binary not found at $CARGO_BIN/agcodex${NC}"
+    echo -e "${YELLOW}AGAGCodex binary not found at $CARGO_BIN/agagcodex${NC}"
     echo ""
-    echo "Please build and install AGCodex first:"
+    echo "Please build and install AGAGCodex first:"
     echo -e "${BLUE}  cargo install --path cli${NC}"
     echo ""
     echo "Then run this script again."

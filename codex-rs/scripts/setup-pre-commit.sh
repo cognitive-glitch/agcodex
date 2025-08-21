@@ -1,9 +1,9 @@
 #!/bin/bash
-# Setup pre-commit hooks for AGCodex
+# Setup pre-commit hooks for AGAGCodex
 
 set -e
 
-echo "Setting up pre-commit hooks for AGCodex..."
+echo "Setting up pre-commit hooks for AGAGCodex..."
 
 # Check if pre-commit is installed
 if ! command -v pre-commit &> /dev/null; then

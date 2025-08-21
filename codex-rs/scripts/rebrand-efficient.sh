@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AGCodex Efficient Rebranding Script
+# AGAGCodex Efficient Rebranding Script
 # Performs targeted rebranding without timeouts
 
 set -euo pipefail
@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
-echo -e "${BLUE}     AGCodex Efficient Rebranding v2.0         ${NC}"
+echo -e "${BLUE}     AGAGCodex Efficient Rebranding v2.0         ${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
 echo ""
 
@@ -31,12 +31,12 @@ fd -t f "Cargo.toml" -E "backup_*" -E "target" -E ".git" | while read -r file; d
     echo -e "  Processing: $file"
     
     # Replace package names
-    sed -i.bak 's/name = "codex-/name = "agcodex-/g' "$file"
-    sed -i 's/name = "codex"/name = "agcodex"/g' "$file"
-    sed -i 's/name = "codex_/name = "agcodex_/g' "$file"
+    sed -i.bak 's/name = "agcodex-/name = "agagcodex-/g' "$file"
+    sed -i 's/name = "agcodex"/name = "agagcodex"/g' "$file"
+    sed -i 's/name = "agcodex_/name = "agagcodex_/g' "$file"
     
     # Replace dependencies
-    sed -i 's/codex-\([a-z-]*\) = {/agcodex-\1 = {/g' "$file"
+    sed -i 's/agcodex-\([a-z-]*\) = {/agagcodex-\1 = {/g' "$file"
     
     # Clean up backup
     rm -f "${file}.bak"
@@ -67,13 +67,13 @@ echo "────────────────────────�
 
 # Use comby for Rust imports (much faster)
 echo -e "  Updating use statements..."
-comby 'use codex_:[module]' 'use agcodex_:[module]' .rs -exclude-dir 'target,backup_*,.git' -i
+comby 'use agcodex_:[module]' 'use agagcodex_:[module]' .rs -exclude-dir 'target,backup_*,.git' -i
 
 echo -e "  Updating extern crate declarations..."
-comby 'extern crate codex_:[name]' 'extern crate agcodex_:[name]' .rs -exclude-dir 'target,backup_*,.git' -i
+comby 'extern crate agcodex_:[name]' 'extern crate agagcodex_:[name]' .rs -exclude-dir 'target,backup_*,.git' -i
 
 echo -e "  Updating module paths..."
-comby 'codex_:[name]::' 'agcodex_:[name]::' .rs -exclude-dir 'target,backup_*,.git' -i
+comby 'agcodex_:[name]::' 'agagcodex_:[name]::' .rs -exclude-dir 'target,backup_*,.git' -i
 
 echo ""
 echo -e "${BLUE}Step 4: Updating configuration paths${NC}"
@@ -81,10 +81,10 @@ echo "────────────────────────�
 
 # Update config paths
 echo -e "  Updating home directory paths..."
-fd -e rs -e toml -e md -E "backup_*" -E "target" | xargs -I {} sed -i 's|~/.codex|~/.agcodex|g' {}
+fd -e rs -e toml -e md -E "backup_*" -E "target" | xargs -I {} sed -i 's|~/.agcodex|~/.agagcodex|g' {}
 
 echo -e "  Updating relative config paths..."
-fd -e rs -e toml -e md -E "backup_*" -E "target" | xargs -I {} sed -i 's|\.codex/|.agcodex/|g' {}
+fd -e rs -e toml -e md -E "backup_*" -E "target" | xargs -I {} sed -i 's|\.agcodex/|.agagcodex/|g' {}
 
 echo ""
 echo -e "${BLUE}Step 5: Updating string literals${NC}"
@@ -92,10 +92,10 @@ echo "────────────────────────�
 
 # Update string literals in Rust files
 echo -e "  Updating binary name references..."
-comby '"codex"' '"agcodex"' .rs -exclude-dir 'target,backup_*,.git' -match-only '"codex"' -i
+comby '"agcodex"' '"agagcodex"' .rs -exclude-dir 'target,backup_*,.git' -match-only '"agcodex"' -i
 
 echo -e "  Updating crate name references in strings..."
-comby '"codex-:[name]"' '"agcodex-:[name]"' .rs -exclude-dir 'target,backup_*,.git' -i
+comby '"agcodex-:[name]"' '"agagcodex-:[name]"' .rs -exclude-dir 'target,backup_*,.git' -i
 
 echo ""
 echo -e "${BLUE}Step 6: Updating documentation${NC}"
@@ -104,9 +104,9 @@ echo "────────────────────────�
 # Update documentation (preserve URLs and CHANGELOG)
 fd -e md -E "CHANGELOG*" -E "backup_*" -E "target" | while read -r file; do
     echo -e "  Processing: $file"
-    # Only update Codex references that aren't URLs
-    sed -i -E '/https?:\/\//! s/\bCodex\b/AGCodex/g' "$file"
-    sed -i -E '/https?:\/\//! s/\bcodex\b/agcodex/g' "$file"
+    # Only update AGCodex references that aren't URLs
+    sed -i -E '/https?:\/\//! s/\bAGCodex\b/AGAGCodex/g' "$file"
+    sed -i -E '/https?:\/\//! s/\bagcodex\b/agagcodex/g' "$file"
 done
 
 echo ""
@@ -115,10 +115,10 @@ echo "────────────────────────�
 
 # Fix specific known issues
 echo -e "  Fixing double-renamed imports..."
-fd -e rs -E "backup_*" -E "target" | xargs -I {} sed -i 's/agagcodex/agcodex/g' {}
+fd -e rs -E "backup_*" -E "target" | xargs -I {} sed -i 's/agagagcodex/agagcodex/g' {}
 
 echo -e "  Fixing environment variables..."
-fd -e rs -E "backup_*" -E "target" | xargs -I {} sed -i 's/CODEX_/AGCODEX_/g' {}
+fd -e rs -E "backup_*" -E "target" | xargs -I {} sed -i 's/AGCODEX_/AGAGCODEX_/g' {}
 
 echo ""
 echo -e "${BLUE}Step 8: Creating compatibility scripts${NC}"
@@ -127,18 +127,18 @@ echo "────────────────────────�
 # Create migration script
 cat > "scripts/migrate-config.sh" << 'EOF'
 #!/bin/bash
-# Migrate user configuration from ~/.codex to ~/.agcodex
+# Migrate user configuration from ~/.agcodex to ~/.agagcodex
 
-if [ -d "$HOME/.codex" ] && [ ! -d "$HOME/.agcodex" ]; then
-    echo "Migrating configuration from ~/.codex to ~/.agcodex..."
-    cp -r "$HOME/.codex" "$HOME/.agcodex"
+if [ -d "$HOME/.agcodex" ] && [ ! -d "$HOME/.agagcodex" ]; then
+    echo "Migrating configuration from ~/.agcodex to ~/.agagcodex..."
+    cp -r "$HOME/.agcodex" "$HOME/.agagcodex"
     echo "✓ Migration complete!"
     echo ""
-    echo "Your old configuration is preserved at ~/.codex"
-    echo "You can remove it with: rm -rf ~/.codex"
+    echo "Your old configuration is preserved at ~/.agcodex"
+    echo "You can remove it with: rm -rf ~/.agcodex"
 else
-    if [ -d "$HOME/.agcodex" ]; then
-        echo "~/.agcodex already exists, no migration needed."
+    if [ -d "$HOME/.agagcodex" ]; then
+        echo "~/.agagcodex already exists, no migration needed."
     else
         echo "No existing configuration found."
     fi
@@ -154,15 +154,15 @@ cat > "scripts/create-symlink.sh" << 'EOF'
 
 CARGO_BIN="${CARGO_HOME:-$HOME/.cargo}/bin"
 
-if [ -f "$CARGO_BIN/agcodex" ]; then
-    if [ ! -e "$CARGO_BIN/codex" ]; then
-        ln -sf "$CARGO_BIN/agcodex" "$CARGO_BIN/codex"
-        echo "✓ Created symlink: codex -> agcodex"
+if [ -f "$CARGO_BIN/agagcodex" ]; then
+    if [ ! -e "$CARGO_BIN/agcodex" ]; then
+        ln -sf "$CARGO_BIN/agagcodex" "$CARGO_BIN/agcodex"
+        echo "✓ Created symlink: agcodex -> agagcodex"
     else
-        echo "codex already exists in $CARGO_BIN"
+        echo "agcodex already exists in $CARGO_BIN"
     fi
 else
-    echo "agcodex not found in $CARGO_BIN"
+    echo "agagcodex not found in $CARGO_BIN"
     echo "Please build and install first: cargo install --path cli"
 fi
 EOF
@@ -175,8 +175,8 @@ echo "────────────────────────�
 
 # Quick validation
 echo -e "  Checking Cargo.toml files..."
-if fd -t f "Cargo.toml" -E "backup_*" -E "target" -x grep -l 'name = "codex' {} \; 2>/dev/null | grep -q .; then
-    echo -e "  ${YELLOW}⚠${NC} Some Cargo.toml files may still contain 'codex' references"
+if fd -t f "Cargo.toml" -E "backup_*" -E "target" -x grep -l 'name = "agcodex' {} \; 2>/dev/null | grep -q .; then
+    echo -e "  ${YELLOW}⚠${NC} Some Cargo.toml files may still contain 'agcodex' references"
 else
     echo -e "  ${GREEN}✓${NC} All Cargo.toml files updated"
 fi
@@ -189,7 +189,7 @@ else
     
     # Auto-fix common issues
     echo -e "  Fixing any double-renamed references..."
-    fd -e rs -E "backup_*" -E "target" | xargs -I {} sed -i 's/agagcodex/agcodex/g' {}
+    fd -e rs -E "backup_*" -E "target" | xargs -I {} sed -i 's/agagagcodex/agagcodex/g' {}
     
     # Try again
     if cargo check --all-features --all-targets --workspace 2>/dev/null; then
@@ -209,4 +209,4 @@ echo "  1. Review changes: ${BLUE}git diff${NC}"
 echo "  2. Test the build: ${BLUE}cargo test --no-fail-fast${NC}"
 echo "  3. Migrate config: ${BLUE}./scripts/migrate-config.sh${NC}"
 echo "  4. Create symlink: ${BLUE}./scripts/create-symlink.sh${NC}"
-echo "  5. Commit changes: ${BLUE}git add -A && git commit -m 'feat: complete rebranding to agcodex'${NC}"
+echo "  5. Commit changes: ${BLUE}git add -A && git commit -m 'feat: complete rebranding to agagcodex'${NC}"

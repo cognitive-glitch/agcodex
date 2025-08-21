@@ -5,6 +5,7 @@ use crate::chatwidget::ChatWidget;
 use crate::file_search::FileSearchManager;
 use crate::get_git_diff::get_git_diff;
 use crate::get_login_status;
+use crate::notification::NotificationManager;
 use crate::onboarding::onboarding_screen::KeyboardHandler;
 use crate::onboarding::onboarding_screen::OnboardingScreen;
 use crate::onboarding::onboarding_screen::OnboardingScreenArgs;
@@ -12,10 +13,14 @@ use crate::slash_command::SlashCommand;
 use crate::tui;
 use agcodex_core::ConversationManager;
 use agcodex_core::config::Config;
+use agcodex_core::config_types::TuiNotifications;
 use agcodex_core::modes::ModeManager;
 use agcodex_core::modes::OperatingMode;
 use agcodex_core::protocol::Event;
 use agcodex_core::protocol::Op;
+use agcodex_persistence::session_manager::SessionManager;
+use agcodex_persistence::session_manager::SessionManagerConfig;
+use agcodex_persistence::types::OperatingMode as PersistenceOperatingMode;
 // Temporarily disable real orchestrator until core compilation issues are fixed
 // use agcodex_core::subagents::{
 //     AgentOrchestrator, OrchestratorConfig, ProgressUpdate, SubagentRegistry
@@ -23,7 +28,8 @@ use agcodex_core::protocol::Op;
 // use agcodex_core::code_tools::ast_agent_tools::ASTAgentTools;
 use color_eyre::eyre::Result;
 // Use crossterm types re-exported by ratatui to avoid version conflicts
-use crate::widgets::{AgentPanel, ModeIndicator};
+use crate::widgets::AgentPanel;
+use crate::widgets::ModeIndicator;
 use ratatui::crossterm::event::KeyCode;
 use ratatui::crossterm::event::KeyEvent;
 use ratatui::crossterm::event::KeyEventKind;
@@ -40,14 +46,91 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::channel;
-use tokio::sync::mpsc::UnboundedReceiver;
-use uuid::Uuid;
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
+use tokio::sync::Mutex;
+use tokio::sync::RwLock;
+use tokio::sync::mpsc::UnboundedReceiver;
+use uuid::Uuid;
 
 /// Time window for debouncing redraw requests.
 const REDRAW_DEBOUNCE: Duration = Duration::from_millis(1);
+
+/// Helper struct for auto-save functionality
+struct AutoSaveApp {
+    session_manager: Arc<RwLock<Option<SessionManager>>>,
+    current_session_id: Arc<RwLock<Option<Uuid>>>,
+    auto_save_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    codex_home: PathBuf,
+}
+
+impl AutoSaveApp {
+    /// Start auto-save timer for active sessions
+    async fn start_auto_save_timer(&self) {
+        let session_manager = self.session_manager.clone();
+        let current_session_id = self.current_session_id.clone();
+        let auto_save_handle = self.auto_save_handle.clone();
+        let codex_home = self.codex_home.clone();
+
+        let handle = tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(300)); // 5 minutes
+            interval.tick().await; // Skip first immediate tick
+
+            loop {
+                interval.tick().await;
+
+                // Check if there's an active session to save
+                let current_id = {
+                    let guard = current_session_id.read().await;
+                    *guard
+                };
+
+                if let Some(session_id) = current_id {
+                    // Initialize SessionManager if needed
+                    let mut session_manager_guard = session_manager.write().await;
+                    if session_manager_guard.is_none() {
+                        let config = SessionManagerConfig {
+                            storage_path: codex_home.join("history"),
+                            auto_save_interval: Duration::from_secs(300),
+                            ..Default::default()
+                        };
+
+                        match SessionManager::new(config).await {
+                            Ok(manager) => {
+                                *session_manager_guard = Some(manager);
+                            }
+                            Err(e) => {
+                                tracing::error!(
+                                    "Auto-save: Failed to initialize SessionManager: {}",
+                                    e
+                                );
+                                continue;
+                            }
+                        }
+                    }
+
+                    let session_manager = session_manager_guard.as_ref().unwrap();
+
+                    match session_manager.save_session(session_id).await {
+                        Ok(_) => {
+                            tracing::debug!("Auto-saved session: {}", session_id);
+                        }
+                        Err(e) => {
+                            tracing::warn!("Auto-save failed for session {}: {}", session_id, e);
+                        }
+                    }
+                    drop(session_manager_guard);
+                } else {
+                    tracing::debug!("Auto-save: No active session to save");
+                }
+            }
+        });
+
+        *auto_save_handle.lock().await = Some(handle);
+        tracing::info!("Auto-save timer started (5 minute intervals)");
+    }
+}
 
 /// Top-level application state: which full-screen view is currently active.
 #[allow(clippy::large_enum_variant)]
@@ -91,6 +174,17 @@ pub(crate) struct App<'a> {
     /// Agent panel for subagent management
     agent_panel: AgentPanel,
 
+    /// Notification system for terminal bell alerts and visual feedback
+    notification_system: NotificationSystem,
+
+    /// Session manager for persistence (initialized lazily)
+    session_manager: Arc<RwLock<Option<SessionManager>>>,
+
+    /// Current session ID if any
+    current_session_id: Arc<RwLock<Option<Uuid>>>,
+
+    /// Auto-save timer handle
+    auto_save_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     // Temporarily disabled until core compilation issues are fixed
     // /// Agent orchestrator for real execution
     // orchestrator: Arc<AgentOrchestrator>,
@@ -249,14 +343,14 @@ impl App<'_> {
         // let registry = Arc::new(SubagentRegistry::new());
         // let orchestrator_config = OrchestratorConfig::default();
         // let ast_tools = Arc::new(ASTAgentTools::new());
-        // 
+        //
         // // Create orchestrator
         // let orchestrator = Arc::new(AgentOrchestrator::new(
         //     registry,
         //     orchestrator_config,
         //     OperatingMode::Build, // Will be updated when mode changes
         // ));
-        // 
+        //
         // // Get progress receiver
         // let progress_receiver = {
         //     let orch = orchestrator.clone();
@@ -264,12 +358,17 @@ impl App<'_> {
         //         orch.progress_receiver().await
         //     })
         // };
-        // 
+        //
         // // For now, create a dummy receiver since the orchestrator method needs to be fixed
         // let (_, dummy_rx) = tokio::sync::mpsc::unbounded_channel::<ProgressUpdate>();
         // let progress_receiver = Arc::new(tokio::sync::Mutex::new(dummy_rx));
-        
+
         // Create the app first, then start progress monitoring
+        let notification_system = NotificationSystem::new(config.tui.notifications.clone());
+        let session_manager = Arc::new(RwLock::new(None));
+        let current_session_id = Arc::new(RwLock::new(None));
+        let auto_save_handle = Arc::new(Mutex::new(None));
+
         let app = Self {
             server: conversation_manager,
             app_event_tx: app_event_tx.clone(),
@@ -283,15 +382,25 @@ impl App<'_> {
             frame_schedule_tx: frame_tx,
             mode_manager: ModeManager::new(OperatingMode::Build), // Default to Build mode
             agent_panel: AgentPanel::new(),
+            notification_system,
+            session_manager,
+            current_session_id,
+            auto_save_handle,
             // Temporarily disabled:
             // orchestrator: orchestrator.clone(),
             // ast_tools,
             // progress_receiver,
         };
-        
+
         // TODO: Start progress monitoring when real orchestrator is available
         // app.start_progress_monitoring();
-        
+
+        // Start auto-save timer
+        let app_clone = app.clone_for_autosave();
+        tokio::spawn(async move {
+            app_clone.start_auto_save_timer().await;
+        });
+
         app
     }
 
@@ -643,12 +752,15 @@ impl App<'_> {
                 AppEvent::CycleModes => {
                     let new_mode = self.mode_manager.cycle();
                     tracing::info!("Switched to {:?} mode", new_mode);
-                    
+
                     // TODO: Update orchestrator operating mode when available
                     // In a real implementation, you'd want to recreate the orchestrator
                     // or have a method to update its mode.
-                    tracing::debug!("Mode switched to {:?} - will apply to future agent executions", new_mode);
-                    
+                    tracing::debug!(
+                        "Mode switched to {:?} - will apply to future agent executions",
+                        new_mode
+                    );
+
                     // The ModeIndicator widget will display the new mode visually
                     self.app_event_tx.send(AppEvent::RequestRedraw);
                 }
@@ -658,9 +770,67 @@ impl App<'_> {
                     }
                 }
                 AppEvent::SaveSession { name, description } => {
-                    if let AppState::Chat { widget } = &mut self.app_state {
-                        widget.save_session(name, description);
-                    }
+                    let app_event_tx = self.app_event_tx.clone();
+                    let session_manager = self.session_manager.clone();
+                    let current_session_id = self.current_session_id.clone();
+                    let current_mode = self.current_mode();
+                    let codex_home = self.config.codex_home.clone();
+
+                    tokio::spawn(async move {
+                        let config = SessionManagerConfig {
+                            storage_path: codex_home.join("history"),
+                            auto_save_interval: Duration::from_secs(300), // 5 minutes
+                            ..Default::default()
+                        };
+
+                        // Initialize SessionManager if needed
+                        let mut session_manager_guard = session_manager.write().await;
+                        if session_manager_guard.is_none() {
+                            match SessionManager::new(config).await {
+                                Ok(manager) => {
+                                    *session_manager_guard = Some(manager);
+                                }
+                                Err(e) => {
+                                    tracing::error!("Failed to initialize SessionManager: {}", e);
+                                    app_event_tx.send(AppEvent::CloseSaveDialog);
+                                    return;
+                                }
+                            }
+                        }
+
+                        let session_manager = session_manager_guard.as_ref().unwrap();
+
+                        // Convert current operating mode to persistence format
+                        let persistence_mode = match current_mode {
+                            OperatingMode::Plan => PersistenceOperatingMode::Plan,
+                            OperatingMode::Build => PersistenceOperatingMode::Build,
+                            OperatingMode::Review => PersistenceOperatingMode::Review,
+                        };
+
+                        // TODO: Get current model from conversation manager
+                        let model = "gpt-4".to_string(); // Default for now
+
+                        match session_manager
+                            .create_session(name.clone(), model, persistence_mode)
+                            .await
+                        {
+                            Ok(session_id) => {
+                                // Update current session ID
+                                *current_session_id.write().await = Some(session_id);
+                                tracing::info!("Session '{}' saved with ID: {}", name, session_id);
+
+                                // Notify success
+                                if let Err(e) = app_event_tx.try_send(AppEvent::CloseSaveDialog) {
+                                    tracing::warn!("Failed to send CloseSaveDialog event: {}", e);
+                                }
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to save session '{}': {}", name, e);
+                                app_event_tx.send(AppEvent::CloseSaveDialog);
+                            }
+                        }
+                        drop(session_manager_guard);
+                    });
                 }
                 AppEvent::CloseSaveDialog => {
                     if let AppState::Chat { widget } = &mut self.app_state {
@@ -702,12 +872,46 @@ impl App<'_> {
                     self.app_event_tx.send(AppEvent::RequestRedraw);
                 }
                 AppEvent::StartLoadSessionList => {
-                    // Start loading session list in background
                     let tx = self.app_event_tx.clone();
+                    let session_manager = self.session_manager.clone();
+                    let codex_home = self.config.codex_home.clone();
+
                     tokio::spawn(async move {
-                        // TODO: Initialize SessionManager and load sessions
-                        // For now, send an empty result
-                        tx.send(AppEvent::LoadSessionListResult(Ok(vec![])));
+                        let config = SessionManagerConfig {
+                            storage_path: codex_home.join("history"),
+                            auto_save_interval: Duration::from_secs(300),
+                            ..Default::default()
+                        };
+
+                        // Initialize SessionManager if needed
+                        let mut session_manager_guard = session_manager.write().await;
+                        if session_manager_guard.is_none() {
+                            match SessionManager::new(config).await {
+                                Ok(manager) => {
+                                    *session_manager_guard = Some(manager);
+                                }
+                                Err(e) => {
+                                    let error_msg =
+                                        format!("Failed to initialize SessionManager: {}", e);
+                                    tracing::error!("{}", error_msg);
+                                    tx.send(AppEvent::LoadSessionListResult(Err(error_msg)));
+                                    return;
+                                }
+                            }
+                        }
+
+                        let session_manager = session_manager_guard.as_ref().unwrap();
+                        match session_manager.list_sessions().await {
+                            Ok(sessions) => {
+                                tx.send(AppEvent::LoadSessionListResult(Ok(sessions)));
+                            }
+                            Err(e) => {
+                                let error_msg = format!("Failed to list sessions: {}", e);
+                                tracing::error!("{}", error_msg);
+                                tx.send(AppEvent::LoadSessionListResult(Err(error_msg)));
+                            }
+                        }
+                        drop(session_manager_guard);
                     });
                 }
                 AppEvent::LoadSessionListResult(result) => {
@@ -716,10 +920,58 @@ impl App<'_> {
                     }
                 }
                 AppEvent::LoadSession(session_id) => {
-                    // TODO: Load the session with the given ID
-                    tracing::info!("Loading session: {}", session_id);
-                    // For now, just close the dialog
-                    self.app_event_tx.send(AppEvent::CloseLoadDialog);
+                    let tx = self.app_event_tx.clone();
+                    let session_manager = self.session_manager.clone();
+                    let current_session_id = self.current_session_id.clone();
+                    let codex_home = self.config.codex_home.clone();
+
+                    tokio::spawn(async move {
+                        let config = SessionManagerConfig {
+                            storage_path: codex_home.join("history"),
+                            auto_save_interval: Duration::from_secs(300),
+                            ..Default::default()
+                        };
+
+                        // Initialize SessionManager if needed
+                        let mut session_manager_guard = session_manager.write().await;
+                        if session_manager_guard.is_none() {
+                            match SessionManager::new(config).await {
+                                Ok(manager) => {
+                                    *session_manager_guard = Some(manager);
+                                }
+                                Err(e) => {
+                                    let error_msg =
+                                        format!("Failed to initialize SessionManager: {}", e);
+                                    tracing::error!("{}", error_msg);
+                                    tx.send(AppEvent::LoadSessionResult(Err(error_msg)));
+                                    return;
+                                }
+                            }
+                        }
+
+                        let session_manager = session_manager_guard.as_ref().unwrap();
+
+                        match session_manager.load_session(session_id).await {
+                            Ok(_) => {
+                                // Update current session ID
+                                *current_session_id.write().await = Some(session_id);
+                                tracing::info!("Successfully loaded session: {}", session_id);
+
+                                // TODO: Switch conversation state to loaded session
+                                // This would involve communicating with ConversationManager
+
+                                tx.send(AppEvent::LoadSessionResult(Ok(session_id)));
+                                tx.send(AppEvent::CloseLoadDialog);
+                            }
+                            Err(e) => {
+                                let error_msg =
+                                    format!("Failed to load session {}: {}", session_id, e);
+                                tracing::error!("{}", error_msg);
+                                tx.send(AppEvent::LoadSessionResult(Err(error_msg)));
+                            }
+                        }
+                        drop(session_manager_guard);
+                    });
                 }
                 AppEvent::LoadSessionResult(result) => {
                     match result {
@@ -728,6 +980,13 @@ impl App<'_> {
                         }
                         Err(error) => {
                             tracing::error!("Failed to load session: {}", error);
+                            // Ring terminal bell for session load error
+                            if let Err(e) = self.notification_system.error_occurred() {
+                                tracing::warn!(
+                                    "Failed to ring terminal bell for session load error: {}",
+                                    e
+                                );
+                            }
                         }
                     }
                     self.app_event_tx.send(AppEvent::RequestRedraw);
@@ -806,7 +1065,7 @@ impl App<'_> {
                     // TODO: Implement favorites filter
                     tracing::debug!("SessionBrowserToggleFavoritesFilter event (not implemented)");
                 }
-                
+
                 // TODO: Implement remaining event handlers
                 AppEvent::OpenSessionBrowser
                 | AppEvent::CloseSessionBrowser
@@ -836,21 +1095,49 @@ impl App<'_> {
                     // These events are not yet implemented
                     // TODO: Add implementations as features are completed
                 }
-                
+
                 // ===== Agent Events =====
                 AppEvent::StartAgent(invocation_request) => {
                     self.handle_start_agent(invocation_request);
                 }
-                AppEvent::AgentProgress { agent_id, progress, message } => {
-                    self.agent_panel.update_progress(agent_id, progress, message);
+                AppEvent::AgentProgress {
+                    agent_id,
+                    progress,
+                    message,
+                } => {
+                    self.agent_panel
+                        .update_progress(agent_id, progress, message);
                     self.app_event_tx.send(AppEvent::RequestRedraw);
                 }
-                AppEvent::AgentComplete { agent_id, execution } => {
-                    self.agent_panel.complete_agent(agent_id, execution);
+                AppEvent::AgentComplete {
+                    agent_id,
+                    execution,
+                } => {
+                    self.agent_panel.complete_agent(agent_id, execution.clone());
+
+                    // Ring terminal bell for agent completion with enhanced feedback
+                    let agent_name = execution.agent_id().to_string();
+                    if let Err(e) = self
+                        .notification_system
+                        .agent_completed_with_message(&agent_name)
+                    {
+                        tracing::warn!("Failed to ring terminal bell for agent completion: {}", e);
+                    }
+
                     self.app_event_tx.send(AppEvent::RequestRedraw);
                 }
                 AppEvent::AgentFailed { agent_id, error } => {
-                    self.agent_panel.fail_agent(agent_id, error);
+                    self.agent_panel.fail_agent(agent_id, error.clone());
+
+                    // Ring terminal bell for agent failure with enhanced feedback
+                    let agent_name = format!("agent-{}", agent_id);
+                    if let Err(e) = self
+                        .notification_system
+                        .agent_failed_with_message(&agent_name, &error)
+                    {
+                        tracing::warn!("Failed to ring terminal bell for agent failure: {}", e);
+                    }
+
                     self.app_event_tx.send(AppEvent::RequestRedraw);
                 }
                 AppEvent::CancelAgent(agent_id) => {
@@ -913,7 +1200,7 @@ impl App<'_> {
             AppState::Onboarding { .. } => agcodex_core::protocol::TokenUsage::default(),
         }
     }
-    
+
     /// Get the current operating mode
     fn current_mode(&self) -> OperatingMode {
         self.mode_manager.current_mode()
@@ -921,14 +1208,21 @@ impl App<'_> {
 
     /// Handle starting a new agent execution with enhanced simulation
     /// TODO: Replace with real orchestrator once core compilation issues are fixed
-    fn handle_start_agent(&mut self, invocation_request: agcodex_core::subagents::InvocationRequest) {
-        use agcodex_core::subagents::{ExecutionPlan, SubagentExecution};
-        
-        tracing::info!("Starting enhanced agent execution: {:?}", invocation_request.execution_plan);
-        
+    fn handle_start_agent(
+        &mut self,
+        invocation_request: agcodex_core::subagents::InvocationRequest,
+    ) {
+        use agcodex_core::subagents::ExecutionPlan;
+        use agcodex_core::subagents::SubagentExecution;
+
+        tracing::info!(
+            "Starting enhanced agent execution: {:?}",
+            invocation_request.execution_plan
+        );
+
         // Clone required data for the async task
         let app_event_tx = self.app_event_tx.clone();
-        
+
         // Parse the execution plan and spawn appropriate simulated agents
         match invocation_request.execution_plan {
             ExecutionPlan::Single(invocation) => {
@@ -959,13 +1253,21 @@ impl App<'_> {
                     match step {
                         agcodex_core::subagents::ExecutionStep::Single(invocation) => {
                             let delay = std::time::Duration::from_millis(step_delay * 200);
-                            self.spawn_enhanced_agent_with_delay(invocation, invocation_request.context.clone(), delay);
+                            self.spawn_enhanced_agent_with_delay(
+                                invocation,
+                                invocation_request.context.clone(),
+                                delay,
+                            );
                             step_delay += 1;
                         }
                         agcodex_core::subagents::ExecutionStep::Parallel(invocations) => {
                             for invocation in invocations {
                                 let delay = std::time::Duration::from_millis(step_delay * 200);
-                                self.spawn_enhanced_agent_with_delay(invocation, invocation_request.context.clone(), delay);
+                                self.spawn_enhanced_agent_with_delay(
+                                    invocation,
+                                    invocation_request.context.clone(),
+                                    delay,
+                                );
                             }
                             step_delay += 1;
                         }
@@ -978,82 +1280,86 @@ impl App<'_> {
                 }
             }
         }
-        
+
         // Show the agent panel when agents are started
         self.agent_panel.set_visible(true);
         self.app_event_tx.send(AppEvent::RequestRedraw);
     }
-    
+
     /// Spawn an enhanced agent with realistic behavior
     fn spawn_enhanced_agent(
-        &mut self, 
-        invocation: agcodex_core::subagents::AgentInvocation, 
-        context: String
+        &mut self,
+        invocation: agcodex_core::subagents::AgentInvocation,
+        context: String,
     ) {
-        self.spawn_enhanced_agent_with_delay(invocation, context, std::time::Duration::from_millis(0));
+        self.spawn_enhanced_agent_with_delay(
+            invocation,
+            context,
+            std::time::Duration::from_millis(0),
+        );
     }
-    
+
     /// Spawn an enhanced agent with a specified delay
     fn spawn_enhanced_agent_with_delay(
-        &mut self, 
-        invocation: agcodex_core::subagents::AgentInvocation, 
+        &mut self,
+        invocation: agcodex_core::subagents::AgentInvocation,
         context: String,
-        delay: std::time::Duration
+        delay: std::time::Duration,
     ) {
         use agcodex_core::subagents::SubagentExecution;
-        
+
         let mut execution = SubagentExecution::new(invocation.agent_name.clone());
         execution.start();
-        
+
         let agent_id = execution.id;
         let agent_name = invocation.agent_name.clone();
         let parameters = invocation.parameters.clone();
-        
+
         // Add to the agent panel
         self.agent_panel.add_agent(execution);
-        
+
         // Spawn enhanced agent execution in background
         let app_event_tx = self.app_event_tx.clone();
-        
+
         tokio::spawn(async move {
             // Initial delay if specified
             if !delay.is_zero() {
                 tokio::time::sleep(delay).await;
             }
-            
+
             // Enhanced simulation based on agent type
             let agent_steps = Self::get_agent_steps(&agent_name);
             let total_steps = agent_steps.len();
-            
+
             // Execute each step with realistic timing
             for (i, step) in agent_steps.iter().enumerate() {
                 let progress = (i as f32 + 1.0) / total_steps as f32;
-                
+
                 app_event_tx.send(AppEvent::AgentProgress {
                     agent_id,
                     progress,
                     message: step.clone(),
                 });
-                
+
                 // Realistic timing based on step complexity
                 let step_duration = Self::get_step_duration(step);
                 tokio::time::sleep(step_duration).await;
             }
-            
+
             // Generate realistic output based on agent type
             let output = Self::generate_agent_output(&agent_name, &parameters, &context);
             let modified_files = Self::get_simulated_modified_files(&agent_name);
-            
+
             let mut completed_execution = SubagentExecution::new(agent_name);
             completed_execution.complete(output, modified_files);
-            
+
             app_event_tx.send(AppEvent::AgentComplete {
                 agent_id,
                 execution: completed_execution,
             });
         });
     }
-    
+
     /// Get realistic steps for different agent types
     fn get_agent_steps(agent_name: &str) -> Vec<String> {
         match agent_name {
@@ -1118,7 +1424,7 @@ impl App<'_> {
             ],
         }
     }
-    
+
     /// Get realistic timing for different step types
     fn get_step_duration(step: &str) -> std::time::Duration {
         if step.contains("Initializing") {
@@ -1135,19 +1441,19 @@ impl App<'_> {
             std::time::Duration::from_millis(1000)
         }
     }
-    
+
     /// Generate realistic output based on agent type
     fn generate_agent_output(
         agent_name: &str,
         parameters: &std::collections::HashMap<String, String>,
-        context: &str
+        context: &str,
     ) -> String {
         let param_str = if parameters.is_empty() {
             "no parameters".to_string()
         } else {
             format!("{} parameters", parameters.len())
         };
-        
+
         match agent_name {
             "code-reviewer" => format!(
                 "# Code Review Report\n\n\
@@ -1159,7 +1465,7 @@ impl App<'_> {
                 - Function complexity could be reduced in 3 locations\n\
                 - Missing error handling in async operations\n\
                 - Opportunity for performance optimization in hot paths\n\n\
-                **Context**: {}\n**Parameters**: {}", 
+                **Context**: {}\n**Parameters**: {}",
                 context, param_str
             ),
             "refactorer" => format!(
@@ -1200,7 +1506,7 @@ impl App<'_> {
             ),
         }
     }
-    
+
     /// Get simulated modified files based on agent type
     fn get_simulated_modified_files(agent_name: &str) -> Vec<std::path::PathBuf> {
         match agent_name {
@@ -1219,18 +1525,18 @@ impl App<'_> {
             _ => vec![], // Most agents don't modify files directly
         }
     }
-    
+
     /// Handle agent cancellation (enhanced simulation)
     fn handle_cancel_agent(&mut self, agent_id: Uuid) {
         tracing::info!("Cancelling agent with ID: {}", agent_id);
-        
+
         // TODO: When real orchestrator is available, cancel in the orchestrator
         // self.orchestrator.cancel();
-        
+
         // Update the agent panel
         self.agent_panel.cancel_agent(agent_id);
         self.app_event_tx.send(AppEvent::RequestRedraw);
-        
+
         // For enhanced simulation, just log the cancellation
         tracing::debug!("Agent {} cancelled via enhanced simulation", agent_id);
     }
@@ -1238,6 +1544,141 @@ impl App<'_> {
     /// Get the current operating mode
     pub(crate) const fn current_mode(&self) -> OperatingMode {
         self.mode_manager.current_mode()
+    }
+
+    /// Clone necessary components for auto-save task
+    fn clone_for_autosave(&self) -> AutoSaveApp {
+        AutoSaveApp {
+            session_manager: self.session_manager.clone(),
+            current_session_id: self.current_session_id.clone(),
+            auto_save_handle: self.auto_save_handle.clone(),
+            codex_home: self.config.codex_home.clone(),
+        }
+    }
+
+    /// Update notification system configuration
+    pub(crate) fn update_notification_config(&mut self, config: TuiNotifications) {
+        self.notification_system.update_config(config);
+        tracing::debug!("Updated notification configuration");
+    }
+
+    /// Get current notification configuration
+    pub(crate) fn notification_config(&self) -> &TuiNotifications {
+        self.notification_system.config()
+    }
+
+    /// Initialize SessionManager lazily if not already initialized
+    async fn ensure_session_manager_initialized(&self) -> Result<(), String> {
+        let mut session_manager = self.session_manager.write().await;
+        if session_manager.is_none() {
+            let config = SessionManagerConfig {
+                storage_path: self.config.codex_home.join("history"),
+                auto_save_interval: Duration::from_secs(300), // 5 minutes
+                ..Default::default()
+            };
+
+            match SessionManager::new(config).await {
+                Ok(manager) => {
+                    *session_manager = Some(manager);
+                    tracing::info!("SessionManager initialized successfully");
+                }
+                Err(e) => {
+                    let error_msg = format!("Failed to initialize SessionManager: {}", e);
+                    tracing::error!("{}", error_msg);
+                    return Err(error_msg);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Handle session save request
+    async fn handle_save_session(
+        &self,
+        name: String,
+        description: Option<String>,
+    ) -> Result<Uuid, String> {
+        self.ensure_session_manager_initialized().await?;
+
+        let session_manager_guard = self.session_manager.read().await;
+        let session_manager = session_manager_guard.as_ref().unwrap();
+
+        // Convert current operating mode to persistence format
+        let current_mode = match self.current_mode() {
+            OperatingMode::Plan => PersistenceOperatingMode::Plan,
+            OperatingMode::Build => PersistenceOperatingMode::Build,
+            OperatingMode::Review => PersistenceOperatingMode::Review,
+        };
+
+        // TODO: Get current model from conversation manager
+        let model = "gpt-4".to_string(); // Default for now
+
+        let session_id = session_manager
+            .create_session(name, model, current_mode)
+            .await
+            .map_err(|e| format!("Failed to create session: {}", e))?;
+
+        // Update current session ID
+        *self.current_session_id.write().await = Some(session_id);
+
+        tracing::info!("Session saved with ID: {}", session_id);
+        Ok(session_id)
+    }
+
+    /// Handle session load request
+    async fn handle_load_session(&self, session_id: Uuid) -> Result<(), String> {
+        self.ensure_session_manager_initialized().await?;
+
+        let session_manager_guard = self.session_manager.read().await;
+        let session_manager = session_manager_guard.as_ref().unwrap();
+
+        session_manager
+            .load_session(session_id)
+            .await
+            .map_err(|e| format!("Failed to load session: {}", e))?;
+
+        // Update current session ID
+        *self.current_session_id.write().await = Some(session_id);
+
+        // TODO: Switch conversation state to loaded session
+        // This would involve communicating with ConversationManager
+
+        tracing::info!("Session loaded: {}", session_id);
+        Ok(())
+    }
+
+    /// List all available sessions
+    async fn handle_list_sessions(
+        &self,
+    ) -> Result<Vec<agcodex_persistence::types::SessionMetadata>, String> {
+        self.ensure_session_manager_initialized().await?;
+
+        let session_manager_guard = self.session_manager.read().await;
+        let session_manager = session_manager_guard.as_ref().unwrap();
+
+        session_manager
+            .list_sessions()
+            .await
+            .map_err(|e| format!("Failed to list sessions: {}", e))
+    }
+
+    /// Stop auto-save timer
+    async fn stop_auto_save_timer(&self) {
+        let mut handle_guard = self.auto_save_handle.lock().await;
+        if let Some(handle) = handle_guard.take() {
+            handle.abort();
+            tracing::info!("Auto-save timer stopped");
+        }
+    }
+
+    /// Test notification system by triggering a test bell
+    pub(crate) fn test_notification(
+        &self,
+        level: crate::notification::NotificationLevel,
+    ) -> Result<()> {
+        self.notification_system
+            .notify(level)
+            .map_err(|e| color_eyre::eyre::eyre!("Notification test failed: {}", e))
     }
 
     fn draw_next_frame(&mut self, terminal: &mut tui::Tui) -> Result<()> {
@@ -1298,7 +1739,7 @@ impl App<'_> {
             AppState::Chat { widget } => {
                 // Determine if agent panel is visible
                 let agent_panel_visible = self.agent_panel.is_visible();
-                
+
                 // Create main layout
                 let main_constraints = if agent_panel_visible {
                     vec![
@@ -1312,7 +1753,7 @@ impl App<'_> {
                         Constraint::Min(0),    // Chat widget takes the rest
                     ]
                 };
-                
+
                 let main_layout = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints(main_constraints)
@@ -1337,7 +1778,7 @@ impl App<'_> {
                     frame.set_cursor_position((x, y));
                 }
                 frame.render_widget_ref(&**widget, chat_area);
-                
+
                 // Render agent panel if visible
                 if agent_panel_visible && main_layout.len() > 2 {
                     frame.render_widget_ref(&self.agent_panel, main_layout[2]);
@@ -1379,7 +1820,7 @@ impl App<'_> {
         if self.agent_panel.is_visible() {
             match key_event {
                 KeyEvent {
-                    code: KeyCode::Up, 
+                    code: KeyCode::Up,
                     kind: KeyEventKind::Press,
                     ..
                 } => {
@@ -1425,7 +1866,7 @@ impl App<'_> {
                 }
             }
         }
-        
+
         match &mut self.app_state {
             AppState::Chat { widget } => {
                 widget.handle_key_event(key_event);
@@ -1447,10 +1888,70 @@ impl App<'_> {
     }
 
     fn dispatch_codex_event(&mut self, event: Event) {
+        // Enhanced notification handling for error events with specific messages
+        if let agcodex_core::protocol::EventMsg::Error(error_msg) = &event.msg {
+            if let Err(e) = self
+                .notification_system
+                .error_occurred_with_message(&error_msg.message)
+            {
+                tracing::warn!("Failed to ring terminal bell for error event: {}", e);
+            }
+        }
+        // Also ring for turn aborted events
+        if let agcodex_core::protocol::EventMsg::TurnAborted(_) = &event.msg {
+            if let Err(e) = self
+                .notification_system
+                .error_occurred_with_message("Turn aborted")
+            {
+                tracing::warn!("Failed to ring terminal bell for turn aborted: {}", e);
+            }
+        }
+        // Ring for approval requests (user input needed) with context
+        match &event.msg {
+            agcodex_core::protocol::EventMsg::ExecApprovalRequest(req) => {
+                let message = format!("Approval needed for: {}", req.command.join(" "));
+                if let Err(e) = self
+                    .notification_system
+                    .user_input_needed_with_message(&message)
+                {
+                    tracing::warn!(
+                        "Failed to ring terminal bell for exec approval request: {}",
+                        e
+                    );
+                }
+            }
+            agcodex_core::protocol::EventMsg::ApplyPatchApprovalRequest(_) => {
+                if let Err(e) = self
+                    .notification_system
+                    .user_input_needed_with_message("Patch approval required")
+                {
+                    tracing::warn!(
+                        "Failed to ring terminal bell for patch approval request: {}",
+                        e
+                    );
+                }
+            }
+            _ => {}
+        }
+
         match &mut self.app_state {
             AppState::Chat { widget } => widget.handle_codex_event(event),
             AppState::Onboarding { .. } => {}
         }
+    }
+}
+
+impl Drop for App<'_> {
+    fn drop(&mut self) {
+        // Stop auto-save timer on drop
+        let auto_save_handle = self.auto_save_handle.clone();
+        tokio::spawn(async move {
+            let mut handle_guard = auto_save_handle.lock().await;
+            if let Some(handle) = handle_guard.take() {
+                handle.abort();
+                tracing::debug!("Auto-save timer stopped on App drop");
+            }
+        });
     }
 }
 

@@ -36,7 +36,7 @@ pub(crate) const PROJECT_DOC_MAX_BYTES: usize = 32 * 1024; // 32 KiB
 
 const CONFIG_TOML_FILE: &str = "config.toml";
 
-const DEFAULT_RESPONSES_ORIGINATOR_HEADER: &str = "codex_cli_rs";
+const DEFAULT_RESPONSES_ORIGINATOR_HEADER: &str = "agcodex_cli_rs";
 
 /// Application configuration loaded from disk and merged with overrides.
 #[derive(Debug, Clone, PartialEq)]
@@ -1054,7 +1054,7 @@ disable_response_storage = true
                 base_instructions: None,
                 include_plan_tool: false,
                 include_apply_patch_tool: false,
-                responses_originator_header: "codex_cli_rs".to_string(),
+                responses_originator_header: "agcodex_cli_rs".to_string(),
                 preferred_auth_method: AuthMode::ChatGPT,
             },
             o3_profile_config
@@ -1107,7 +1107,7 @@ disable_response_storage = true
             base_instructions: None,
             include_plan_tool: false,
             include_apply_patch_tool: false,
-            responses_originator_header: "codex_cli_rs".to_string(),
+            responses_originator_header: "agcodex_cli_rs".to_string(),
             preferred_auth_method: AuthMode::ChatGPT,
         };
 
@@ -1175,7 +1175,7 @@ disable_response_storage = true
             base_instructions: None,
             include_plan_tool: false,
             include_apply_patch_tool: false,
-            responses_originator_header: "codex_cli_rs".to_string(),
+            responses_originator_header: "agcodex_cli_rs".to_string(),
             preferred_auth_method: AuthMode::ChatGPT,
         };
 

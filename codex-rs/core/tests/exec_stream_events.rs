@@ -7,6 +7,7 @@ use agcodex_core::exec::ExecParams;
 use agcodex_core::exec::SandboxType;
 use agcodex_core::exec::StdoutStream;
 use agcodex_core::exec::process_exec_tool_call;
+use agcodex_core::modes::ModeRestrictions;
 use agcodex_core::protocol::Event;
 use agcodex_core::protocol::EventMsg;
 use agcodex_core::protocol::ExecCommandOutputDeltaEvent;
@@ -63,6 +64,7 @@ async fn test_exec_stdout_stream_events_echo() {
         &policy,
         &None,
         Some(stdout_stream),
+        &ModeRestrictions::default(),
     )
     .await;
 
@@ -113,6 +115,7 @@ async fn test_exec_stderr_stream_events_echo() {
         &policy,
         &None,
         Some(stdout_stream),
+        &ModeRestrictions::default(),
     )
     .await;
 

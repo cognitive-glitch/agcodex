@@ -48,6 +48,10 @@ pub(crate) trait BottomPaneView<'a> {
     fn update_status_text(&mut self, _text: String) {}
 
     /// Support for downcasting to concrete types
-    fn as_any(&self) -> &dyn Any where Self: 'static;
-    fn as_any_mut(&mut self) -> &mut dyn Any where Self: 'static;
+    fn as_any(&self) -> &dyn Any
+    where
+        Self: 'static;
+    fn as_any_mut(&mut self) -> &mut dyn Any
+    where
+        Self: 'static;
 }

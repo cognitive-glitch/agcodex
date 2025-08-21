@@ -483,7 +483,7 @@ mod tests {
             mode,
             auth_dot_json,
             auth_file: _,
-        } = load_auth(codex_home.path(), false, AuthMode::ChatGPT)
+        } = load_auth(agcodex_home.path(), false, AuthMode::ChatGPT)
             .unwrap()
             .unwrap();
         assert_eq!(None, api_key);
@@ -534,7 +534,7 @@ mod tests {
             mode,
             auth_dot_json,
             auth_file: _,
-        } = load_auth(codex_home.path(), false, AuthMode::ChatGPT)
+        } = load_auth(agcodex_home.path(), false, AuthMode::ChatGPT)
             .unwrap()
             .unwrap();
         assert_eq!(None, api_key);
@@ -584,7 +584,7 @@ mod tests {
             mode,
             auth_dot_json,
             auth_file: _,
-        } = load_auth(codex_home.path(), false, AuthMode::ChatGPT)
+        } = load_auth(agcodex_home.path(), false, AuthMode::ChatGPT)
             .unwrap()
             .unwrap();
         assert_eq!(Some("sk-test-key".to_string()), api_key);

@@ -33,6 +33,7 @@ agcodex-mcp-types = { path = "../mcp-types" }
 mime_guess = { workspace = true }
 os_info = { workspace = true }
 rand = { workspace = true }
+regex = { workspace = true }
 regex-lite = { workspace = true }
 reqwest = { workspace = true, features = ["json", "stream"] }
 serde = { workspace = true, features = ["derive"] }
@@ -58,12 +59,66 @@ toml_edit = { workspace = true }
 tracing = { workspace = true, features = ["log"] }
 tree-sitter = { workspace = true }
 tree-sitter-bash = { workspace = true }
+tree-sitter-rust = { workspace = true }
+tree-sitter-python = { workspace = true }
+tree-sitter-javascript = { workspace = true }
+tree-sitter-typescript = { workspace = true }
+tree-sitter-go = { workspace = true }
+tree-sitter-java = { workspace = true }
+tree-sitter-c = { workspace = true }
+tree-sitter-cpp = { workspace = true }
+tree-sitter-c-sharp = { workspace = true }
+
+# Web languages
+tree-sitter-html = { workspace = true }
+tree-sitter-css = { workspace = true }
+tree-sitter-json = { workspace = true }
+tree-sitter-yaml = { workspace = true }
+tree-sitter-toml = { workspace = true }
+
+# Scripting languages
+tree-sitter-ruby = { workspace = true }
+tree-sitter-php = { workspace = true }
+tree-sitter-lua = { workspace = true }
+
+# Functional languages
+tree-sitter-haskell = { workspace = true }
+tree-sitter-elixir = { workspace = true }
+tree-sitter-scala = { workspace = true }
+tree-sitter-ocaml = { workspace = true }
+tree-sitter-clojure = { workspace = true }
+
+# Systems languages
+tree-sitter-zig = { workspace = true }
+tree-sitter-swift = { workspace = true }
+tree-sitter-kotlin-ng = { workspace = true }
+tree-sitter-objc = { workspace = true }
+
+# Config/Build languages
+tree-sitter-dockerfile = { workspace = true }
+tree-sitter-hcl = { workspace = true }
+tree-sitter-nix = { workspace = true }
+tree-sitter-make = { workspace = true }
+
+# Documentation languages
+tree-sitter-markdown = { workspace = true }
+tree-sitter-latex = { workspace = true }
+tree-sitter-rst = { workspace = true }
 rayon = { workspace = true }
 ignore = { workspace = true }
+lru = "0.12"
+md5 = { workspace = true }
+tantivy = "0.22"
 uuid = { workspace = true, features = ["serde", "v4"] }
 walkdir = { workspace = true }
 whoami = { workspace = true }
 wildmatch = { workspace = true }
+
+# AST-grep integration
+ast-grep = { workspace = true }
+ast-grep-core = { workspace = true }
+ast-grep-language = { workspace = true }
+ast-grep-config = { workspace = true }
 
 
 [target.'cfg(target_os = "linux")'.dependencies]

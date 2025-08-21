@@ -117,7 +117,7 @@ pub(crate) fn create_tool_for_codex_tool_call_param() -> Tool {
         });
 
     Tool {
-        name: "codex".to_string(),
+        name: "agcodex".to_string(),
         title: Some("Codex".to_string()),
         input_schema: tool_input_schema,
         // TODO(mbolin): This should be defined.
@@ -205,7 +205,7 @@ pub(crate) fn create_tool_for_codex_tool_call_reply_param() -> Tool {
         });
 
     Tool {
-        name: "codex-reply".to_string(),
+        name: "agcodex-reply".to_string(),
         title: Some("Codex Reply".to_string()),
         input_schema: tool_input_schema,
         output_schema: None,
@@ -237,7 +237,7 @@ mod tests {
         let tool = create_tool_for_codex_tool_call_param();
         let tool_json = serde_json::to_value(&tool).expect("tool serializes");
         let expected_tool_json = serde_json::json!({
-          "name": "codex",
+          "name": "agcodex",
           "title": "Codex",
           "description": "Run a Codex session. Accepts configuration parameters matching the Codex Config struct.",
           "inputSchema": {
@@ -323,7 +323,7 @@ mod tests {
             ],
             "type": "object",
           },
-          "name": "codex-reply",
+          "name": "agcodex-reply",
           "title": "Codex Reply",
         });
         assert_eq!(expected_tool_json, tool_json);

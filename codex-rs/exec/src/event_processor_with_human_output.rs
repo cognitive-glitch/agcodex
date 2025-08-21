@@ -188,7 +188,11 @@ impl EventProcessor for EventProcessorWithHumanOutput {
             }
             EventMsg::AgentMessageDelta(AgentMessageDeltaEvent { delta }) => {
                 if !self.answer_started {
-                    ts_println!(self, "{}\n", "codex".style(self.italic).style(self.magenta));
+                    ts_println!(
+                        self,
+                        "{}\n",
+                        "agcodex".style(self.italic).style(self.magenta)
+                    );
                     self.answer_started = true;
                 }
                 print!("{delta}");
@@ -252,7 +256,7 @@ impl EventProcessor for EventProcessorWithHumanOutput {
                     ts_println!(
                         self,
                         "{}\n{}",
-                        "codex".style(self.italic).style(self.magenta),
+                        "agcodex".style(self.italic).style(self.magenta),
                         message,
                     );
                 } else {
@@ -488,7 +492,7 @@ impl EventProcessor for EventProcessorWithHumanOutput {
                         ts_println!(
                             self,
                             "{}\n{}",
-                            "codex".style(self.italic).style(self.magenta),
+                            "agcodex".style(self.italic).style(self.magenta),
                             agent_reasoning_event.text,
                         );
                     } else {

@@ -3,19 +3,36 @@
 //! Displays running agents with progress bars, status indicators, and controls.
 //! Features real-time progress updates, cancellation buttons, and execution history.
 
-use agcodex_core::subagents::{SubagentExecution, SubagentStatus};
-use ratatui::{
-    buffer::Buffer,
-    layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
-    style::{Color, Modifier, Style, Stylize},
-    text::{Line, Span},
-    widgets::{
-        Block, BorderType, Borders, Clear, Gauge, List, ListItem, ListState, Paragraph,
-        StatefulWidget, Widget, WidgetRef,
-    },
-};
+use agcodex_core::subagents::SubagentExecution;
+use agcodex_core::subagents::SubagentStatus;
+use ratatui::buffer::Buffer;
+use ratatui::layout::Alignment;
+use ratatui::layout::Constraint;
+use ratatui::layout::Direction;
+use ratatui::layout::Layout;
+use ratatui::layout::Margin;
+use ratatui::layout::Rect;
+use ratatui::style::Color;
+use ratatui::style::Modifier;
+use ratatui::style::Style;
+use ratatui::style::Stylize;
+use ratatui::text::Line;
+use ratatui::text::Span;
+use ratatui::widgets::Block;
+use ratatui::widgets::BorderType;
+use ratatui::widgets::Borders;
+use ratatui::widgets::Clear;
+use ratatui::widgets::Gauge;
+use ratatui::widgets::List;
+use ratatui::widgets::ListItem;
+use ratatui::widgets::ListState;
+use ratatui::widgets::Paragraph;
+use ratatui::widgets::StatefulWidget;
+use ratatui::widgets::Widget;
+use ratatui::widgets::WidgetRef;
 use std::collections::HashMap;
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 /// Agent panel state and data
@@ -101,8 +118,9 @@ impl AgentPanel {
             ui_started_at: SystemTime::now(),
             execution,
         };
-        
-        self.running_agents.insert(agent_execution.execution.id, agent_execution);
+
+        self.running_agents
+            .insert(agent_execution.execution.id, agent_execution);
     }
 
     /// Update agent progress
@@ -111,12 +129,15 @@ impl AgentPanel {
             agent.progress = progress.clamp(0.0, 1.0);
             agent.status_message = message.clone();
         }
-        
-        self.progress_updates.insert(agent_id, ProgressInfo {
-            progress,
-            message,
-            last_update: SystemTime::now(),
-        });
+
+        self.progress_updates.insert(
+            agent_id,
+            ProgressInfo {
+                progress,
+                message,
+                last_update: SystemTime::now(),
+            },
+        );
     }
 
     /// Add output chunk for streaming agent
@@ -124,7 +145,7 @@ impl AgentPanel {
         if let Some(agent) = self.running_agents.get_mut(&agent_id) {
             agent.total_output_length += chunk.len();
             agent.output_chunks.push(chunk);
-            
+
             // Limit chunks to prevent excessive memory usage
             if agent.output_chunks.len() > 100 {
                 let removed = agent.output_chunks.remove(0);
@@ -140,16 +161,16 @@ impl AgentPanel {
             agent.progress = 1.0;
             agent.status_message = "Completed".to_string();
             agent.cancellable = false;
-            
+
             // Move to completed list
             self.completed_agents.push(agent);
-            
+
             // Limit history
             if self.completed_agents.len() > self.max_history {
                 self.completed_agents.remove(0);
             }
         }
-        
+
         self.progress_updates.remove(&agent_id);
     }
 
@@ -160,16 +181,16 @@ impl AgentPanel {
             agent.progress = 0.0;
             agent.status_message = format!("Failed: {}", error);
             agent.cancellable = false;
-            
+
             // Move to completed list
             self.completed_agents.push(agent);
-            
+
             // Limit history
             if self.completed_agents.len() > self.max_history {
                 self.completed_agents.remove(0);
             }
         }
-        
+
         self.progress_updates.remove(&agent_id);
     }
 
@@ -180,21 +201,25 @@ impl AgentPanel {
             agent.progress = 0.0;
             agent.status_message = "Cancelled".to_string();
             agent.cancellable = false;
-            
+
             // Move to completed list
             self.completed_agents.push(agent);
         }
-        
+
         self.progress_updates.remove(&agent_id);
     }
 
     /// Get the currently selected agent ID
     pub fn selected_agent_id(&self) -> Option<Uuid> {
-        let all_agents: Vec<_> = self.running_agents.values()
+        let all_agents: Vec<_> = self
+            .running_agents
+            .values()
             .chain(self.completed_agents.iter())
             .collect();
-            
-        all_agents.get(self.selected_index).map(|agent| agent.execution.id)
+
+        all_agents
+            .get(self.selected_index)
+            .map(|agent| agent.execution.id)
     }
 
     /// Navigate up in the agent list
@@ -234,8 +259,11 @@ impl AgentPanel {
 
     /// Get agent by ID
     pub fn get_agent(&self, agent_id: Uuid) -> Option<&AgentExecution> {
-        self.running_agents.get(&agent_id)
-            .or_else(|| self.completed_agents.iter().find(|a| a.execution.id == agent_id))
+        self.running_agents.get(&agent_id).or_else(|| {
+            self.completed_agents
+                .iter()
+                .find(|a| a.execution.id == agent_id)
+        })
     }
 }
 
@@ -251,7 +279,11 @@ impl WidgetRef for &AgentPanel {
         // Main panel border
         let block = Block::default()
             .title("󰚩 Agent Panel")
-            .title_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+            .title_style(
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            )
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(Color::Cyan));
@@ -289,7 +321,7 @@ impl AgentPanel {
     fn render_header(&self, area: Rect, buf: &mut Buffer) {
         let running = self.running_count();
         let completed = self.completed_count();
-        
+
         let header_text = if running > 0 {
             format!("󰑮 {} running  󰄬 {} completed", running, completed)
         } else if completed > 0 {
@@ -364,14 +396,22 @@ impl AgentPanel {
         let mut spans = vec![
             Span::styled(status_icon, Style::default().fg(status_color)),
             Span::raw(" "),
-            Span::styled(agent_name, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                agent_name,
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" "),
         ];
 
         // Add progress bar for running agents
         if is_running && agent.progress > 0.0 {
             let progress_text = format!("[{:3.0}%]", agent.progress * 100.0);
-            spans.push(Span::styled(progress_text, Style::default().fg(Color::Cyan)));
+            spans.push(Span::styled(
+                progress_text,
+                Style::default().fg(Color::Cyan),
+            ));
             spans.push(Span::raw(" "));
         }
 
@@ -418,13 +458,13 @@ mod tests {
     fn test_agent_panel_visibility_toggle() {
         let mut panel = AgentPanel::new();
         assert!(!panel.is_visible());
-        
+
         panel.toggle_visibility();
         assert!(panel.is_visible());
-        
+
         panel.toggle_visibility();
         assert!(!panel.is_visible());
-        
+
         panel.set_visible(true);
         assert!(panel.is_visible());
     }
@@ -434,24 +474,24 @@ mod tests {
         let mut panel = AgentPanel::new();
         let mut execution = SubagentExecution::new("test-agent".to_string());
         execution.start();
-        
+
         let agent_id = execution.id;
         panel.add_agent(execution);
-        
+
         assert_eq!(panel.running_count(), 1);
         assert_eq!(panel.completed_count(), 0);
-        
+
         // Update progress
         panel.update_progress(agent_id, 0.5, "Processing...".to_string());
         let agent = panel.get_agent(agent_id).unwrap();
         assert_eq!(agent.progress, 0.5);
         assert_eq!(agent.status_message, "Processing...");
-        
+
         // Complete the agent
         let mut completed_execution = SubagentExecution::new("test-agent".to_string());
         completed_execution.complete("Success!".to_string(), vec![]);
         panel.complete_agent(agent_id, completed_execution);
-        
+
         assert_eq!(panel.running_count(), 0);
         assert_eq!(panel.completed_count(), 1);
     }
@@ -459,32 +499,32 @@ mod tests {
     #[test]
     fn test_agent_panel_navigation() {
         let mut panel = AgentPanel::new();
-        
+
         // Add multiple agents
         for i in 0..3 {
             let mut execution = SubagentExecution::new(format!("agent-{}", i));
             execution.start();
             panel.add_agent(execution);
         }
-        
+
         assert_eq!(panel.selected_index, 0);
-        
+
         panel.navigate_down();
         assert_eq!(panel.selected_index, 1);
-        
+
         panel.navigate_down();
         assert_eq!(panel.selected_index, 2);
-        
+
         // Should not go beyond bounds
         panel.navigate_down();
         assert_eq!(panel.selected_index, 2);
-        
+
         panel.navigate_up();
         assert_eq!(panel.selected_index, 1);
-        
+
         panel.navigate_up();
         assert_eq!(panel.selected_index, 0);
-        
+
         // Should not go below 0
         panel.navigate_up();
         assert_eq!(panel.selected_index, 0);
@@ -495,17 +535,17 @@ mod tests {
         let mut panel = AgentPanel::new();
         let mut execution = SubagentExecution::new("failing-agent".to_string());
         execution.start();
-        
+
         let agent_id = execution.id;
         panel.add_agent(execution);
-        
+
         assert_eq!(panel.running_count(), 1);
-        
+
         panel.fail_agent(agent_id, "Test error".to_string());
-        
+
         assert_eq!(panel.running_count(), 0);
         assert_eq!(panel.completed_count(), 1);
-        
+
         let agent = panel.get_agent(agent_id).unwrap();
         assert!(matches!(agent.execution.status, SubagentStatus::Failed(_)));
         assert!(agent.status_message.contains("Failed"));
@@ -516,13 +556,13 @@ mod tests {
         let mut panel = AgentPanel::new();
         let mut execution = SubagentExecution::new("streaming-agent".to_string());
         execution.start();
-        
+
         let agent_id = execution.id;
         panel.add_agent(execution);
-        
+
         panel.add_output_chunk(agent_id, "First chunk".to_string());
         panel.add_output_chunk(agent_id, "Second chunk".to_string());
-        
+
         let agent = panel.get_agent(agent_id).unwrap();
         assert_eq!(agent.output_chunks.len(), 2);
         assert_eq!(agent.output_chunks[0], "First chunk");

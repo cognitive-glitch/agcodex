@@ -42,7 +42,7 @@ async fn test_codex_jsonrpc_conversation_flow() {
 
     let tmp = TempDir::new().expect("tmp dir");
     // Temporary Codex home with config pointing at the mock server.
-    let codex_home = tmp.path().join("codex_home");
+    let codex_home = tmp.path().join("agcodex_home");
     std::fs::create_dir(&codex_home).expect("create codex home dir");
     let working_directory = tmp.path().join("workdir");
     std::fs::create_dir(&working_directory).expect("create working directory");
@@ -178,7 +178,7 @@ async fn test_send_user_turn_changes_approval_policy_behavior() {
     }
 
     let tmp = TempDir::new().expect("tmp dir");
-    let codex_home = tmp.path().join("codex_home");
+    let codex_home = tmp.path().join("agcodex_home");
     std::fs::create_dir(&codex_home).expect("create codex home dir");
     let working_directory = tmp.path().join("workdir");
     std::fs::create_dir(&working_directory).expect("create working directory");

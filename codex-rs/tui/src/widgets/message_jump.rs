@@ -2,23 +2,33 @@
 
 use std::time::SystemTime;
 
-use agcodex_core::models::{ResponseItem, ContentItem};
-use nucleo_matcher::{Matcher, Utf32Str};
-use ratatui::{
-    buffer::Buffer,
-    layout::{Alignment, Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
-    text::{Line, Span, Text},
-    widgets::{
-        Block, Borders, BorderType, Clear, Paragraph, Widget, WidgetRef,
-    },
-};
+use agcodex_core::models::ContentItem;
+use agcodex_core::models::ResponseItem;
+use nucleo_matcher::Matcher;
+use nucleo_matcher::Utf32Str;
+use ratatui::buffer::Buffer;
+use ratatui::layout::Alignment;
+use ratatui::layout::Constraint;
+use ratatui::layout::Layout;
+use ratatui::layout::Rect;
+use ratatui::style::Color;
+use ratatui::style::Modifier;
+use ratatui::style::Style;
+use ratatui::text::Line;
+use ratatui::text::Span;
+use ratatui::text::Text;
+use ratatui::widgets::Block;
+use ratatui::widgets::BorderType;
+use ratatui::widgets::Borders;
+use ratatui::widgets::Clear;
+use ratatui::widgets::Paragraph;
+use ratatui::widgets::Widget;
+use ratatui::widgets::WidgetRef;
 
-use crate::bottom_pane::{
-    popup_consts::MAX_POPUP_ROWS,
-    scroll_state::ScrollState,
-    selection_popup_common::{GenericDisplayRow, render_rows},
-};
+use crate::bottom_pane::popup_consts::MAX_POPUP_ROWS;
+use crate::bottom_pane::scroll_state::ScrollState;
+use crate::bottom_pane::selection_popup_common::GenericDisplayRow;
+use crate::bottom_pane::selection_popup_common::render_rows;
 
 /// Represents a single message entry in the jump list
 #[derive(Debug, Clone)]
@@ -57,9 +67,7 @@ impl MessageEntry {
             ResponseItem::FunctionCallOutput { .. } => {
                 ("function_output".to_string(), "Function output".to_string())
             }
-            ResponseItem::Other => {
-                ("other".to_string(), "Other content".to_string())
-            }
+            ResponseItem::Other => ("other".to_string(), "Other content".to_string()),
         };
 
         let preview = if content.len() > 100 {
@@ -100,10 +108,13 @@ impl RoleFilter {
         match self {
             RoleFilter::All => true,
             RoleFilter::User => role == "user",
-            RoleFilter::Assistant => role == "assistant", 
+            RoleFilter::Assistant => role == "assistant",
             RoleFilter::System => role == "system",
             RoleFilter::Function => role == "function" || role == "function_output",
-            RoleFilter::Other => !matches!(role, "user" | "assistant" | "system" | "function" | "function_output"),
+            RoleFilter::Other => !matches!(
+                role,
+                "user" | "assistant" | "system" | "function" | "function_output"
+            ),
         }
     }
 
@@ -172,10 +183,10 @@ impl MessageJump {
             .enumerate()
             .map(|(i, item)| MessageEntry::new(i, item))
             .collect();
-        
+
         self.visible = true;
         self.apply_filters();
-        
+
         // Select the last message by default
         if !self.filtered_messages.is_empty() {
             self.state.selected_idx = Some(self.filtered_messages.len() - 1);
@@ -233,7 +244,8 @@ impl MessageJump {
 
     /// Get the currently selected message entry
     pub fn selected_message(&self) -> Option<&MessageEntry> {
-        self.state.selected_idx
+        self.state
+            .selected_idx
             .and_then(|idx| self.filtered_messages.get(idx))
     }
 
@@ -241,30 +253,30 @@ impl MessageJump {
     pub fn get_context_messages(&self) -> Option<Vec<&MessageEntry>> {
         let selected = self.selected_message()?;
         let selected_index = selected.index;
-        
+
         let start = selected_index.saturating_sub(self.context_lines);
         let end = (selected_index + self.context_lines + 1).min(self.all_messages.len());
-        
+
         Some(self.all_messages[start..end].iter().collect())
     }
 
     /// Apply current search and role filters
     fn apply_filters(&mut self) {
         self.filtered_messages.clear();
-        
+
         for message in &self.all_messages {
             // Apply role filter
             if !self.role_filter.matches(&message.role) {
                 continue;
             }
-            
+
             // Apply search filter
             if !self.search_query.is_empty() {
                 let mut haystack_buf = Vec::new();
                 let mut needle_buf = Vec::new();
                 let haystack = Utf32Str::new(&message.full_content, &mut haystack_buf);
                 let needle = Utf32Str::new(&self.search_query, &mut needle_buf);
-                
+
                 if self.matcher.fuzzy_match(haystack, needle).is_none() {
                     // Also try matching against the display text
                     let display_text = message.display_text();
@@ -275,10 +287,10 @@ impl MessageJump {
                     }
                 }
             }
-            
+
             self.filtered_messages.push(message.clone());
         }
-        
+
         // Update selection state
         let len = self.filtered_messages.len();
         self.state.clamp_selection(len);
@@ -290,20 +302,20 @@ impl MessageJump {
         if !self.visible {
             return 0;
         }
-        
+
         // Base height for the message list
         let list_height = self.filtered_messages.len().clamp(1, MAX_POPUP_ROWS) as u16;
-        
+
         // Add space for search bar and filter indicator
         let ui_height = 4; // Search bar (1) + filter line (1) + borders (2)
-        
+
         // Add space for context preview if a message is selected
         let context_height = if self.selected_message().is_some() {
             (self.context_lines * 2 + 1) as u16 // Before + selected + after
         } else {
             0
         };
-        
+
         list_height + ui_height + context_height
     }
 }
@@ -344,26 +356,25 @@ impl WidgetRef for MessageJump {
             .direction(ratatui::layout::Direction::Vertical)
             .constraints([
                 Constraint::Length(1), // Search bar
-                Constraint::Length(1), // Filter indicator  
+                Constraint::Length(1), // Filter indicator
                 Constraint::Min(3),    // Message list
-                Constraint::Length(if self.selected_message().is_some() { 
-                    (self.context_lines * 2 + 3) as u16 
-                } else { 
-                    0 
+                Constraint::Length(if self.selected_message().is_some() {
+                    (self.context_lines * 2 + 3) as u16
+                } else {
+                    0
                 }), // Context preview
             ])
             .split(inner);
 
         // Render search bar
         let search_text = if self.search_query.is_empty() {
-            Text::from("Type to search messages...")
-                .style(Style::default().fg(Color::DarkGray))
+            Text::from("Type to search messages...").style(Style::default().fg(Color::DarkGray))
         } else {
             Text::from(self.search_query.clone())
         };
-        
-        let search_paragraph = Paragraph::new(search_text)
-            .block(Block::default().borders(Borders::BOTTOM));
+
+        let search_paragraph =
+            Paragraph::new(search_text).block(Block::default().borders(Borders::BOTTOM));
         search_paragraph.render(chunks[0], buf);
 
         // Render filter indicator
@@ -399,7 +410,7 @@ impl MessageJump {
                 .iter()
                 .map(|msg| {
                     let display_text = msg.display_text();
-                    
+
                     // Calculate fuzzy match indices for highlighting
                     // For now, just do simple substring highlighting
                     let match_indices = if !self.search_query.is_empty() {
@@ -448,7 +459,9 @@ impl MessageJump {
         for (i, msg) in context_messages.iter().enumerate() {
             let is_selected = selected_index == Some(msg.index);
             let style = if is_selected {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::Gray)
             };
@@ -479,7 +492,9 @@ fn extract_text_content(content: &[ContentItem]) -> String {
     content
         .iter()
         .filter_map(|item| match item {
-            ContentItem::InputText { text } | ContentItem::OutputText { text } => Some(text.as_str()),
+            ContentItem::InputText { text } | ContentItem::OutputText { text } => {
+                Some(text.as_str())
+            }
             ContentItem::InputImage { .. } => Some("[Image]"),
         })
         .collect::<Vec<_>>()
@@ -505,7 +520,7 @@ mod tests {
     fn test_message_entry_creation() {
         let item = create_test_message("user", "Hello, world!");
         let entry = MessageEntry::new(0, item);
-        
+
         assert_eq!(entry.index, 0);
         assert_eq!(entry.role, "user");
         assert_eq!(entry.preview, "Hello, world!");
@@ -517,7 +532,7 @@ mod tests {
         let long_content = "a".repeat(150);
         let item = create_test_message("user", &long_content);
         let entry = MessageEntry::new(0, item);
-        
+
         assert_eq!(entry.preview.len(), 100); // 97 chars + "..."
         assert!(entry.preview.ends_with("..."));
     }
@@ -536,7 +551,7 @@ mod tests {
     fn test_role_filter_cycling() {
         let filter = RoleFilter::All;
         assert_eq!(filter.cycle_next(), RoleFilter::User);
-        
+
         let filter = RoleFilter::Other;
         assert_eq!(filter.cycle_next(), RoleFilter::All);
     }
@@ -549,14 +564,14 @@ mod tests {
             create_test_message("assistant", "Hi there"),
             create_test_message("user", "How are you?"),
         ];
-        
+
         jump.show(messages);
         assert_eq!(jump.filtered_messages.len(), 3);
-        
+
         jump.role_filter = RoleFilter::User;
         jump.apply_filters();
         assert_eq!(jump.filtered_messages.len(), 2);
-        
+
         jump.set_search_query("Hello".to_string());
         assert_eq!(jump.filtered_messages.len(), 1);
     }

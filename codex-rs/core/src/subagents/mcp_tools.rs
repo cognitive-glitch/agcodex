@@ -3,19 +3,28 @@
 //! This module provides MCP (Model Context Protocol) tool definitions for each agent,
 //! enabling them to be invoked via MCP clients and to call other MCP tools.
 
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value as JsonValue};
-use std::collections::{BTreeMap, HashMap};
+use serde::Deserialize;
+use serde::Serialize;
+use serde_json::Value as JsonValue;
+use serde_json::json;
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info};
+use tracing::debug;
+use tracing::error;
+use tracing::info;
 
-use crate::models::{FunctionCallOutputPayload, ResponseInputItem};
-use crate::openai_tools::{JsonSchema, ResponsesApiTool};
-use crate::subagents::{
-    AgentContext, AgentInvocation, AgentOrchestrator, SubagentError,
-    SubagentResult,
-};
+use crate::models::FunctionCallOutputPayload;
+use crate::models::ResponseInputItem;
+use crate::openai_tools::JsonSchema;
+use crate::openai_tools::ResponsesApiTool;
+use crate::subagents::AgentContext;
+use crate::subagents::AgentInvocation;
+use crate::subagents::AgentOrchestrator;
+use crate::subagents::SharedContext;
+use crate::subagents::SubagentError;
+use crate::subagents::SubagentResult;
 
 /// MCP tool descriptor for an agent
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,7 +83,10 @@ impl McpAgentToolProvider {
                         (
                             "focus".to_string(),
                             JsonSchema::String {
-                                description: Some("Review focus area: security, performance, quality, or all".to_string()),
+                                description: Some(
+                                    "Review focus area: security, performance, quality, or all"
+                                        .to_string(),
+                                ),
                             },
                         ),
                     ]),
@@ -177,7 +189,10 @@ impl McpAgentToolProvider {
                         (
                             "test_type".to_string(),
                             JsonSchema::String {
-                                description: Some("Type of tests to generate: unit, integration, e2e, or all".to_string()),
+                                description: Some(
+                                    "Type of tests to generate: unit, integration, e2e, or all"
+                                        .to_string(),
+                                ),
                             },
                         ),
                         (
@@ -249,7 +264,10 @@ impl McpAgentToolProvider {
                         (
                             "scan_type".to_string(),
                             JsonSchema::String {
-                                description: Some("Type of security scan: owasp, cve, secrets, or all".to_string()),
+                                description: Some(
+                                    "Type of security scan: owasp, cve, secrets, or all"
+                                        .to_string(),
+                                ),
                             },
                         ),
                         (
@@ -285,13 +303,18 @@ impl McpAgentToolProvider {
                         (
                             "doc_type".to_string(),
                             JsonSchema::String {
-                                description: Some("Type of documentation: api, tutorial, reference, or all".to_string()),
+                                description: Some(
+                                    "Type of documentation: api, tutorial, reference, or all"
+                                        .to_string(),
+                                ),
                             },
                         ),
                         (
                             "format".to_string(),
                             JsonSchema::String {
-                                description: Some("Output format: markdown, html, or rst".to_string()),
+                                description: Some(
+                                    "Output format: markdown, html, or rst".to_string(),
+                                ),
                             },
                         ),
                     ]),
@@ -419,7 +442,7 @@ impl McpAgentToolProvider {
         context: &AgentContext,
     ) -> SubagentResult<JsonValue> {
         let tools = self.tools.read().await;
-        
+
         let tool = tools
             .get(tool_name)
             .ok_or_else(|| SubagentError::AgentNotFound {
@@ -448,9 +471,11 @@ impl McpAgentToolProvider {
             intelligence_override: None,
         };
 
+        // Create a SharedContext for the orchestrator
+        let shared_context = SharedContext::new();
         let result = self
             .orchestrator
-            .execute_single(invocation, &context)
+            .execute_single(invocation, &shared_context)
             .await?;
 
         // Convert result to JSON
@@ -476,12 +501,11 @@ impl McpAgentToolProvider {
         let stop_on_error = arguments["stop_on_error"].as_bool().unwrap_or(true);
 
         let mut results = Vec::new();
-        let mut accumulated_context = context.clone();
 
         for agent_name in agents {
-            let agent_name = agent_name
-                .as_str()
-                .ok_or_else(|| SubagentError::InvalidConfig("agent name must be a string".to_string()))?;
+            let agent_name = agent_name.as_str().ok_or_else(|| {
+                SubagentError::InvalidConfig("agent name must be a string".to_string())
+            })?;
 
             let invocation = AgentInvocation {
                 agent_name: agent_name.to_string(),
@@ -492,17 +516,19 @@ impl McpAgentToolProvider {
                 intelligence_override: None,
             };
 
+            // Create a SharedContext for the orchestrator
+            let shared_context = SharedContext::new();
             match self
                 .orchestrator
-                .execute_single(invocation, &accumulated_context)
+                .execute_single(invocation, &shared_context)
                 .await
             {
                 Ok(result) => {
                     // Update context with results for next agent
-                    accumulated_context.send_message(
-                        crate::subagents::context::AgentMessage {
+                    context
+                        .send_message(crate::subagents::context::AgentMessage {
                             id: uuid::Uuid::new_v4(),
-                            from: agent_name.clone(),
+                            from: agent_name.to_string(),
                             to: crate::subagents::context::MessageTarget::Broadcast,
                             message_type: crate::subagents::context::MessageType::Result,
                             priority: crate::subagents::context::MessagePriority::Normal,
@@ -510,8 +536,9 @@ impl McpAgentToolProvider {
                                 "output": result.output.clone().unwrap_or_default()
                             }),
                             timestamp: chrono::Utc::now(),
-                        }
-                    ).await.ok();
+                        })
+                        .await
+                        .ok();
                     results.push(json!({
                         "agent": agent_name,
                         "success": true,
@@ -541,7 +568,7 @@ impl McpAgentToolProvider {
     async fn execute_parallel(
         &self,
         arguments: JsonValue,
-        context: &AgentContext,
+        _context: &AgentContext,
     ) -> SubagentResult<JsonValue> {
         let agents = arguments["agents"]
             .as_array()
@@ -558,11 +585,12 @@ impl McpAgentToolProvider {
         for agent_name in agents {
             let agent_name = agent_name
                 .as_str()
-                .ok_or_else(|| SubagentError::InvalidConfig("agent name must be a string".to_string()))?
+                .ok_or_else(|| {
+                    SubagentError::InvalidConfig("agent name must be a string".to_string())
+                })?
                 .to_string();
 
             let orchestrator = self.orchestrator.clone();
-            let context = context.clone();
             let permit = semaphore.clone().acquire_owned().await.unwrap();
 
             let handle = tokio::spawn(async move {
@@ -575,7 +603,11 @@ impl McpAgentToolProvider {
                     intelligence_override: None,
                 };
 
-                let result = orchestrator.execute_single(invocation, &context).await;
+                // Create a SharedContext for the orchestrator
+                let shared_context = SharedContext::new();
+                let result = orchestrator
+                    .execute_single(invocation, &shared_context)
+                    .await;
                 drop(permit); // Release semaphore
 
                 match result {
@@ -617,9 +649,9 @@ impl McpAgentToolProvider {
 
     /// Convert JSON arguments to parameter map
     fn json_to_params(&self, json: JsonValue) -> SubagentResult<HashMap<String, String>> {
-        let obj = json
-            .as_object()
-            .ok_or_else(|| SubagentError::InvalidConfig("arguments must be an object".to_string()))?;
+        let obj = json.as_object().ok_or_else(|| {
+            SubagentError::InvalidConfig("arguments must be an object".to_string())
+        })?;
 
         let mut params = HashMap::new();
         for (key, value) in obj {
@@ -665,7 +697,7 @@ pub struct McpAgentHandler {
 }
 
 impl McpAgentHandler {
-    pub fn new(provider: Arc<McpAgentToolProvider>) -> Self {
+    pub const fn new(provider: Arc<McpAgentToolProvider>) -> Self {
         Self { provider }
     }
 
@@ -677,22 +709,24 @@ impl McpAgentHandler {
         context: AgentContext,
     ) -> SubagentResult<JsonValue> {
         debug!("Handling MCP tool call: {}", tool_name);
-        self.provider.execute_tool(tool_name, arguments, &context).await
+        self.provider
+            .execute_tool(tool_name, arguments, &context)
+            .await
     }
 
     /// Register this handler with an MCP server
     pub async fn register_with_server(&self, server_name: &str) -> SubagentResult<()> {
         info!("Registering agent tools with MCP server: {}", server_name);
-        
+
         // Get all tools
         let tools = self.provider.get_tools().await;
-        
+
         // Here we would send tool definitions to the MCP server
         // This is a placeholder for the actual MCP protocol implementation
         for tool in tools {
             debug!("Registered tool: {} with server {}", tool.name, server_name);
         }
-        
+
         Ok(())
     }
 }
@@ -704,8 +738,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_mcp_tool_registration() {
+        let registry = Arc::new(crate::subagents::registry::SubagentRegistry::new().unwrap());
         let config = OrchestratorConfig::default();
-        let orchestrator = Arc::new(AgentOrchestrator::new(config));
+        let orchestrator = Arc::new(AgentOrchestrator::new(
+            registry,
+            config,
+            crate::modes::OperatingMode::Build,
+        ));
         let provider = McpAgentToolProvider::new(orchestrator);
 
         provider.register_standard_tools().await.unwrap();
@@ -718,8 +757,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_json_to_params_conversion() {
+        let registry = Arc::new(crate::subagents::registry::SubagentRegistry::new().unwrap());
         let config = OrchestratorConfig::default();
-        let orchestrator = Arc::new(AgentOrchestrator::new(config));
+        let orchestrator = Arc::new(AgentOrchestrator::new(
+            registry,
+            config,
+            crate::modes::OperatingMode::Build,
+        ));
         let provider = McpAgentToolProvider::new(orchestrator);
 
         let json = json!({

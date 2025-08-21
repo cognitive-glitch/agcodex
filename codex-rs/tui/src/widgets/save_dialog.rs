@@ -78,7 +78,7 @@ impl SaveDialogState {
                         }
                         SaveDialogAction::None
                     }
-                    2 => SaveDialogAction::Save, // Save button
+                    2 => SaveDialogAction::Save,   // Save button
                     3 => SaveDialogAction::Cancel, // Cancel button
                     _ => SaveDialogAction::None,
                 }
@@ -139,7 +139,11 @@ impl SaveDialogState {
     }
 
     fn prev_field(&mut self) {
-        self.focused_field = if self.focused_field == 0 { 3 } else { self.focused_field - 1 };
+        self.focused_field = if self.focused_field == 0 {
+            3
+        } else {
+            self.focused_field - 1
+        };
         if self.focused_field <= 1 {
             self.cursor_pos = self.current_field_text().len();
         }
@@ -236,7 +240,10 @@ impl SaveDialogState {
         }
 
         // Check for invalid characters in session name
-        if name.chars().any(|c| matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|')) {
+        if name
+            .chars()
+            .any(|c| matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|'))
+        {
             self.show_error = Some("Session name contains invalid characters".to_string());
             self.focused_field = 0;
             return false;
@@ -313,7 +320,9 @@ impl<'a> SaveDialog<'a> {
                     "Description (optional)" => "Enter description...",
                     _ => "",
                 },
-                Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC),
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::ITALIC),
             )
         } else {
             Span::raw(text)
@@ -343,7 +352,10 @@ impl<'a> SaveDialog<'a> {
         let style = if disabled {
             Style::default().fg(Color::DarkGray)
         } else if focused {
-            Style::default().bg(Color::Cyan).fg(Color::Black).add_modifier(Modifier::BOLD)
+            Style::default()
+                .bg(Color::Cyan)
+                .fg(Color::Black)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(Color::White)
         };
@@ -353,7 +365,9 @@ impl<'a> SaveDialog<'a> {
             .border_type(BorderType::Rounded)
             .border_style(style);
 
-        let paragraph = Paragraph::new(text).alignment(Alignment::Center).style(style);
+        let paragraph = Paragraph::new(text)
+            .alignment(Alignment::Center)
+            .style(style);
 
         let inner = block.inner(area);
         block.render(area, buf);
@@ -398,7 +412,11 @@ impl<'a> WidgetRef for SaveDialog<'a> {
         // Save location info
         let save_location_text = format!("Save to: {}", self.state.save_location.display());
         let location_paragraph = Paragraph::new(save_location_text)
-            .style(Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC))
+            .style(
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::ITALIC),
+            )
             .alignment(Alignment::Center);
         location_paragraph.render(layout[0], buf);
 
@@ -419,7 +437,11 @@ impl<'a> WidgetRef for SaveDialog<'a> {
             "Description (optional)",
             &self.state.description,
             self.state.focused_field == 1,
-            if self.state.focused_field == 1 { self.state.cursor_pos } else { 0 },
+            if self.state.focused_field == 1 {
+                self.state.cursor_pos
+            } else {
+                0
+            },
         );
 
         // Error message
@@ -441,7 +463,11 @@ impl<'a> WidgetRef for SaveDialog<'a> {
             ])
             .split(layout[6]);
 
-        let save_text = if self.state.saving { "Saving..." } else { "Save" };
+        let save_text = if self.state.saving {
+            "Saving..."
+        } else {
+            "Save"
+        };
         let save_disabled = self.state.saving || self.state.session_name.trim().is_empty();
 
         self.render_button(
@@ -466,14 +492,14 @@ impl<'a> WidgetRef for SaveDialog<'a> {
         } else {
             "Tab/Shift+Tab: Navigate • Enter: Save/Next • Esc: Cancel"
         };
-        
+
         let help_area = Rect::new(
             dialog_area.x,
             dialog_area.y + dialog_area.height,
             dialog_area.width,
             1,
         );
-        
+
         if help_area.y < area.height {
             let help_paragraph = Paragraph::new(help_text)
                 .style(Style::default().fg(Color::DarkGray))

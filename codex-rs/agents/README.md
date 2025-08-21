@@ -437,5 +437,5 @@ To contribute a new agent to AGCodex:
 ## Support
 
 - Documentation: https://agcodex.dev/agents
-- Issues: https://github.com/agcodex/codex-rs/issues
+- Issues: https://github.com/agcodex/agcodex-rs/issues
 - Discord: https://discord.gg/agcodex

@@ -6,9 +6,12 @@
 //! - Document vs Query input types for optimized embeddings
 //! - Uses VOYAGE_API_KEY environment variable
 
-use super::super::{EmbeddingError, EmbeddingProvider, EmbeddingVector};
+use super::super::EmbeddingError;
+use super::super::EmbeddingProvider;
+use super::super::EmbeddingVector;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Input type for Voyage AI embeddings
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,28 +58,22 @@ impl VoyageProvider {
     }
 
     /// Create a new Voyage provider for documents
-    pub fn new_for_documents(
-        api_key: String,
-        model: String,
-    ) -> Self {
+    pub fn new_for_documents(api_key: String, model: String) -> Self {
         Self::new(api_key, model, VoyageInputType::Document, None)
     }
 
     /// Create a new Voyage provider for queries
-    pub fn new_for_queries(
-        api_key: String,
-        model: String,
-    ) -> Self {
+    pub fn new_for_queries(api_key: String, model: String) -> Self {
         Self::new(api_key, model, VoyageInputType::Query, None)
     }
 
     /// Get the current input type
-    pub fn input_type(&self) -> &VoyageInputType {
+    pub const fn input_type(&self) -> &VoyageInputType {
         &self.input_type
     }
 
     /// Set the input type
-    pub fn set_input_type(&mut self, input_type: VoyageInputType) {
+    pub const fn set_input_type(&mut self, input_type: VoyageInputType) {
         self.input_type = input_type;
     }
 }
@@ -171,8 +168,13 @@ impl EmbeddingProvider for VoyageProvider {
 }
 
 impl VoyageProvider {
-    async fn embed_batch_internal(&self, texts: &[String]) -> Result<Vec<EmbeddingVector>, EmbeddingError> {
-        let endpoint = self.api_endpoint.as_deref()
+    async fn embed_batch_internal(
+        &self,
+        texts: &[String],
+    ) -> Result<Vec<EmbeddingVector>, EmbeddingError> {
+        let endpoint = self
+            .api_endpoint
+            .as_deref()
             .unwrap_or("https://api.voyageai.com/v1/embeddings");
 
         let request = VoyageRequest {
@@ -193,22 +195,22 @@ impl VoyageProvider {
 
         let status = response.status();
         if !status.is_success() {
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+
             // Try to parse Voyage error format
             if let Ok(error) = serde_json::from_str::<VoyageError>(&error_text) {
                 return Err(EmbeddingError::ApiError(format!(
                     "Voyage API error ({}): {} - {}",
-                    status,
-                    error.error.error_type,
-                    error.error.message
+                    status, error.error.error_type, error.error.message
                 )));
             }
-            
+
             return Err(EmbeddingError::ApiError(format!(
                 "Voyage API error ({}): {}",
-                status,
-                error_text
+                status, error_text
             )));
         }
 
@@ -302,16 +304,12 @@ mod tests {
 
     #[test]
     fn test_convenience_constructors() {
-        let provider_doc = VoyageProvider::new_for_documents(
-            "test-key".to_string(),
-            "voyage-3.5".to_string(),
-        );
+        let provider_doc =
+            VoyageProvider::new_for_documents("test-key".to_string(), "voyage-3.5".to_string());
         assert_eq!(provider_doc.input_type(), &VoyageInputType::Document);
 
-        let provider_query = VoyageProvider::new_for_queries(
-            "test-key".to_string(),
-            "voyage-3.5".to_string(),
-        );
+        let provider_query =
+            VoyageProvider::new_for_queries("test-key".to_string(), "voyage-3.5".to_string());
         assert_eq!(provider_query.input_type(), &VoyageInputType::Query);
     }
 
@@ -336,12 +334,10 @@ mod tests {
 
     #[test]
     fn test_set_input_type() {
-        let mut provider = VoyageProvider::new_for_documents(
-            "test-key".to_string(),
-            "voyage-3.5".to_string(),
-        );
+        let mut provider =
+            VoyageProvider::new_for_documents("test-key".to_string(), "voyage-3.5".to_string());
         assert_eq!(provider.input_type(), &VoyageInputType::Document);
-        
+
         provider.set_input_type(VoyageInputType::Query);
         assert_eq!(provider.input_type(), &VoyageInputType::Query);
     }

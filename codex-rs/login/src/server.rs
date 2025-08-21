@@ -286,7 +286,7 @@ fn build_authorize_url(
         ("code_challenge", &pkce.code_challenge),
         ("code_challenge_method", "S256"),
         ("id_token_add_organizations", "true"),
-        ("codex_cli_simplified_flow", "true"),
+        ("agcodex_cli_simplified_flow", "true"),
         ("state", state),
     ];
     let qs = query

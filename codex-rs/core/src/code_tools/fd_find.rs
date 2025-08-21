@@ -7,14 +7,21 @@
 //! - Cancellation support for long-running searches
 //! - Memory-efficient streaming results
 
-use super::{CodeTool, ToolError};
-use ignore::{WalkBuilder, WalkState};
+use super::CodeTool;
+use super::ToolError;
+use ignore::WalkBuilder;
+use ignore::WalkState;
 // Rayon prelude removed - not currently used
 use regex_lite::Regex;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime};
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
+use std::time::Duration;
+use std::time::SystemTime;
 use wildmatch::WildMatch;
 
 /// High-performance fd-find replacement using ignore crate
@@ -145,16 +152,16 @@ impl Default for FdQuery {
             include_hidden: false,
             follow_links: false,
             case_sensitive: true,
-            max_results: 0, // unlimited
+            max_results: 0,                         // unlimited
             timeout: Some(Duration::from_secs(30)), // 30 second default timeout
-            threads: None, // auto-detect
+            threads: None,                          // auto-detect
         }
     }
 }
 
 impl FdFind {
     /// Create a new FdFind instance with default settings
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             default_max_depth: Some(32), // Reasonable default to prevent runaway
             default_threads: None,       // Auto-detect based on CPU cores
@@ -162,7 +169,7 @@ impl FdFind {
     }
 
     /// Create FdFind with custom defaults
-    pub fn with_defaults(max_depth: Option<usize>, threads: Option<usize>) -> Self {
+    pub const fn with_defaults(max_depth: Option<usize>, threads: Option<usize>) -> Self {
         Self {
             default_max_depth: max_depth,
             default_threads: threads,
@@ -221,11 +228,7 @@ impl FdFind {
         let results = self.search(query)?;
         Ok(results
             .into_iter()
-            .filter(|r| {
-                r.modified
-                    .map(|modified| modified > since)
-                    .unwrap_or(false)
-            })
+            .filter(|r| r.modified.map(|modified| modified > since).unwrap_or(false))
             .collect())
     }
 
@@ -252,8 +255,17 @@ impl FdFind {
             }
             ContentType::Build => {
                 vec![
-                    "Makefile", "makefile", "Dockerfile", "dockerfile", "BUILD", "build",
-                    "cmake", "meson", "ninja", "gradle", "pom",
+                    "Makefile",
+                    "makefile",
+                    "Dockerfile",
+                    "dockerfile",
+                    "BUILD",
+                    "build",
+                    "cmake",
+                    "meson",
+                    "ninja",
+                    "gradle",
+                    "pom",
                 ]
             }
         };
@@ -346,10 +358,10 @@ impl FdFind {
                 }
                 if metadata.is_dir() {
                     // Check if directory is empty (expensive, but required for this filter)
-                    if let Ok(mut entries) = std::fs::read_dir(path) {
-                        if entries.next().is_some() {
-                            return false;
-                        }
+                    if let Ok(mut entries) = std::fs::read_dir(path)
+                        && entries.next().is_some()
+                    {
+                        return false;
                     }
                 }
             }
@@ -359,15 +371,15 @@ impl FdFind {
         // Size filtering
         if let Some(ref size_filter) = filters.size_filter {
             let file_size = metadata.len();
-            if let Some(min_size) = size_filter.min_size {
-                if file_size < min_size {
-                    return false;
-                }
+            if let Some(min_size) = size_filter.min_size
+                && file_size < min_size
+            {
+                return false;
             }
-            if let Some(max_size) = size_filter.max_size {
-                if file_size > max_size {
-                    return false;
-                }
+            if let Some(max_size) = size_filter.max_size
+                && file_size > max_size
+            {
+                return false;
             }
         }
 
@@ -517,17 +529,17 @@ impl FdFind {
                 }
 
                 // Check timeout
-                if let Some(timeout) = state.timeout {
-                    if state.start_time.elapsed().unwrap_or(Duration::ZERO) > timeout {
-                        state.cancelled.store(true, Ordering::Relaxed);
-                        return WalkState::Quit;
-                    }
+                if let Some(timeout) = state.timeout
+                    && state.start_time.elapsed().unwrap_or(Duration::ZERO) > timeout
+                {
+                    state.cancelled.store(true, Ordering::Relaxed);
+                    return WalkState::Quit;
                 }
 
                 match result {
                     Ok(entry) => {
                         let path = entry.path();
-                        
+
                         // Get metadata
                         let metadata = match entry.metadata() {
                             Ok(meta) => meta,
@@ -537,12 +549,12 @@ impl FdFind {
                         // Apply filters
                         if fd_find.matches_filters(path, &metadata, &filters, case_sensitive) {
                             let result = fd_find.create_result(path.to_path_buf(), metadata);
-                            
+
                             // Add to results (thread-safe)
                             {
                                 let mut results = state.results.lock().unwrap();
                                 results.push(result);
-                                
+
                                 // Check max results limit
                                 if state.max_results > 0 && results.len() >= state.max_results {
                                     state.cancelled.store(true, Ordering::Relaxed);
@@ -637,7 +649,8 @@ impl FdQuery {
 
     /// Add multiple glob patterns
     pub fn globs(mut self, patterns: &[&str]) -> Self {
-        self.glob_patterns.extend(patterns.iter().map(|s| s.to_string()));
+        self.glob_patterns
+            .extend(patterns.iter().map(|s| (*s).to_string()));
         self
     }
 
@@ -648,13 +661,13 @@ impl FdQuery {
     }
 
     /// Set file type filter
-    pub fn file_type(mut self, file_type: FileTypeFilter) -> Self {
+    pub const fn file_type(mut self, file_type: FileTypeFilter) -> Self {
         self.file_type = file_type;
         self
     }
 
     /// Set size filter
-    pub fn size_range(mut self, min: Option<u64>, max: Option<u64>) -> Self {
+    pub const fn size_range(mut self, min: Option<u64>, max: Option<u64>) -> Self {
         self.size_filter = Some(SizeFilter {
             min_size: min,
             max_size: max,
@@ -663,43 +676,43 @@ impl FdQuery {
     }
 
     /// Set maximum search depth
-    pub fn max_depth(mut self, depth: usize) -> Self {
+    pub const fn max_depth(mut self, depth: usize) -> Self {
         self.max_depth = Some(depth);
         self
     }
 
     /// Include hidden files
-    pub fn include_hidden(mut self, include: bool) -> Self {
+    pub const fn include_hidden(mut self, include: bool) -> Self {
         self.include_hidden = include;
         self
     }
 
     /// Follow symbolic links
-    pub fn follow_links(mut self, follow: bool) -> Self {
+    pub const fn follow_links(mut self, follow: bool) -> Self {
         self.follow_links = follow;
         self
     }
 
     /// Set case sensitivity
-    pub fn case_sensitive(mut self, sensitive: bool) -> Self {
+    pub const fn case_sensitive(mut self, sensitive: bool) -> Self {
         self.case_sensitive = sensitive;
         self
     }
 
     /// Limit maximum results
-    pub fn max_results(mut self, max: usize) -> Self {
+    pub const fn max_results(mut self, max: usize) -> Self {
         self.max_results = max;
         self
     }
 
     /// Set search timeout
-    pub fn timeout(mut self, timeout: Duration) -> Self {
+    pub const fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
     /// Set number of threads
-    pub fn threads(mut self, threads: usize) -> Self {
+    pub const fn threads(mut self, threads: usize) -> Self {
         self.threads = Some(threads);
         self
     }
@@ -741,12 +754,11 @@ mod tests {
         let temp_dir = create_test_structure();
         let fd_find = FdFind::new();
 
-        let query = FdQuery::new(temp_dir.path())
-            .file_type(FileTypeFilter::FilesOnly);
+        let query = FdQuery::new(temp_dir.path()).file_type(FileTypeFilter::FilesOnly);
 
         let results = fd_find.search(query).unwrap();
         assert!(!results.is_empty());
-        
+
         // Should find regular files but not the target directory (due to .gitignore)
         let paths: Vec<_> = results.iter().map(|r| &r.path).collect();
         assert!(paths.iter().any(|p| p.file_name().unwrap() == "main.rs"));
@@ -763,7 +775,7 @@ mod tests {
             .file_type(FileTypeFilter::FilesOnly);
 
         let results = fd_find.search(query).unwrap();
-        
+
         for result in &results {
             let filename = result.path.file_name().unwrap().to_string_lossy();
             assert!(filename.ends_with(".rs") || filename.ends_with(".toml"));
@@ -810,7 +822,7 @@ mod tests {
             .file_type(FileTypeFilter::FilesOnly);
 
         let results = fd_find.search(query).unwrap();
-        
+
         for result in &results {
             let filename = result.path.to_string_lossy();
             assert!(filename.ends_with(".rs") || filename.ends_with(".toml"));
@@ -868,7 +880,7 @@ mod tests {
             .max_depth(1); // Only immediate children
 
         let results = fd_find.search(query).unwrap();
-        
+
         // Should not find files in subdirectories
         let deep_file_found = results
             .iter()
@@ -890,13 +902,13 @@ mod tests {
             .size_range(Some(500), Some(2000)); // 500B to 2KB
 
         let results = fd_find.search(query).unwrap();
-        
+
         // Should find the large file
         let large_found = results
             .iter()
             .any(|r| r.path.file_name().unwrap() == "large.txt");
         assert!(large_found);
-        
+
         // Verify size information
         let large_result = results
             .iter()
@@ -915,20 +927,18 @@ mod tests {
             .unwrap();
 
         // Should find .rs files
-        let rust_found = results
-            .iter()
-            .any(|r| r.path.extension().unwrap() == "rs");
+        let rust_found = results.iter().any(|r| r.path.extension().unwrap() == "rs");
         assert!(rust_found);
     }
 
     #[test]
     fn test_case_sensitivity() {
         let temp_dir = create_test_structure();
-        
+
         // Create files with different cases
         fs::write(temp_dir.path().join("Test.TXT"), "content").unwrap();
         fs::write(temp_dir.path().join("test.txt"), "content").unwrap();
-        
+
         let fd_find = FdFind::new();
 
         // Case sensitive search
@@ -938,10 +948,7 @@ mod tests {
 
         let results_sensitive = fd_find.search(query_sensitive).unwrap();
         assert_eq!(results_sensitive.len(), 1);
-        assert_eq!(
-            results_sensitive[0].path.file_name().unwrap(),
-            "Test.TXT"
-        );
+        assert_eq!(results_sensitive[0].path.file_name().unwrap(), "Test.TXT");
 
         // Case insensitive search
         let query_insensitive = FdQuery::new(temp_dir.path())
@@ -973,16 +980,15 @@ mod tests {
     #[test]
     fn test_error_handling() {
         let fd_find = FdFind::new();
-        
+
         // Test non-existent directory
         let query = FdQuery::new("/non/existent/path");
         let result = fd_find.search(query);
         assert!(result.is_err());
-        
+
         // Test invalid regex
         let temp_dir = create_test_structure();
-        let query = FdQuery::new(temp_dir.path())
-            .regex("[invalid regex");
+        let query = FdQuery::new(temp_dir.path()).regex("[invalid regex");
         let result = fd_find.search(query);
         assert!(result.is_err());
     }

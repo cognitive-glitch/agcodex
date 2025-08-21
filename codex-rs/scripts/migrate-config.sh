@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# AGCodex User Configuration Migration Script
-# Migrates user configuration from ~/.codex to ~/.agcodex
+# AGAGCodex User Configuration Migration Script
+# Migrates user configuration from ~/.agcodex to ~/.agagcodex
 
 set -euo pipefail
 
@@ -12,39 +12,39 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
-echo -e "${BLUE}      AGCodex Configuration Migration          ${NC}"
+echo -e "${BLUE}      AGAGCodex Configuration Migration          ${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
 echo ""
 
-if [ -d "$HOME/.codex" ]; then
-    if [ ! -d "$HOME/.agcodex" ]; then
-        echo -e "${YELLOW}Found existing Codex configuration at ~/.codex${NC}"
-        echo -e "Migrating to ~/.agcodex..."
+if [ -d "$HOME/.agcodex" ]; then
+    if [ ! -d "$HOME/.agagcodex" ]; then
+        echo -e "${YELLOW}Found existing AGCodex configuration at ~/.agcodex${NC}"
+        echo -e "Migrating to ~/.agagcodex..."
         
         # Copy configuration
-        cp -r "$HOME/.codex" "$HOME/.agcodex"
+        cp -r "$HOME/.agcodex" "$HOME/.agagcodex"
         
         # Update any internal references
-        if [ -f "$HOME/.agcodex/config.toml" ]; then
-            sed -i 's/\.codex/\.agcodex/g' "$HOME/.agcodex/config.toml" 2>/dev/null || true
-            sed -i 's/codex/agcodex/g' "$HOME/.agcodex/config.toml" 2>/dev/null || true
+        if [ -f "$HOME/.agagcodex/config.toml" ]; then
+            sed -i 's/\.agcodex/\.agagcodex/g' "$HOME/.agagcodex/config.toml" 2>/dev/null || true
+            sed -i 's/agcodex/agagcodex/g' "$HOME/.agagcodex/config.toml" 2>/dev/null || true
         fi
         
         echo -e "${GREEN}✓ Configuration migrated successfully!${NC}"
         echo ""
-        echo "Your old configuration is preserved at ~/.codex"
-        echo "You can remove it with: rm -rf ~/.codex"
+        echo "Your old configuration is preserved at ~/.agcodex"
+        echo "You can remove it with: rm -rf ~/.agcodex"
     else
-        echo -e "${YELLOW}~/.agcodex already exists${NC}"
+        echo -e "${YELLOW}~/.agagcodex already exists${NC}"
         echo "No migration performed to avoid overwriting existing configuration."
     fi
 else
-    echo -e "${BLUE}No existing Codex configuration found at ~/.codex${NC}"
+    echo -e "${BLUE}No existing AGCodex configuration found at ~/.agcodex${NC}"
     
-    if [ -d "$HOME/.agcodex" ]; then
-        echo -e "${GREEN}✓ AGCodex configuration already exists at ~/.agcodex${NC}"
+    if [ -d "$HOME/.agagcodex" ]; then
+        echo -e "${GREEN}✓ AGAGCodex configuration already exists at ~/.agagcodex${NC}"
     else
-        echo "AGCodex will create a fresh configuration on first run."
+        echo "AGAGCodex will create a fresh configuration on first run."
     fi
 fi
 

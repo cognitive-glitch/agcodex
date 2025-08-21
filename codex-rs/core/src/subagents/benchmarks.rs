@@ -5,22 +5,39 @@
 
 #[cfg(test)]
 mod bench {
-    use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+    use chrono::Utc;
+    use criterion::BenchmarkId;
+    use criterion::Criterion;
+    use criterion::black_box;
+    use criterion::criterion_group;
+    use criterion::criterion_main;
     use std::collections::HashMap;
     use std::sync::Arc;
+    use std::sync::atomic::AtomicBool;
     use std::time::Duration;
     use tokio::runtime::Runtime;
+    use uuid::Uuid;
 
+    use super::*;
     use crate::modes::OperatingMode;
-    use crate::subagents::{
-        AgentContext, AgentInvocation, AgentOrchestrator, AgentRegistry,
-        CodeReviewerAgent, DebuggerAgent, DocsAgent, IntelligenceLevel,
-        OrchestratorConfig, PerformanceAgent, RefactorerAgent, SecurityAgent,
-        Subagent, SubagentConfig, SubagentRegistry, TestWriterAgent,
-    };
+    use crate::subagents::AgentContext;
+    use crate::subagents::AgentInvocation;
+    use crate::subagents::AgentOrchestrator;
+    use crate::subagents::CodeReviewerAgent;
+    use crate::subagents::DebuggerAgent;
+    use crate::subagents::DocsAgent;
+    use crate::subagents::IntelligenceLevel;
+    use crate::subagents::PerformanceAgent;
+    use crate::subagents::RefactorerAgent;
+    use crate::subagents::SecurityAgent;
+    use crate::subagents::Subagent;
+    use crate::subagents::SubagentConfig;
+    use crate::subagents::TestWriterAgent;
+    use crate::subagents::orchestrator::OrchestratorConfig;
+    use crate::subagents::registry::SubagentRegistry;
 
     /// Create a test runtime for async benchmarks
-    fn create_runtime() -> Runtime {
+    pub fn create_runtime() -> Runtime {
         tokio::runtime::Builder::new_multi_thread()
             .worker_threads(4)
             .enable_all()
@@ -29,12 +46,8 @@ mod bench {
     }
 
     /// Create a test agent context
-    fn create_test_context() -> AgentContext {
-        AgentContext::new(
-            "test-session".to_string(),
-            OperatingMode::Build,
-            vec!["Read".to_string(), "Write".to_string()],
-        )
+    pub fn create_test_context() -> AgentContext {
+        AgentContext::new(OperatingMode::Build, HashMap::new())
     }
 
     /// Benchmark agent initialization time
@@ -100,35 +113,35 @@ mod bench {
 
         group.bench_function("registry_creation", |b| {
             b.iter(|| {
-                let registry = AgentRegistry::new();
+                let registry = SubagentRegistry::new().unwrap();
                 black_box(registry);
             })
         });
 
         group.bench_function("registry_with_defaults", |b| {
             b.iter(|| {
-                let mut registry = AgentRegistry::new();
-                registry.register_default_agents();
+                let registry = SubagentRegistry::new().unwrap();
                 black_box(registry);
             })
         });
 
         group.bench_function("agent_lookup", |b| {
-            let mut registry = AgentRegistry::new();
-            registry.register_default_agents();
+            let registry = SubagentRegistry::new().unwrap();
 
             b.iter(|| {
-                let agent = registry.get("code-reviewer");
+                let agent = registry.get_agent("code-reviewer");
                 black_box(agent);
             })
         });
 
         group.bench_function("agent_registration", |b| {
-            let mut registry = AgentRegistry::new();
+            let registry = SubagentRegistry::new().unwrap();
             let agent = Arc::new(CodeReviewerAgent::new());
 
             b.iter(|| {
-                registry.register("test-agent", agent.clone());
+                // Mock registration - SubagentRegistry loads from files
+                black_box(&registry);
+                black_box(&agent);
             })
         });
 
@@ -148,17 +161,18 @@ mod bench {
 
         group.bench_function("orchestrator_creation", |b| {
             b.iter(|| {
+                let registry = Arc::new(SubagentRegistry::new().unwrap());
                 let config = OrchestratorConfig::default();
-                let orchestrator = AgentOrchestrator::new(config);
+                let orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
                 black_box(orchestrator);
             })
         });
 
         group.bench_function("orchestrator_with_agents", |b| {
             b.iter(|| {
+                let registry = Arc::new(SubagentRegistry::new().unwrap());
                 let config = OrchestratorConfig::default();
-                let mut orchestrator = AgentOrchestrator::new(config);
-                orchestrator.registry.register_default_agents();
+                let orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
                 black_box(orchestrator);
             })
         });
@@ -185,35 +199,56 @@ mod bench {
             })
         });
 
-        group.bench_function("context_snapshot", |b| {
+        // Note: snapshot functionality not yet implemented
+        // group.bench_function("context_snapshot", |b| {
+        //     let context = create_test_context();
+        //     b.iter(|| {
+        //         let snapshot = context.snapshot();
+        //         black_box(snapshot);
+        //     })
+        // });
+
+        // group.bench_function("context_restore", |b| {
+        //     let context = create_test_context();
+        //     let snapshot = context.snapshot();
+
+        //     b.iter(|| {
+        //         let restored = AgentContext::from_snapshot(&snapshot);
+        //         black_box(restored);
+        //     })
+        // });
+
+        group.bench_function("add_finding", |b| {
+            let context = create_test_context();
+            let runtime = create_runtime();
+            b.iter_custom(|iters| {
+                let start = std::time::Instant::now();
+                runtime.block_on(async {
+                    for _ in 0..iters {
+                        let finding = crate::subagents::context::ContextFinding {
+                            id: uuid::Uuid::new_v4(),
+                            agent: "test".to_string(),
+                            severity: crate::subagents::context::FindingSeverity::Info,
+                            category: "test".to_string(),
+                            message: "test finding".to_string(),
+                            location: None,
+                            suggestion: None,
+                            confidence: 0.9,
+                            timestamp: chrono::Utc::now(),
+                        };
+                        let _ = context.add_finding(finding).await;
+                    }
+                });
+                start.elapsed()
+            })
+        });
+
+        group.bench_function("metadata_access", |b| {
             let context = create_test_context();
             b.iter(|| {
-                let snapshot = context.snapshot();
-                black_box(snapshot);
-            })
-        });
-
-        group.bench_function("context_restore", |b| {
-            let context = create_test_context();
-            let snapshot = context.snapshot();
-
-            b.iter(|| {
-                let restored = AgentContext::from_snapshot(&snapshot);
-                black_box(restored);
-            })
-        });
-
-        group.bench_function("add_message", |b| {
-            let mut context = create_test_context();
-            b.iter(|| {
-                context.add_message("test".to_string(), "message content".to_string());
-            })
-        });
-
-        group.bench_function("update_metadata", |b| {
-            let mut context = create_test_context();
-            b.iter(|| {
-                context.update_metadata("key".to_string(), serde_json::json!("value"));
+                // Access metadata through the context
+                let metadata = &context.metadata;
+                metadata.insert("key".to_string(), serde_json::json!("value"));
             })
         });
 
@@ -227,22 +262,30 @@ mod bench {
         group.measurement_time(Duration::from_secs(10));
 
         group.bench_function("mock_execution", |b| {
+            let registry = Arc::new(SubagentRegistry::new().unwrap());
             let config = OrchestratorConfig::default();
-            let mut orchestrator = AgentOrchestrator::new(config);
-            orchestrator.registry.register_default_agents();
+            let orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
             let context = create_test_context();
 
-            b.to_async(&runtime).iter(|| async {
-                let invocation = AgentInvocation {
-                    agent_name: "code-reviewer".to_string(),
-                    parameters: HashMap::new(),
-                    mode_override: None,
-                    intelligence_override: None,
-                };
+            b.iter_custom(|iters| {
+                let start = std::time::Instant::now();
+                runtime.block_on(async {
+                    for _ in 0..iters {
+                        let invocation = AgentInvocation {
+                            agent_name: "code-reviewer".to_string(),
+                            parameters: HashMap::new(),
+                            raw_parameters: String::new(),
+                            position: 0,
+                            mode_override: None,
+                            intelligence_override: None,
+                        };
 
-                // Mock execution without actual AI calls
-                let result = orchestrator.validate_invocation(&invocation).await;
-                black_box(result);
+                        // Mock execution without actual AI calls
+                        let result = orchestrator.validate_invocation(&invocation).await;
+                        black_box(result);
+                    }
+                });
+                start.elapsed()
             })
         });
 
@@ -260,46 +303,50 @@ mod bench {
                 BenchmarkId::from_parameter(num_agents),
                 num_agents,
                 |b, &num_agents| {
-                    let config = OrchestratorConfig {
-                        max_concurrent_agents: num_agents,
-                        ..Default::default()
-                    };
-                    let mut orchestrator = Arc::new(AgentOrchestrator::new(config));
-                    Arc::get_mut(&mut orchestrator).unwrap().registry.register_default_agents();
+                    let registry = Arc::new(SubagentRegistry::new().unwrap());
+                    let config = OrchestratorConfig::default();
+                    let orchestrator = Arc::new(AgentOrchestrator::new(
+                        registry,
+                        config,
+                        OperatingMode::Build,
+                    ));
                     let context = create_test_context();
 
-                    b.to_async(&runtime).iter(|| {
-                        let orchestrator = orchestrator.clone();
-                        let context = context.clone();
-                        
-                        async move {
-                            let mut handles = Vec::new();
+                    b.iter_custom(|iters| {
+                        let start = std::time::Instant::now();
+                        runtime.block_on(async {
+                            for _ in 0..iters {
+                                let mut handles = Vec::new();
 
-                            for i in 0..num_agents {
-                                let orchestrator = orchestrator.clone();
-                                let context = context.clone();
-                                
-                                let handle = tokio::spawn(async move {
-                                    let invocation = AgentInvocation {
-                                        agent_name: "code-reviewer".to_string(),
-                                        parameters: HashMap::from([
-                                            ("file".to_string(), format!("file_{}.rs", i)),
-                                        ]),
-                                        mode_override: None,
-                                        intelligence_override: None,
-                                    };
+                                for i in 0..num_agents {
+                                    let orchestrator = orchestrator.clone();
 
-                                    // Mock validation without actual execution
-                                    orchestrator.validate_invocation(&invocation).await
-                                });
+                                    let handle = tokio::spawn(async move {
+                                        let invocation = AgentInvocation {
+                                            agent_name: "code-reviewer".to_string(),
+                                            parameters: HashMap::from([(
+                                                "file".to_string(),
+                                                format!("file_{}.rs", i),
+                                            )]),
+                                            raw_parameters: format!("file=file_{}.rs", i),
+                                            position: 0,
+                                            mode_override: None,
+                                            intelligence_override: None,
+                                        };
 
-                                handles.push(handle);
+                                        // Mock validation without actual execution
+                                        orchestrator.validate_invocation(&invocation).await
+                                    });
+
+                                    handles.push(handle);
+                                }
+
+                                for handle in handles {
+                                    let _ = handle.await;
+                                }
                             }
-
-                            for handle in handles {
-                                let _ = handle.await;
-                            }
-                        }
+                        });
+                        start.elapsed()
                     })
                 },
             );
@@ -321,8 +368,10 @@ mod bench {
                         ("files".to_string(), "src/main.rs,src/lib.rs".to_string()),
                         ("focus".to_string(), "security".to_string()),
                     ]),
+                    raw_parameters: "files=src/main.rs,src/lib.rs focus=security".to_string(),
+                    position: 0,
                     mode_override: Some(OperatingMode::Review),
-                    intelligence_override: Some(IntelligenceLevel::Hard),
+                    intelligence_override: Some("hard".to_string()),
                 };
                 black_box(invocation);
             })
@@ -331,19 +380,31 @@ mod bench {
         group.bench_function("progress_tracking", |b| {
             let context = create_test_context();
 
-            b.to_async(&runtime).iter(|| async {
-                let progress = context.progress.clone();
-                progress.update("test", 50.0, "Processing...".to_string()).await;
-                progress.complete("test", "Done".to_string()).await;
+            b.iter_custom(|iters| {
+                let start = std::time::Instant::now();
+                runtime.block_on(async {
+                    for _ in 0..iters {
+                        let progress = context.progress.clone();
+                        let _ = progress
+                            .update("test", 50.0, "Processing...".to_string())
+                            .await;
+                        let _ = progress.complete("test", "Done".to_string()).await;
+                    }
+                });
+                start.elapsed()
             })
         });
 
-        group.bench_function("message_passing", |b| {
+        group.bench_function("metadata_operations", |b| {
             let context = create_test_context();
 
-            b.to_async(&runtime).iter(|| async {
-                context.send_message("test", "message content".to_string()).await;
-                let _ = context.receive_message().await;
+            b.iter(|| {
+                // Test metadata operations
+                context
+                    .metadata
+                    .insert("test_key".to_string(), serde_json::json!("test_value"));
+                let _value = context.metadata.get("test_key");
+                black_box(_value);
             })
         });
 
@@ -360,7 +421,7 @@ mod bench {
 
                 for _ in 0..iters {
                     let mut context = create_test_context();
-                    
+
                     // Add 100 messages to simulate real usage
                     for i in 0..100 {
                         context.add_message(
@@ -382,7 +443,7 @@ mod bench {
 
                 for _ in 0..iters {
                     let mut context = create_test_context();
-                    
+
                     // Add large metadata objects
                     for i in 0..50 {
                         let large_value = serde_json::json!({
@@ -439,7 +500,13 @@ mod bench {
                     intelligence: IntelligenceLevel::Medium,
                     tools: Default::default(),
                     prompt: "Test prompt".to_string(),
-                    parameters: HashMap::new(),
+                    parameters: vec![],
+                    template: None,
+                    timeout_seconds: 300,
+                    chainable: true,
+                    parallelizable: true,
+                    metadata: HashMap::new(),
+                    file_patterns: vec![],
                 },
                 SubagentConfig {
                     name: "agent2".to_string(),
@@ -448,7 +515,13 @@ mod bench {
                     intelligence: IntelligenceLevel::Hard,
                     tools: Default::default(),
                     prompt: "Another prompt".to_string(),
-                    parameters: HashMap::new(),
+                    parameters: vec![],
+                    template: None,
+                    timeout_seconds: 300,
+                    chainable: true,
+                    parallelizable: true,
+                    metadata: HashMap::new(),
+                    file_patterns: vec![],
                 },
             ];
 
@@ -492,8 +565,7 @@ mod standalone {
 
         // Test agent initialization
         let start = Instant::now();
-        let mut registry = AgentRegistry::new();
-        registry.register_default_agents();
+        let registry = SubagentRegistry::new().unwrap();
         let init_time = start.elapsed();
         println!("✓ Agent registry initialization: {:?}", init_time);
 
@@ -505,8 +577,9 @@ mod standalone {
 
         // Test orchestrator setup
         let start = Instant::now();
+        let registry = Arc::new(SubagentRegistry::new().unwrap());
         let config = OrchestratorConfig::default();
-        let orchestrator = AgentOrchestrator::new(config);
+        let orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
         let orchestrator_time = start.elapsed();
         println!("✓ Orchestrator setup: {:?}", orchestrator_time);
 
@@ -533,21 +606,28 @@ mod standalone {
         let start = Instant::now();
         let mut contexts = Vec::new();
         for _ in 0..100 {
-            let mut ctx = create_test_context();
+            let ctx = create_test_context();
             for j in 0..10 {
-                ctx.add_message(format!("sender_{}", j), "test message".to_string());
+                ctx.metadata
+                    .insert(format!("key_{}", j), serde_json::json!("test message"));
             }
             contexts.push(ctx);
         }
         let memory_time = start.elapsed();
-        println!("✓ 100 contexts with 10 messages each: {:?}", memory_time);
+        println!(
+            "✓ 100 contexts with 10 metadata entries each: {:?}",
+            memory_time
+        );
 
         println!("\n=== Performance Test Complete ===\n");
-        
+
         // Assert reasonable performance bounds
         assert!(init_time.as_millis() < 100, "Registry init too slow");
         assert!(context_time.as_micros() < 1000, "Context creation too slow");
-        assert!(orchestrator_time.as_millis() < 50, "Orchestrator setup too slow");
+        assert!(
+            orchestrator_time.as_millis() < 50,
+            "Orchestrator setup too slow"
+        );
         assert!(parallel_time.as_millis() < 200, "Parallel spawn too slow");
         assert!(memory_time.as_millis() < 500, "Memory operations too slow");
     }

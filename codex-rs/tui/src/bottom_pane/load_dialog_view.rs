@@ -6,12 +6,14 @@ use crate::user_approval_widget::ApprovalRequest;
 use crate::widgets::LoadDialog;
 use agcodex_persistence::types::SessionMetadata;
 use ratatui::buffer::Buffer;
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
+use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::layout::Rect;
 use std::any::Any;
 
+use super::BottomPane;
+use super::CancellationEvent;
 use super::bottom_pane_view::BottomPaneView;
-use super::{BottomPane, CancellationEvent};
 
 /// Load dialog view that implements BottomPaneView
 pub(crate) struct LoadDialogView {
@@ -24,7 +26,7 @@ impl LoadDialogView {
     pub(crate) fn new(app_event_tx: AppEventSender) -> Self {
         // Start loading session list immediately
         app_event_tx.send(AppEvent::StartLoadSessionList);
-        
+
         Self {
             dialog: LoadDialog::new(),
             app_event_tx,
@@ -72,14 +74,16 @@ impl BottomPaneView<'_> for LoadDialogView {
                 let mut query = self.dialog.search_query().to_string();
                 query.push(c);
                 self.dialog.set_search_query(&query);
-                self.app_event_tx.send(AppEvent::UpdateLoadDialogQuery(query));
+                self.app_event_tx
+                    .send(AppEvent::UpdateLoadDialogQuery(query));
             }
             KeyCode::Backspace => {
                 // Remove character from search query
                 let mut query = self.dialog.search_query().to_string();
                 query.pop();
                 self.dialog.set_search_query(&query);
-                self.app_event_tx.send(AppEvent::UpdateLoadDialogQuery(query));
+                self.app_event_tx
+                    .send(AppEvent::UpdateLoadDialogQuery(query));
             }
             _ => {
                 // Ignore other keys

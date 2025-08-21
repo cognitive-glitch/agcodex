@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# AGCodex Rebranding Script
-# Safely migrates all codex references to agcodex
+# AGAGCodex Rebranding Script
+# Safely migrates all agcodex references to agagcodex
 # Created: 2025-08-20
 
 set -euo pipefail
@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}╔══════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     AGCodex Rebranding Script v1.0       ║${NC}"
+echo -e "${BLUE}║     AGAGCodex Rebranding Script v1.0       ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -50,26 +50,26 @@ echo "────────────────────────�
 # Update crate names in all Cargo.toml files
 fd -t f "Cargo.toml" | while read -r file; do
     # Update package names
-    if grep -q 'name = "codex-' "$file"; then
-        comby 'name = "codex-:[name]"' 'name = "agcodex-:[name]"' -i "$file" -matcher .toml 2>/dev/null || true
+    if grep -q 'name = "agcodex-' "$file"; then
+        comby 'name = "agcodex-:[name]"' 'name = "agagcodex-:[name]"' -i "$file" -matcher .toml 2>/dev/null || true
         log_change "$file" "package name"
     fi
     
     # Update binary names
-    if grep -q 'name = "codex"' "$file"; then
-        comby 'name = "codex"' 'name = "agcodex"' -i "$file" -matcher .toml 2>/dev/null || true
+    if grep -q 'name = "agcodex"' "$file"; then
+        comby 'name = "agcodex"' 'name = "agagcodex"' -i "$file" -matcher .toml 2>/dev/null || true
         log_change "$file" "binary name"
     fi
     
     # Update library names
-    if grep -q 'name = "codex_' "$file"; then
-        comby 'name = "codex_:[name]"' 'name = "agcodex_:[name]"' -i "$file" -matcher .toml 2>/dev/null || true
+    if grep -q 'name = "agcodex_' "$file"; then
+        comby 'name = "agcodex_:[name]"' 'name = "agagcodex_:[name]"' -i "$file" -matcher .toml 2>/dev/null || true
         log_change "$file" "library name"
     fi
     
     # Update dependencies
-    if grep -q 'codex-' "$file"; then
-        comby 'codex-:[dep] = { path' 'agcodex-:[dep] = { path' -i "$file" -matcher .toml 2>/dev/null || true
+    if grep -q 'agcodex-' "$file"; then
+        comby 'agcodex-:[dep] = { path' 'agagcodex-:[dep] = { path' -i "$file" -matcher .toml 2>/dev/null || true
         log_change "$file" "dependencies"
     fi
 done
@@ -83,20 +83,20 @@ fd -e rs | while read -r file; do
     changes_made=false
     
     # Update use statements
-    if grep -q 'use codex_' "$file"; then
-        comby 'use codex_:[module]' 'use agcodex_:[module]' -i "$file" -matcher .rs 2>/dev/null || true
+    if grep -q 'use agcodex_' "$file"; then
+        comby 'use agcodex_:[module]' 'use agagcodex_:[module]' -i "$file" -matcher .rs 2>/dev/null || true
         changes_made=true
     fi
     
     # Update extern crate declarations
-    if grep -q 'extern crate codex_' "$file"; then
-        comby 'extern crate codex_:[name]' 'extern crate agcodex_:[name]' -i "$file" -matcher .rs 2>/dev/null || true
+    if grep -q 'extern crate agcodex_' "$file"; then
+        comby 'extern crate agcodex_:[name]' 'extern crate agagcodex_:[name]' -i "$file" -matcher .rs 2>/dev/null || true
         changes_made=true
     fi
     
-    # Update crate:: references that might use codex
-    if grep -q 'codex_' "$file"; then
-        comby 'codex_:[name]::' 'agcodex_:[name]::' -i "$file" -matcher .rs 2>/dev/null || true
+    # Update crate:: references that might use agcodex
+    if grep -q 'agcodex_' "$file"; then
+        comby 'agcodex_:[name]::' 'agagcodex_:[name]::' -i "$file" -matcher .rs 2>/dev/null || true
         changes_made=true
     fi
     
@@ -114,14 +114,14 @@ fd -e rs -e toml -e md | while read -r file; do
     changes_made=false
     
     # Update home directory paths
-    if grep -q '~/.codex' "$file"; then
-        comby '~/.codex' '~/.agcodex' -i "$file" 2>/dev/null || true
+    if grep -q '~/.agcodex' "$file"; then
+        comby '~/.agcodex' '~/.agagcodex' -i "$file" 2>/dev/null || true
         changes_made=true
     fi
     
     # Update relative config paths
-    if grep -q '\.codex/' "$file"; then
-        comby '.codex/' '.agcodex/' -i "$file" 2>/dev/null || true
+    if grep -q '\.agcodex/' "$file"; then
+        comby '.agcodex/' '.agagcodex/' -i "$file" 2>/dev/null || true
         changes_made=true
     fi
     
@@ -143,8 +143,8 @@ fd -e md -e rs | while read -r file; do
         continue
     fi
     
-    # Update "Codex" to "AGCodex" in prose (but not in URLs)
-    if grep -q 'Codex' "$file" && ! grep -q 'github.com.*codex' "$file"; then
+    # Update "AGCodex" to "AGAGCodex" in prose (but not in URLs)
+    if grep -q 'AGCodex' "$file" && ! grep -q 'github.com.*agcodex' "$file"; then
         # Use a more targeted approach for documentation
         sed -i.bak -E '
             # Skip lines with URLs
@@ -153,8 +153,8 @@ fd -e md -e rs | while read -r file; do
                 /git@/! {
                     # Skip lines with github references
                     /github\.com/! {
-                        s/\bCodex\b/AGCodex/g
-                        s/\bcodex\b/agcodex/g
+                        s/\bAGCodex\b/AGAGCodex/g
+                        s/\bagcodex\b/agagcodex/g
                     }
                 }
             }
@@ -182,13 +182,13 @@ echo "────────────────────────�
 fd -e rs | while read -r file; do
     changes_made=false
     
-    # Update string literals containing "codex"
-    if grep -q '".*codex.*"' "$file"; then
+    # Update string literals containing "agcodex"
+    if grep -q '".*agcodex.*"' "$file"; then
         # Update binary name references
-        comby '"codex"' '"agcodex"' -i "$file" -matcher .rs 2>/dev/null || true
+        comby '"agcodex"' '"agagcodex"' -i "$file" -matcher .rs 2>/dev/null || true
         
         # Update crate name references
-        comby '"codex-:[name]"' '"agcodex-:[name]"' -i "$file" -matcher .rs 2>/dev/null || true
+        comby '"agcodex-:[name]"' '"agagcodex-:[name]"' -i "$file" -matcher .rs 2>/dev/null || true
         
         changes_made=true
     fi
@@ -224,8 +224,8 @@ fi
 
 # Update package.json files if they exist
 fd -t f "package.json" | while read -r file; do
-    if grep -q 'codex' "$file"; then
-        comby '"name": ":[prefix]codex:[suffix]"' '"name": ":[prefix]agcodex:[suffix]"' -i "$file" -matcher .json 2>/dev/null || true
+    if grep -q 'agcodex' "$file"; then
+        comby '"name": ":[prefix]agcodex:[suffix]"' '"name": ":[prefix]agagcodex:[suffix]"' -i "$file" -matcher .json 2>/dev/null || true
         log_change "$file" "package.json"
     fi
 done
@@ -239,10 +239,10 @@ cat > "scripts/migrate-user-config.sh" << 'EOF'
 #!/bin/bash
 # User configuration migration script
 
-if [ -d "$HOME/.codex" ] && [ ! -d "$HOME/.agcodex" ]; then
-    echo "Migrating user configuration from ~/.codex to ~/.agcodex..."
-    cp -r "$HOME/.codex" "$HOME/.agcodex"
-    echo "Migration complete! Your old configuration remains at ~/.codex"
+if [ -d "$HOME/.agcodex" ] && [ ! -d "$HOME/.agagcodex" ]; then
+    echo "Migrating user configuration from ~/.agcodex to ~/.agagcodex..."
+    cp -r "$HOME/.agcodex" "$HOME/.agagcodex"
+    echo "Migration complete! Your old configuration remains at ~/.agcodex"
     echo "You can safely remove it once you've verified everything works."
 else
     echo "No migration needed."
@@ -259,9 +259,9 @@ cat > "scripts/create-compat-symlink.sh" << 'EOF'
 
 INSTALL_DIR="${CARGO_HOME:-$HOME/.cargo}/bin"
 
-if [ -f "$INSTALL_DIR/agcodex" ] && [ ! -e "$INSTALL_DIR/codex" ]; then
-    ln -s "$INSTALL_DIR/agcodex" "$INSTALL_DIR/codex"
-    echo "Created symlink: codex -> agcodex"
+if [ -f "$INSTALL_DIR/agagcodex" ] && [ ! -e "$INSTALL_DIR/agcodex" ]; then
+    ln -s "$INSTALL_DIR/agagcodex" "$INSTALL_DIR/agcodex"
+    echo "Created symlink: agcodex -> agagcodex"
 else
     echo "Symlink not needed or already exists."
 fi
@@ -298,6 +298,6 @@ echo -e "  1. Review the changes with: ${BLUE}git diff${NC}"
 echo -e "  2. Run tests: ${BLUE}cargo test --no-fail-fast${NC}"
 echo -e "  3. Migrate user config: ${BLUE}./scripts/migrate-user-config.sh${NC}"
 echo -e "  4. Create symlink: ${BLUE}./scripts/create-compat-symlink.sh${NC}"
-echo -e "  5. Commit changes: ${BLUE}git add -A && git commit -m 'feat: complete rebranding from codex to agcodex'${NC}"
+echo -e "  5. Commit changes: ${BLUE}git add -A && git commit -m 'feat: complete rebranding from agcodex to agagcodex'${NC}"
 echo ""
 echo -e "${GREEN}Backup saved in: ${BACKUP_DIR}${NC}"

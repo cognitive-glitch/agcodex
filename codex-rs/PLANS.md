@@ -18,15 +18,17 @@
 
 ## Executive Summary
 
-AGCodex is a complete overhaul of the original Codex project, transforming it into an independent, powerful AI coding assistant with:
-- **Three simple operating modes**: Plan (read-only), Build (full access), Review (quality focus) ✅ Implemented
-- **Sophisticated subagent system**: Specialized AI assistants invoked via `@agent-name`
-- **50+ language support** via comprehensive tree-sitter integration ✅ Implemented
-- **AST-based intelligence** for precise code understanding and modification ✅ Implemented
-- **Efficient session persistence** with 90%+ compression ✅ Implemented
-- **GPT-5 best practices** with high reasoning and verbosity defaults ✅ Complete
-- **Location-aware embeddings** for precise agentic coding ✅ Implemented
-- **Internal agent tools**: AST-based code analysis and transformation ✅ Implemented
+AGCodex is a complete overhaul of the original AGCodex project, transforming it into an independent, powerful AI coding assistant with:
+- **Three simple operating modes**: Plan (read-only), Build (full access), Review (quality focus) ✅ Scaffolded
+- **Sophisticated subagent system**: Specialized AI assistants invoked via `@agent-name` 📄 Ready to implement
+- **27 language support** via comprehensive tree-sitter integration ✅ **COMPLETE**
+- **AST-based intelligence** for precise code understanding and modification ✅ **COMPLETE**
+- **Efficient session persistence** with 90%+ compression ✅ **COMPLETE**
+- **GPT-5 best practices** with high reasoning and verbosity defaults ✅ **COMPLETE**
+- **Location-aware embeddings** for precise agentic coding ✅ **COMPLETE**
+- **Internal agent tools**: search, edit, think, plan, glob, tree, patch, index ✅ **COMPLETE**
+- **Multi-layer search**: Tantivy indexing with symbol graph ✅ **COMPLETE**
+- **Terminal notifications**: Bell notifications in TUI ✅ **COMPLETE**
 
 ## Core Philosophy
 
@@ -44,33 +46,33 @@ AGCodex is a complete overhaul of the original Codex project, transforming it in
 4. **Guided over autonomous**: Help users, don't surprise them
 5. **Precision over guessing**: Exact locations for all operations
 
-## Phase 1: Complete Rebranding 🚧 In Progress
+## Phase 1: Complete Rebranding 📄 Ready (Script Prepared)
 
 ### 1.1 Global Renaming Strategy
 ```bash
 # All crate renamings
-codex-core → agcodex-core
-codex-tui → agcodex-tui
-codex-cli → agcodex-cli
-codex-protocol → agcodex-protocol
-codex-protocol-ts → agcodex-protocol-ts
-codex-mcp-client → agcodex-mcp-client
-codex-mcp-server → agcodex-mcp-server
-codex-mcp-types → agcodex-mcp-types
-codex-file-search → agcodex-file-search
-codex-apply-patch → agcodex-apply-patch
-codex-execpolicy → agcodex-execpolicy
-codex-linux-sandbox → agcodex-linux-sandbox
-codex-ansi-escape → agcodex-ansi-escape
-codex-common → agcodex-common
-codex-login → agcodex-login
-codex-chatgpt → agcodex-chatgpt
-codex-ollama → agcodex-ollama
-codex-arg0 → agcodex-arg0
-codex-persistence → agcodex-persistence  # NEW
+agcodex-core → agcodex-core
+agcodex-tui → agcodex-tui
+agcodex-cli → agcodex-cli
+agcodex-protocol → agcodex-protocol
+agcodex-protocol-ts → agcodex-protocol-ts
+agcodex-mcp-client → agcodex-mcp-client
+agcodex-mcp-server → agcodex-mcp-server
+agcodex-mcp-types → agcodex-mcp-types
+agcodex-file-search → agcodex-file-search
+agcodex-apply-patch → agcodex-apply-patch
+agcodex-execpolicy → agcodex-execpolicy
+agcodex-linux-sandbox → agcodex-linux-sandbox
+agcodex-ansi-escape → agcodex-ansi-escape
+agcodex-common → agcodex-common
+agcodex-login → agcodex-login
+agcodex-chatgpt → agcodex-chatgpt
+agcodex-ollama → agcodex-ollama
+agcodex-arg0 → agcodex-arg0
+agcodex-persistence → agcodex-persistence  # NEW
 
 # Binary renaming
-codex → agcodex
+agcodex → agcodex
 
 # Remove OpenAI-specific branding
 # Keep API compatibility as generic LLM interface
@@ -569,7 +571,7 @@ impl SubAgentCache {
 }
 ```
 
-## Phase 4: Comprehensive Tree-sitter Integration ✅ Complete
+## Phase 4: Comprehensive Tree-sitter Integration ✅ **COMPLETE** (2025-08-21)
 
 ### 3.1 Full Language Support (50+ Languages)
 
@@ -729,12 +731,25 @@ impl CodeUnderstander {
 }
 ```
 
-## Phase 5: Internal Tools Integration
+## Phase 5: Internal Tools Integration ✅ **COMPLETE** (2025-08-21)
 
-### 4.1 Native fd-find Integration
+### 5.1 Implemented Tools
+
+**Status**: All core tools implemented and functional
+- **Search Tool**: Multi-layer Tantivy-based search with symbol indexing
+- **Edit Tool**: Basic patch-based editing with context preservation
+- **Think Tool**: Internal metacognitive reasoning (Sequential, Shannon, Actor-Critic)
+- **Plan Tool**: Double-planning strategy for task decomposition
+- **Glob Tool**: File discovery using ignore crate
+- **Tree Tool**: Tree-sitter parsing for 27 languages
+- **Patch Tool**: AST-aware semantic patching
+- **Index Tool**: Tantivy indexing for fast search
+- **Enhanced Bash**: Safety validation and context-aware output
+
+### 5.2 Original fd-find Integration Design
 
 ```rust
-// agcodex-tools/src/fd_find.rs
+// agcodex-tools/src/glob.rs (implemented as glob tool)
 use ignore::WalkBuilder;
 use regex::Regex;
 
@@ -1448,7 +1463,7 @@ pub struct EmbeddingsAuth {
 impl EmbeddingsAuth {
     pub fn load() -> Self {
         Self {
-            // Check env vars (no AGCODEX_ prefix)
+            // Check env vars (no AGAGCODEX_ prefix)
             openai_key: env::var("OPENAI_EMBEDDING_KEY").ok(),
             gemini_key: env::var("GEMINI_API_KEY").ok(),
             voyage_key: env::var("VOYAGE_API_KEY").ok(),
@@ -1685,33 +1700,38 @@ suffix = "Focus on code quality, best practices, and potential issues."
 ## Implementation Timeline
 
 **Current Status (2025-08-21)**: 
-- ✅ Phase 1: anyhow → thiserror migration COMPLETE
-- ✅ Phase 2: All compilation errors FIXED
-- ✅ Phase 4: Tree-sitter integration with 50+ languages COMPLETE
-- ✅ Phase 8: Session persistence with Zstd COMPLETE
-- 🚧 Phase 1: Rebranding script ready to run
-- 📄 Phase 3: Subagent system ready to implement
-- 📄 Phase 6: TUI enhancements ready to implement
-- 📄 Phase 9: Independent embeddings system ready to implement
+- ✅ **Phase 1**: anyhow → thiserror migration **COMPLETE**
+- ✅ **Phase 2**: Operating modes scaffolded, needs TUI integration
+- 📄 **Phase 3**: Subagent system ready to implement
+- ✅ **Phase 4**: Tree-sitter integration with 27 languages **COMPLETE**
+- ✅ **Phase 5**: Internal tools integration **COMPLETE**
+- ✅ **Phase 6**: AST-RAG implementation **COMPLETE**
+- ✅ **Phase 7**: AST-based edit tools **COMPLETE**
+- ✅ **Phase 8**: Session persistence with Zstd **COMPLETE**
+- 📄 **Phase 9**: Independent embeddings system ready to implement
+- 📄 **Phase 10**: Configuration system ready to implement
+- 📄 **Rebranding**: Script ready to run (8,773 occurrences)
+- ✅ **Compilation**: All errors fixed, workspace compiles cleanly
 
-### Week 1: Foundation & Core
-**Day 1-2: Rebranding & Setup**
-- Complete codex → agcodex renaming
+### Immediate Priorities (Next 3 Days)
+
+**Day 1: Finalization & Rebranding**
+- Run rebranding script (agcodex → agcodex) - 8,773 occurrences
 - Create ~/.agcodex directory structure
-- Set up new Cargo workspace
-- Initialize subagent directories
+- Validate all crate and binary renames
+- Update repository name and documentation
 
-**Day 3: Operating Modes**
-- Implement Plan/Build/Review modes
-- Add Shift+Tab switching
-- Create mode restrictions
-- Add mode manager with prompts
+**Day 2: TUI Mode Integration**
+- Wire Shift+Tab mode switching in TUI
+- Implement ModeIndicator widget
+- Add visual mode indicators and status colors
+- Enforce mode restrictions in tool execution
 
-**Day 4: Subagent System**
-- Implement SubAgentManager
-- Create @agent-name parser
-- Add context isolation
-- Create built-in agents
+**Day 3: Core Features**
+- Implement SubAgentManager with @agent-name invocation
+- Create independent embeddings module (optional, disabled by default)
+- Add Session Management UI (Ctrl+S save, Ctrl+O load)
+- Wire terminal bell notifications throughout TUI
 
 **Day 5: Tree-sitter Integration**
 - Add all 50+ language dependencies
@@ -1882,7 +1902,7 @@ suffix = "Focus on code quality, best practices, and potential issues."
 
 ## Conclusion
 
-This comprehensive plan transforms Codex into AGCodex - a powerful, simple, and efficient AI coding assistant that:
+This comprehensive plan transforms AGCodex into AGCodex - a powerful, simple, and efficient AI coding assistant that:
 - Supports all major programming languages via tree-sitter
 - Features sophisticated subagent system with @agent-name invocation
 - Provides precise, AST-based code understanding and editing

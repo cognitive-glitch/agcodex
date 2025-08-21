@@ -10,7 +10,7 @@ tests/
 │   ├── modes_test.rs        # Operating mode switching (Plan/Build/Review)
 │   ├── ast_test.rs          # AST parsing and compression tests
 │   ├── persistence_test.rs  # Session persistence with Zstd
-│   └── rebranding_test.rs   # Codex→AGCodex migration verification
+│   └── rebranding_test.rs   # AGCodex→AGCodex migration verification
 ├── integration/             # Integration tests for complete workflows
 │   ├── tui_mode_switching.rs # TUI mode switching with Shift+Tab
 │   ├── session_management.rs # Complete session lifecycle
@@ -75,13 +75,13 @@ tests/
 - `test_checkpoint_creation_and_restore()` - Checkpoint system works
 
 #### Rebranding Tests (`rebranding_test.rs`)
-- **Complete Migration**: Verifies codex→agcodex transformation
+- **Complete Migration**: Verifies agcodex→agcodex transformation
 - **Import Updates**: Tests crate name changes
-- **Configuration Paths**: Ensures ~/.agcodex instead of ~/.codex
+- **Configuration Paths**: Ensures ~/.agcodex instead of ~/.agcodex
 - **Binary Names**: Verifies agcodex binary name
 
 **Key Test Cases:**
-- `test_source_code_references()` - No old "codex" references remain
+- `test_source_code_references()` - No old "agcodex" references remain
 - `test_binary_names_rebranded()` - Binary is named "agcodex"
 - `test_config_directory_references()` - Uses ~/.agcodex path
 - `test_rebranding_completion_percentage()` - >90% completion target
@@ -198,7 +198,7 @@ cargo test test_session_save_performance
 - **test**: Core functionality tests on stable/beta/nightly Rust
 - **coverage**: Code coverage reporting with 80% minimum threshold
 - **benchmarks**: Performance regression detection
-- **rebranding_check**: Automated verification of codex→agcodex migration
+- **rebranding_check**: Automated verification of agcodex→agcodex migration
 - **mode_switching_tests**: TUI mode switching validation
 - **session_persistence_tests**: Session management validation
 - **security_audit**: Dependency and unsafe code auditing

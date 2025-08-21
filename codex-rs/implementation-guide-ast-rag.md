@@ -1,8 +1,8 @@
-# Practical Implementation Guide: AST-Based RAG for Codex-RS
+# Practical Implementation Guide: AST-Based RAG for AGCodex-RS
 
 ## Quick Start Implementation Plan
 
-This guide provides a concrete, step-by-step implementation plan for adding AST-based code intelligence to Codex-RS.
+This guide provides a concrete, step-by-step implementation plan for adding AST-based code intelligence to AGCodex-RS.
 
 ## Week 1: Foundation Setup
 
@@ -1233,4 +1233,4 @@ Expected performance with this implementation:
 7. **Query understanding**: Parse natural language to code queries
 8. **Context assembly**: Smart context window management
 
-This implementation provides a solid foundation for AST-based code intelligence in Codex-RS, with room for optimization and enhancement based on specific use cases and performance requirements.
+This implementation provides a solid foundation for AST-based code intelligence in AGCodex-RS, with room for optimization and enhancement based on specific use cases and performance requirements.

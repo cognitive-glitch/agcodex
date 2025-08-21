@@ -2,7 +2,9 @@
 
 use super::CodeTool;
 use super::ToolError;
-use super::queries::{QueryLibrary, QueryType, CompiledQuery};
+use super::queries::CompiledQuery;
+use super::queries::QueryLibrary;
+use super::queries::QueryType;
 use ast::AstEngine;
 use ast::CompressionLevel;
 use ast::Language;
@@ -135,12 +137,12 @@ impl TreeSitterTool {
     pub fn new() -> Self {
         let registry = Arc::new(LanguageRegistry::new());
         let query_library = Arc::new(QueryLibrary::new());
-        
+
         // Precompile common queries for better performance
         if let Err(e) = query_library.precompile_all() {
             eprintln!("Warning: Failed to precompile queries: {}", e);
         }
-        
+
         Self {
             engine: Arc::new(AstEngine::new(CompressionLevel::Medium)),
             registry: registry.clone(),
@@ -229,7 +231,7 @@ impl TreeSitterTool {
             TsSearchType::Pattern => {
                 // Try structured query first, fall back to pattern conversion
                 let query_type = self.infer_query_type(&query.pattern);
-                
+
                 let compiled_query = if let Some(qt) = query_type {
                     // Use structured query from library
                     match self.get_structured_query(ast.language, qt) {
@@ -237,13 +239,15 @@ impl TreeSitterTool {
                         Err(_) => {
                             // Fall back to pattern conversion
                             let query_pattern = self.convert_pattern_to_query(&query.pattern);
-                            self.query_engine.compile_query(ast.language, &query_pattern)?
+                            self.query_engine
+                                .compile_query(ast.language, &query_pattern)?
                         }
                     }
                 } else {
                     // Use pattern conversion
                     let query_pattern = self.convert_pattern_to_query(&query.pattern);
-                    self.query_engine.compile_query(ast.language, &query_pattern)?
+                    self.query_engine
+                        .compile_query(ast.language, &query_pattern)?
                 };
 
                 let query_matches = self
@@ -340,7 +344,11 @@ impl TreeSitterTool {
     }
 
     /// Get a structured query using the new query library
-    fn get_structured_query(&self, language: ast::Language, query_type: QueryType) -> Result<Arc<CompiledQuery>, ToolError> {
+    fn get_structured_query(
+        &self,
+        language: ast::Language,
+        query_type: QueryType,
+    ) -> Result<Arc<CompiledQuery>, ToolError> {
         self.query_library
             .get_query(language, query_type)
             .map_err(|e| ToolError::InvalidQuery(format!("Query library error: {}", e)))
@@ -405,7 +413,12 @@ impl TreeSitterTool {
     }
 
     /// Execute a structured query using the query library
-    pub async fn search_structured(&self, language: ast::Language, query_type: QueryType, files: Vec<PathBuf>) -> Result<Vec<TsMatch>, ToolError> {
+    pub async fn search_structured(
+        &self,
+        language: ast::Language,
+        query_type: QueryType,
+        files: Vec<PathBuf>,
+    ) -> Result<Vec<TsMatch>, ToolError> {
         let compiled_query = self.get_structured_query(language, query_type)?;
         let mut all_matches = Vec::new();
 
@@ -423,9 +436,9 @@ impl TreeSitterTool {
             }
 
             let source = ast.source.as_bytes();
-            let query_matches = self
-                .query_engine
-                .execute_query(&compiled_query.query, &ast, source);
+            let query_matches =
+                self.query_engine
+                    .execute_query(&compiled_query.query, &ast, source);
 
             for qm in query_matches {
                 all_matches.push(TsMatch {

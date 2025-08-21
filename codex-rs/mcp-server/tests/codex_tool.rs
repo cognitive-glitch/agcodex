@@ -71,7 +71,7 @@ async fn shell_command_approval_triggers_elicitation() -> anyhow::Result<()> {
     ])
     .await?;
 
-    // Send a "codex" tool request, which should hit the completions endpoint.
+    // Send a "agcodex" tool request, which should hit the completions endpoint.
     // In turn, it should reply with a tool call, which the MCP should forward
     // as an elicitation.
     let codex_request_id = mcp_process
@@ -224,7 +224,7 @@ async fn patch_approval_triggers_elicitation() -> anyhow::Result<()> {
     ])
     .await?;
 
-    // Send a "codex" tool request that will trigger the apply_patch command
+    // Send a "agcodex" tool request that will trigger the apply_patch command
     let codex_request_id = mcp_process
         .send_codex_tool_call(CodexToolCallParam {
             cwd: Some(cwd.path().to_string_lossy().to_string()),
@@ -328,7 +328,7 @@ async fn agcodex_tool_passes_base_instructions() -> anyhow::Result<()> {
     let mut mcp_process = McpProcess::new(agcodex_home.path()).await?;
     timeout(DEFAULT_READ_TIMEOUT, mcp_process.initialize()).await??;
 
-    // Send a "codex" tool request, which should hit the completions endpoint.
+    // Send a "agcodex" tool request, which should hit the completions endpoint.
     let codex_request_id = mcp_process
         .send_codex_tool_call(CodexToolCallParam {
             prompt: "How are you?".to_string(),

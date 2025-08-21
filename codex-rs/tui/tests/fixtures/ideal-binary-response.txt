@@ -1,14 +1,14 @@
 thinking
 Investigating binary sizes
 
-I need to check the codex-rs repository to explain why the project's binaries
+I need to check the agcodex-rs repository to explain why the project's binaries
 are large. The user is likely seeking specifics about the setup: are Rust builds
 static, what features are enabled, and is debug information included? It could
 be due to static linking, included OpenSSL, or how panic handling is set up. I
 should look into the Cargo.toml file to confirm features and profiles without
 needing to edit any code. Let's get started on this!
 
-codex
+agcodex
 I’m going to scan the workspace and Cargo manifests to see build profiles and
 dependencies that impact binary size. Then I’ll summarize the main causes.
 
@@ -53,7 +53,7 @@ echo "--- $d/Cargo.toml"; sed -n '1,200p' $d/Cargo.toml; echo; done
   └ --- ansi-escape/Cargo.toml
     [package]
     edition = "2024"
-    name = "codex-ansi-escape"
+    name = "agcodex-ansi-escape"
     version = { workspace = true }
 … +237 lines
         "process",
@@ -63,7 +63,7 @@ echo "--- $d/Cargo.toml"; sed -n '1,200p' $d/Cargo.toml; echo; done
     tracing = { version
 ⚡  Running sed -n '1,200p' execpolicy/Cargo.toml
   └ [package]
-    name = "codex-execpolicy"
+    name = "agcodex-execpolicy"
     version = { workspace = true }
     edition = "2024"
 
@@ -76,7 +76,7 @@ echo "--- $d/Cargo.toml"; sed -n '1,200p' $d/Cargo.toml; echo; done
 ⚡  Running sed -n '1,200p' file-search/Cargo.toml
   └ [package]
     edition = "2024"
-    name = "codex-file-search"
+    name = "agcodex-file-search"
     version = { workspace = true }
 
 … +11 lines
@@ -88,7 +88,7 @@ echo "--- $d/Cargo.toml"; sed -n '1,200p' $d/Cargo.toml; echo; done
 ⚡  Running sed -n '1,200p' linux-sandbox/Cargo.toml
   └ [package]
     edition = "2024"
-    name = "codex-linux-sandbox"
+    name = "agcodex-linux-sandbox"
     version = { workspace = true }
 
 … +24 lines
@@ -100,7 +100,7 @@ echo "--- $d/Cargo.toml"; sed -n '1,200p' $d/Cargo.toml; echo; done
 ⚡  Running sed -n '1,200p' login/Cargo.toml
   └ [package]
     edition = "2024"
-    name = "codex-login"
+    name = "agcodex-login"
     version = { workspace = true }
 
 … +17 lines
@@ -111,7 +111,7 @@ echo "--- $d/Cargo.toml"; sed -n '1,200p' $d/Cargo.toml; echo; done
     tempfile = "3"
 ⚡  Running sed -n '1,200p' mcp-client/Cargo.toml
   └ [package]
-    name = "codex-mcp-client"
+    name = "agcodex-mcp-client"
     version = { workspace = true }
     edition = "2024"
 
@@ -124,7 +124,7 @@ echo "--- $d/Cargo.toml"; sed -n '1,200p' $d/Cargo.toml; echo; done
 ⚡  Running sed -n '1,200p' mcp-server/Cargo.toml
   └ [package]
     edition = "2024"
-    name = "codex-mcp-server"
+    name = "agcodex-mcp-server"
     version = { workspace = true }
 
 … +35 lines
@@ -148,7 +148,7 @@ echo "--- $d/Cargo.toml"; sed -n '1,200p' $d/Cargo.toml; echo; done
 ⚡  Running sed -n '1,200p' ollama/Cargo.toml
   └ [package]
     edition = "2024"
-    name = "codex-ollama"
+    name = "agcodex-ollama"
     version = { workspace = true }
 
 … +22 lines
@@ -160,7 +160,7 @@ echo "--- $d/Cargo.toml"; sed -n '1,200p' $d/Cargo.toml; echo; done
 ⚡  Running sed -n '1,200p' tui/Cargo.toml
   └ [package]
     edition = "2024"
-    name = "codex-tui"
+    name = "agcodex-tui"
     version = { workspace = true }
 
 … +74 lines
@@ -172,7 +172,7 @@ echo "--- $d/Cargo.toml"; sed -n '1,200p' $d/Cargo.toml; echo; done
 ⚡  Running sed -n '1,200p' chatgpt/Cargo.toml
   └ [package]
     edition = "2024"
-    name = "codex-chatgpt"
+    name = "agcodex-chatgpt"
     version = { workspace = true }
 
 … +11 lines
@@ -185,7 +185,7 @@ thinking
 Considering binary size impacts
 
 I’m evaluating how binary size is influenced by various factors. There are many
-binaries, such as codex and codex-exec, which include dependencies by default,
+binaries, such as agcodex and agcodex-exec, which include dependencies by default,
 pulling in features like Tokio and hyper. For instance, reqwest includes
 default features like TLS through rustls. If default features remain enabled,
 it inflates the size with many additional components. I notice that for musl
@@ -260,18 +260,18 @@ reducing size, but I want to stay focused on answering the user's question.
 
 
 
-codex
+agcodex
 Here’s what’s driving size in this workspace’s binaries.
 
 Main Causes
 
-- Static linking style: Each bin (codex, codex-tui, codex-exec,
-codex-mcp-server, etc.) statically links its full dependency graph, so common
+- Static linking style: Each bin (agcodex, agcodex-tui, agcodex-exec,
+agcodex-mcp-server, etc.) statically links its full dependency graph, so common
 code isn’t shared at runtime across executables.
 - Heavy deps (HTTP/TLS): reqwest brings in Hyper, HTTP/2, compressors, and a TLS
 stack (rustls by default; OpenSSL on musl). In core, login, tui, and ollama you
 enable reqwest with json/stream, which still pulls a large transitive set.
-- Image/terminal stack: codex-tui includes image (with jpeg), ratatui,
+- Image/terminal stack: agcodex-tui includes image (with jpeg), ratatui,
 crossterm, and ratatui-image, which together contribute significant code size
 (decoders, pixel ops, terminal backends).
 - Parsers/VMs: tree-sitter + tree-sitter-bash (in core and apply-patch) and

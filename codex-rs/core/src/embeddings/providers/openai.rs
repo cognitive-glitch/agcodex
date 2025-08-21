@@ -6,9 +6,12 @@
 //! - Batch processing (up to 2048 inputs)
 //! - Uses OPENAI_EMBEDDING_KEY (not OPENAI_API_KEY)
 
-use super::super::{EmbeddingError, EmbeddingProvider, EmbeddingVector};
+use super::super::EmbeddingError;
+use super::super::EmbeddingProvider;
+use super::super::EmbeddingVector;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// OpenAI embedding provider
 pub struct OpenAIProvider {
@@ -87,7 +90,7 @@ impl EmbeddingProvider for OpenAIProvider {
 
     fn dimensions(&self) -> usize {
         // Return configured dimensions or model defaults
-        self.dimensions.unwrap_or_else(|| {
+        self.dimensions.unwrap_or({
             match self.model.as_str() {
                 "text-embedding-3-small" => 1536,
                 "text-embedding-3-large" => 3072,
@@ -129,8 +132,13 @@ impl EmbeddingProvider for OpenAIProvider {
 }
 
 impl OpenAIProvider {
-    async fn embed_batch_internal(&self, texts: &[String]) -> Result<Vec<EmbeddingVector>, EmbeddingError> {
-        let endpoint = self.api_endpoint.as_deref()
+    async fn embed_batch_internal(
+        &self,
+        texts: &[String],
+    ) -> Result<Vec<EmbeddingVector>, EmbeddingError> {
+        let endpoint = self
+            .api_endpoint
+            .as_deref()
             .unwrap_or("https://api.openai.com/v1/embeddings");
 
         let request = OpenAIRequest {
@@ -152,22 +160,22 @@ impl OpenAIProvider {
 
         let status = response.status();
         if !status.is_success() {
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+
             // Try to parse OpenAI error format
             if let Ok(error) = serde_json::from_str::<OpenAIError>(&error_text) {
                 return Err(EmbeddingError::ApiError(format!(
                     "OpenAI API error ({}): {} - {}",
-                    status,
-                    error.error.error_type,
-                    error.error.message
+                    status, error.error.error_type, error.error.message
                 )));
             }
-            
+
             return Err(EmbeddingError::ApiError(format!(
                 "OpenAI API error ({}): {}",
-                status,
-                error_text
+                status, error_text
             )));
         }
 

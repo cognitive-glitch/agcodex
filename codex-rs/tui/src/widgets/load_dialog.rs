@@ -1,17 +1,33 @@
 //! Load session dialog widget for AGCodex TUI
 
-use agcodex_persistence::types::{OperatingMode, SessionMetadata};
-use chrono::{DateTime, Local};
+use agcodex_persistence::types::OperatingMode;
+use agcodex_persistence::types::SessionMetadata;
+use chrono::DateTime;
+use chrono::Local;
 use ratatui::buffer::Buffer;
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, Clear, Paragraph, Widget, WidgetRef, Wrap};
+use ratatui::layout::Constraint;
+use ratatui::layout::Direction;
+use ratatui::layout::Layout;
+use ratatui::layout::Rect;
+use ratatui::style::Color;
+use ratatui::style::Modifier;
+use ratatui::style::Style;
+use ratatui::text::Line;
+use ratatui::text::Span;
+use ratatui::widgets::Block;
+use ratatui::widgets::BorderType;
+use ratatui::widgets::Borders;
+use ratatui::widgets::Clear;
+use ratatui::widgets::Paragraph;
+use ratatui::widgets::Widget;
+use ratatui::widgets::WidgetRef;
+use ratatui::widgets::Wrap;
 use uuid::Uuid;
 
 use crate::bottom_pane::popup_consts::MAX_POPUP_ROWS;
 use crate::bottom_pane::scroll_state::ScrollState;
-use crate::bottom_pane::selection_popup_common::{render_rows, GenericDisplayRow};
+use crate::bottom_pane::selection_popup_common::GenericDisplayRow;
+use crate::bottom_pane::selection_popup_common::render_rows;
 
 /// Session item for display in the load dialog
 #[derive(Debug, Clone)]
@@ -34,7 +50,7 @@ impl SessionDisplayItem {
 
         let mode_indicator = match metadata.current_mode {
             OperatingMode::Plan => "📋",
-            OperatingMode::Build => "🔨", 
+            OperatingMode::Build => "🔨",
             OperatingMode::Review => "🔍",
         };
 
@@ -97,16 +113,12 @@ impl LoadDialog {
 
     /// Set the list of sessions from SessionManager
     pub fn set_sessions(&mut self, sessions: Vec<SessionMetadata>) {
-        self.all_sessions = sessions
-            .into_iter()
-            .map(SessionDisplayItem::new)
-            .collect();
-        
+        self.all_sessions = sessions.into_iter().map(SessionDisplayItem::new).collect();
+
         // Sort by most recently updated first
-        self.all_sessions.sort_by(|a, b| {
-            b.metadata.updated_at.cmp(&a.metadata.updated_at)
-        });
-        
+        self.all_sessions
+            .sort_by(|a, b| b.metadata.updated_at.cmp(&a.metadata.updated_at));
+
         self.loading = false;
         self.filter_sessions();
     }
@@ -123,7 +135,8 @@ impl LoadDialog {
             self.filtered_sessions = self.all_sessions.clone();
         } else {
             let query_lower = self.search_query.to_lowercase();
-            self.filtered_sessions = self.all_sessions
+            self.filtered_sessions = self
+                .all_sessions
                 .iter()
                 .filter(|session| {
                     session.display_name.to_lowercase().contains(&query_lower)
@@ -207,7 +220,11 @@ impl WidgetRef for &LoadDialog {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .title(" Load Session ")
-            .title_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD));
+            .title_style(
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            );
 
         let inner = block.inner(area);
         block.render(area, buf);
@@ -230,7 +247,10 @@ impl WidgetRef for &LoadDialog {
         let search_text = if self.search_query.is_empty() {
             Line::from(vec![
                 Span::styled("Search: ", Style::default().fg(Color::Gray)),
-                Span::styled("(type to filter sessions)", Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    "(type to filter sessions)",
+                    Style::default().fg(Color::DarkGray),
+                ),
             ])
         } else {
             Line::from(vec![
@@ -272,9 +292,7 @@ impl WidgetRef for &LoadDialog {
                 .map(|session| {
                     let display_text = format!(
                         "{} {} - {}",
-                        session.mode_indicator,
-                        session.display_name,
-                        session.formatted_date
+                        session.mode_indicator, session.display_name, session.formatted_date
                     );
 
                     GenericDisplayRow {
@@ -287,7 +305,14 @@ impl WidgetRef for &LoadDialog {
                 .collect()
         };
 
-        render_rows(layout[1], buf, &rows_all, &self.state, MAX_POPUP_ROWS, false);
+        render_rows(
+            layout[1],
+            buf,
+            &rows_all,
+            &self.state,
+            MAX_POPUP_ROWS,
+            false,
+        );
 
         // Render preview pane
         if let Some(selected) = self.selected_session() {
@@ -466,20 +491,20 @@ mod tests {
         ];
 
         dialog.set_sessions(sessions);
-        
+
         // Should start with first item selected
         assert_eq!(dialog.state.selected_idx, Some(0));
-        
+
         dialog.move_down();
         assert_eq!(dialog.state.selected_idx, Some(1));
-        
+
         dialog.move_down();
         assert_eq!(dialog.state.selected_idx, Some(2));
-        
+
         // Should wrap to beginning
         dialog.move_down();
         assert_eq!(dialog.state.selected_idx, Some(0));
-        
+
         dialog.move_up();
         assert_eq!(dialog.state.selected_idx, Some(2));
     }

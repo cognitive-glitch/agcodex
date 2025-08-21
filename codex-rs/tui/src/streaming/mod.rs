@@ -128,6 +128,6 @@ fn render_header_line(kind: StreamKind) -> ratatui::text::Line<'static> {
     use ratatui::style::Stylize;
     match kind {
         StreamKind::Reasoning => ratatui::text::Line::from("thinking".magenta().italic()),
-        StreamKind::Answer => ratatui::text::Line::from("codex".magenta().bold()),
+        StreamKind::Answer => ratatui::text::Line::from("agcodex".magenta().bold()),
     }
 }

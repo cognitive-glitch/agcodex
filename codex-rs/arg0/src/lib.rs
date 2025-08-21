@@ -39,7 +39,7 @@ where
         .and_then(|s| s.to_str())
         .unwrap_or("");
 
-    if exe_name == "codex-linux-sandbox" {
+    if exe_name == "agcodex-linux-sandbox" {
         // Safety: [`run_main`] never returns.
         agcodex_linux_sandbox::run_main();
     }

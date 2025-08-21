@@ -37,7 +37,10 @@ pub enum QueryError {
     UnsupportedLanguage { language: String },
 
     #[error("invalid query type: {query_type} for language {language}")]
-    InvalidQueryType { query_type: String, language: String },
+    InvalidQueryType {
+        query_type: String,
+        language: String,
+    },
 
     #[error("query compilation failed: {details}")]
     CompilationFailed { details: String },
@@ -118,7 +121,12 @@ impl QueryCache {
     }
 
     /// Get a compiled query from cache
-    pub fn get(&self, language: Language, query_type: QueryType, variant: Option<&str>) -> Option<Arc<CompiledQuery>> {
+    pub fn get(
+        &self,
+        language: Language,
+        query_type: QueryType,
+        variant: Option<&str>,
+    ) -> Option<Arc<CompiledQuery>> {
         let key = CacheKey {
             language,
             query_type,
@@ -148,7 +156,10 @@ impl QueryCache {
 
     /// Get cache statistics
     pub fn stats(&self) -> HashMap<String, u64> {
-        self.stats.iter().map(|entry| (entry.key().clone(), *entry.value())).collect()
+        self.stats
+            .iter()
+            .map(|entry| (entry.key().clone(), *entry.value()))
+            .collect()
     }
 
     /// Clear all cached queries
@@ -187,19 +198,19 @@ impl QueryTemplates {
 
         // === RUST QUERIES ===
         Self::add_rust_templates(&mut templates);
-        
+
         // === PYTHON QUERIES ===
         Self::add_python_templates(&mut templates);
-        
+
         // === JAVASCRIPT/TYPESCRIPT QUERIES ===
         Self::add_javascript_templates(&mut templates);
-        
+
         // === GO QUERIES ===
         Self::add_go_templates(&mut templates);
-        
+
         // === JAVA QUERIES ===
         Self::add_java_templates(&mut templates);
-        
+
         // === C/C++ QUERIES ===
         Self::add_c_cpp_templates(&mut templates);
 
@@ -208,7 +219,7 @@ impl QueryTemplates {
 
     /// Get a query template for a language and query type
     pub fn get(&self, language: Language, query_type: &QueryType) -> Option<&'static str> {
-        self.templates.get(&(language, query_type)).copied()
+        self.templates.get(&(language, *query_type)).copied()
     }
 
     /// Get all supported query types for a language
@@ -391,7 +402,7 @@ impl QueryTemplates {
     // === JAVASCRIPT/TYPESCRIPT QUERY TEMPLATES ===
     fn add_javascript_templates(templates: &mut HashMap<(Language, QueryType), &'static str>) {
         let languages = [Language::JavaScript, Language::TypeScript];
-        
+
         for &lang in &languages {
             templates.insert(
                 (lang, QueryType::Functions),
@@ -634,7 +645,7 @@ impl QueryTemplates {
     // === C/C++ QUERY TEMPLATES ===
     fn add_c_cpp_templates(templates: &mut HashMap<(Language, QueryType), &'static str>) {
         let languages = [Language::C, Language::Cpp];
-        
+
         for &lang in &languages {
             templates.insert(
                 (lang, QueryType::Functions),
@@ -792,22 +803,27 @@ impl QueryBuilder {
         let template = if let Some(custom) = custom_template {
             custom
         } else {
-            self.templates
-                .get(language, &query_type)
-                .ok_or_else(|| QueryError::InvalidQueryType {
+            self.templates.get(language, &query_type).ok_or_else(|| {
+                QueryError::InvalidQueryType {
                     query_type: format!("{:?}", query_type),
                     language: language.name().to_string(),
-                })?
+                }
+            })?
         };
 
         // Compile the query
         let ts_language = language.parser();
-        let query = Query::new(&ts_language, template).map_err(|e| QueryError::CompilationFailed {
-            details: format!("Tree-sitter compilation error: {}", e),
-        })?;
+        let query =
+            Query::new(&ts_language, template).map_err(|e| QueryError::CompilationFailed {
+                details: format!("Tree-sitter compilation error: {}", e),
+            })?;
 
         // Extract capture names
-        let capture_names = query.capture_names().iter().map(|&s| s.to_string()).collect();
+        let capture_names = query
+            .capture_names()
+            .iter()
+            .map(|&s| s.to_string())
+            .collect();
 
         // Create compiled query
         let compiled = Arc::new(CompiledQuery {
@@ -839,19 +855,29 @@ impl QueryBuilder {
 
         // Compile the custom query
         let ts_language = language.parser();
-        let query = Query::new(&ts_language, template).map_err(|e| QueryError::CompilationFailed {
-            details: format!("Custom query compilation error: {}", e),
-        })?;
+        let query =
+            Query::new(&ts_language, template).map_err(|e| QueryError::CompilationFailed {
+                details: format!("Custom query compilation error: {}", e),
+            })?;
 
         // Extract capture names
-        let capture_names = query.capture_names().iter().map(|&s| s.to_string()).collect();
+        let capture_names = query
+            .capture_names()
+            .iter()
+            .map(|&s| s.to_string())
+            .collect();
 
         // Create compiled query
         let compiled = Arc::new(CompiledQuery {
             query: Arc::new(query),
             language,
             query_type,
-            description: format!("Custom {:?} query ({}) for {}", query_type, variant, language.name()),
+            description: format!(
+                "Custom {:?} query ({}) for {}",
+                query_type,
+                variant,
+                language.name()
+            ),
             capture_names,
         });
 
@@ -906,7 +932,11 @@ impl QueryLibrary {
     }
 
     /// Get a compiled query for a language and query type
-    pub fn get_query(&self, language: Language, query_type: QueryType) -> Result<Arc<CompiledQuery>, QueryError> {
+    pub fn get_query(
+        &self,
+        language: Language,
+        query_type: QueryType,
+    ) -> Result<Arc<CompiledQuery>, QueryError> {
         self.builder.build_query(language, query_type, None)
     }
 
@@ -918,7 +948,8 @@ impl QueryLibrary {
         template: &str,
         variant: &str,
     ) -> Result<Arc<CompiledQuery>, QueryError> {
-        self.builder.build_custom_query(language, query_type, template, variant)
+        self.builder
+            .build_custom_query(language, query_type, template, variant)
     }
 
     /// Check if a language supports a specific query type
@@ -973,7 +1004,12 @@ impl QueryLibrary {
                 Ok(_) => compiled_count += 1,
                 Err(e) => {
                     // Log warning but continue with other queries
-                    eprintln!("Warning: Failed to precompile {:?} for {}: {}", query_type, language.name(), e);
+                    eprintln!(
+                        "Warning: Failed to precompile {:?} for {}: {}",
+                        query_type,
+                        language.name(),
+                        e
+                    );
                 }
             }
         }
@@ -990,7 +1026,11 @@ impl QueryLibrary {
             match self.precompile_language(language) {
                 Ok(count) => total_compiled += count,
                 Err(e) => {
-                    eprintln!("Warning: Failed to precompile queries for {}: {}", language.name(), e);
+                    eprintln!(
+                        "Warning: Failed to precompile queries for {}: {}",
+                        language.name(),
+                        e
+                    );
                 }
             }
         }
@@ -1042,7 +1082,11 @@ mod tests {
         assert_eq!(cache.size(), 0);
 
         // Test cache miss
-        assert!(cache.get(Language::Rust, QueryType::Functions, None).is_none());
+        assert!(
+            cache
+                .get(Language::Rust, QueryType::Functions, None)
+                .is_none()
+        );
 
         // Test stats
         let stats = cache.stats();
@@ -1052,12 +1096,16 @@ mod tests {
     #[test]
     fn test_query_templates_rust() {
         let templates = QueryTemplates::new();
-        
+
         // Test Rust function template exists
-        assert!(templates.get(Language::Rust, &QueryType::Functions).is_some());
+        assert!(
+            templates
+                .get(Language::Rust, &QueryType::Functions)
+                .is_some()
+        );
         assert!(templates.get(Language::Rust, &QueryType::Classes).is_some());
         assert!(templates.get(Language::Rust, &QueryType::Imports).is_some());
-        
+
         // Test supported queries
         let supported = templates.supported_queries(Language::Rust);
         assert!(supported.contains(&QueryType::Functions));
@@ -1068,13 +1116,13 @@ mod tests {
     #[test]
     fn test_query_library_creation() {
         let library = QueryLibrary::new();
-        
+
         // Test supported languages
         let languages = library.supported_languages();
         assert!(languages.contains(&Language::Rust));
         assert!(languages.contains(&Language::Python));
         assert!(languages.contains(&Language::JavaScript));
-        
+
         // Test initial stats
         let stats = library.stats();
         assert_eq!(stats.cache_size, 0);
@@ -1085,12 +1133,12 @@ mod tests {
     #[test]
     fn test_query_library_support_check() {
         let library = QueryLibrary::new();
-        
+
         // Test known supported combinations
         assert!(library.supports_query(Language::Rust, &QueryType::Functions));
         assert!(library.supports_query(Language::Python, &QueryType::Classes));
         assert!(library.supports_query(Language::JavaScript, &QueryType::Imports));
-        
+
         // Test query types for specific language
         let rust_queries = library.supported_query_types(Language::Rust);
         assert!(!rust_queries.is_empty());
@@ -1106,9 +1154,9 @@ mod tests {
             total_queries: 10,
             supported_languages: 5,
         };
-        
+
         assert_eq!(stats.hit_rate(), 0.8);
-        
+
         let empty_stats = QueryLibraryStats {
             cache_size: 0,
             cache_hits: 0,
@@ -1116,7 +1164,7 @@ mod tests {
             total_queries: 0,
             supported_languages: 0,
         };
-        
+
         assert_eq!(empty_stats.hit_rate(), 0.0);
     }
 }
