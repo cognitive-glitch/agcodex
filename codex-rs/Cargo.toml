@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "agcodex-ast",
+    "ast",
     "ansi-escape",
     "apply-patch",
     "arg0",
@@ -59,6 +59,7 @@ unwrap_used = "deny"
 [workspace.dependencies]
 anyhow = "1"
 async-channel = "2.3.1"
+async-trait = "0.1"
 async-stream = "0.3"
 base64 = "0.22.1"
 bytes = "1.10.1"
@@ -66,6 +67,7 @@ chrono = "0.4"
 clap = "4"
 clap_complete = "4"
 color-eyre = "0.6.3"
+criterion = "0.5"
 crossterm = "0.28.1"
 diffy = "0.4.2"
 dirs = "6"
@@ -93,6 +95,7 @@ predicates = "3"
 pretty_assertions = "1.4.1"
 rand = "0.9"
 ratatui = "0.29.0"
+rayon = "1.10"
 ratatui-image = "8.0.0"
 regex-lite = "0.1.6"
 reqwest = "0.12"

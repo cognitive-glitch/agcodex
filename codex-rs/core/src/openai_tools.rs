@@ -44,6 +44,7 @@ pub struct ToolsConfig {
     pub shell_type: ConfigShellToolType,
     pub plan_tool: bool,
     pub apply_patch_tool: bool,
+    pub agent_tools: bool,
 }
 
 impl ToolsConfig {
@@ -69,6 +70,7 @@ impl ToolsConfig {
             shell_type,
             plan_tool: include_plan_tool,
             apply_patch_tool: include_apply_patch_tool || model_family.uses_apply_patch_tool,
+            agent_tools: true, // Enable agent tools by default
         }
     }
 }
@@ -514,6 +516,141 @@ fn sanitize_json_schema(value: &mut JsonValue) {
     }
 }
 
+/// Create agent invocation tools for OpenAI function calling
+fn create_agent_invocation_tools() -> Vec<OpenAiTool> {
+    let mut tools = Vec::new();
+
+    // Single agent invocation tool
+    let mut agent_properties = BTreeMap::new();
+    agent_properties.insert(
+        "agent".to_string(),
+        JsonSchema::String {
+            description: Some("Agent name (e.g., 'code-reviewer', 'debugger', 'refactorer')".to_string()),
+        },
+    );
+    agent_properties.insert(
+        "task".to_string(),
+        JsonSchema::String {
+            description: Some("Task description or parameters for the agent".to_string()),
+        },
+    );
+    agent_properties.insert(
+        "context".to_string(),
+        JsonSchema::Object {
+            properties: BTreeMap::new(),
+            required: None,
+            additional_properties: Some(true),
+        },
+    );
+    agent_properties.insert(
+        "mode_override".to_string(),
+        JsonSchema::String {
+            description: Some("Override operating mode: 'plan', 'build', or 'review' (optional)".to_string()),
+        },
+    );
+
+    tools.push(OpenAiTool::Function(ResponsesApiTool {
+        name: "invoke_agent".to_string(),
+        description: "Invoke a specialized subagent for task-specific workflows. Available agents: code-reviewer (quality/security), refactorer (restructuring), debugger (issue analysis), test-writer (test generation), performance (optimization), security (vulnerability scan), docs (documentation).".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties: agent_properties,
+            required: Some(vec!["agent".to_string(), "task".to_string()]),
+            additional_properties: Some(false),
+        },
+    }));
+
+    // Agent chain tool for sequential execution
+    let mut chain_properties = BTreeMap::new();
+    chain_properties.insert(
+        "agents".to_string(),
+        JsonSchema::Array {
+            items: Box::new(JsonSchema::Object {
+                properties: BTreeMap::from([
+                    (
+                        "name".to_string(),
+                        JsonSchema::String {
+                            description: Some("Agent name".to_string()),
+                        },
+                    ),
+                    (
+                        "task".to_string(),
+                        JsonSchema::String {
+                            description: Some("Task for this agent".to_string()),
+                        },
+                    ),
+                ]),
+                required: Some(vec!["name".to_string(), "task".to_string()]),
+                additional_properties: Some(false),
+            }),
+            description: Some("Agents to execute in sequence".to_string()),
+        },
+    );
+    chain_properties.insert(
+        "stop_on_error".to_string(),
+        JsonSchema::Boolean {
+            description: Some("Stop chain if an agent fails (default: true)".to_string()),
+        },
+    );
+
+    tools.push(OpenAiTool::Function(ResponsesApiTool {
+        name: "agent_chain".to_string(),
+        description: "Execute multiple agents in sequence, passing context between them. Each agent's output becomes context for the next.".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties: chain_properties,
+            required: Some(vec!["agents".to_string()]),
+            additional_properties: Some(false),
+        },
+    }));
+
+    // Agent parallel tool for concurrent execution
+    let mut parallel_properties = BTreeMap::new();
+    parallel_properties.insert(
+        "agents".to_string(),
+        JsonSchema::Array {
+            items: Box::new(JsonSchema::Object {
+                properties: BTreeMap::from([
+                    (
+                        "name".to_string(),
+                        JsonSchema::String {
+                            description: Some("Agent name".to_string()),
+                        },
+                    ),
+                    (
+                        "task".to_string(),
+                        JsonSchema::String {
+                            description: Some("Task for this agent".to_string()),
+                        },
+                    ),
+                ]),
+                required: Some(vec!["name".to_string(), "task".to_string()]),
+                additional_properties: Some(false),
+            }),
+            description: Some("Agents to execute in parallel".to_string()),
+        },
+    );
+    parallel_properties.insert(
+        "max_concurrency".to_string(),
+        JsonSchema::Number {
+            description: Some("Maximum agents to run concurrently (default: 4)".to_string()),
+        },
+    );
+
+    tools.push(OpenAiTool::Function(ResponsesApiTool {
+        name: "agent_parallel".to_string(),
+        description: "Execute multiple agents in parallel for independent tasks. Useful for running security scan, performance analysis, and code review simultaneously.".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties: parallel_properties,
+            required: Some(vec!["agents".to_string()]),
+            additional_properties: Some(false),
+        },
+    }));
+
+    tools
+}
+
 /// Returns a list of OpenAiTools based on the provided config and MCP tools.
 /// Note that the keys of mcp_tools should be fully qualified names. See
 /// [`McpConnectionManager`] for more details.
@@ -541,6 +678,10 @@ pub(crate) fn get_openai_tools(
 
     if config.apply_patch_tool {
         tools.push(create_apply_patch_tool());
+    }
+
+    if config.agent_tools {
+        tools.extend(create_agent_invocation_tools());
     }
 
     if let Some(mcp_tools) = mcp_tools {

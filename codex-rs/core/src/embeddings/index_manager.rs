@@ -3,6 +3,7 @@
 //! CRITICAL: Never mix embeddings from different models or repositories.
 //! Each combination of (repo, model, dimensions) gets its own isolated index.
 
+use super::EmbeddingVector;
 use dashmap::DashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -108,7 +109,7 @@ impl VectorIndex {
     }
     
     pub async fn save_to_disk(&self, path: &Path) -> Result<(), IndexError> {
-        let data = bincode::serialize(&self.vectors)
+        let data = bincode::encode_to_vec(&self.vectors, bincode::config::standard())
             .map_err(|e| IndexError::Serialization(e.to_string()))?;
         tokio::fs::write(path, data).await?;
         Ok(())
@@ -116,8 +117,9 @@ impl VectorIndex {
     
     pub async fn load_from_disk(path: &Path) -> Result<Self, IndexError> {
         let data = tokio::fs::read(path).await?;
-        let vectors = bincode::deserialize(&data)
-            .map_err(|e| IndexError::Serialization(e.to_string()))?;
+        let vectors: Vec<(EmbeddingVector, ChunkMetadata)> = bincode::decode_from_slice(&data, bincode::config::standard())
+            .map_err(|e| IndexError::Serialization(e.to_string()))?
+            .0;  // Extract the decoded value from the tuple
         
         // Infer dimensions from first vector
         let dimensions = vectors.first()
@@ -129,7 +131,7 @@ impl VectorIndex {
 }
 
 /// Metadata for an embedded chunk
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, bincode::Encode, bincode::Decode)]
 pub struct ChunkMetadata {
     pub file_path: PathBuf,
     pub start_line: usize,

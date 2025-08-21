@@ -2,33 +2,9 @@
 
 use chrono::DateTime;
 use chrono::Utc;
-// Temporarily define types locally until core crate is fixed
-// use agcodex_core::models::{ContentItem, ResponseItem};
-// use agcodex_core::modes::OperatingMode;
-
-// Temporary local definitions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ContentItem {
-    InputText { text: String },
-    OutputText { text: String },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ResponseItem {
-    Message {
-        id: Option<String>,
-        role: String,
-        content: Vec<ContentItem>,
-    },
-    Other,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum OperatingMode {
-    Plan,
-    Build,
-    Review,
-}
+// Import and re-export types from core crate
+pub use agcodex_core::models::{ContentItem, ResponseItem};
+pub use agcodex_core::modes::OperatingMode;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;

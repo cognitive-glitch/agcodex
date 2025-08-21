@@ -2,6 +2,7 @@ use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::KeyEvent;
 use ratatui::layout::Rect;
 use ratatui::widgets::WidgetRef;
+use std::any::Any;
 
 use crate::app_event_sender::AppEventSender;
 use crate::user_approval_widget::ApprovalRequest;
@@ -68,6 +69,14 @@ impl<'a> BottomPaneView<'a> for ApprovalModalView<'a> {
     fn try_consume_approval_request(&mut self, req: ApprovalRequest) -> Option<ApprovalRequest> {
         self.enqueue_request(req);
         None
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 

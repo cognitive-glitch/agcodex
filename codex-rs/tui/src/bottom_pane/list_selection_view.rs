@@ -9,6 +9,7 @@ use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::Paragraph;
 use ratatui::widgets::Widget;
+use std::any::Any;
 
 use crate::app_event_sender::AppEventSender;
 
@@ -246,5 +247,13 @@ impl BottomPaneView<'_> for ListSelectionView {
             )));
             footer_para.render(footer_area, buf);
         }
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }

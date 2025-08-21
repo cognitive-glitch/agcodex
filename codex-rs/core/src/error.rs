@@ -141,6 +141,10 @@ pub enum CodexErr {
     #[error("invalid working directory: {0}")]
     InvalidWorkingDirectory(String),
 
+    // Mode restriction errors
+    #[error("operation not allowed in current mode: {0}")]
+    ModeRestriction(String),
+
     // General errors for migration from anyhow
     #[error("{0}")]
     General(String),

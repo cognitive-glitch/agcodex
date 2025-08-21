@@ -15,6 +15,15 @@ pub enum ToolError {
 
     #[error("invalid query: {0}")]
     InvalidQuery(String),
+
+    #[error("parse error: {0}")]
+    ParseError(String),
+
+    #[error("not found: {0}")]
+    NotFound(String),
+
+    #[error("unsupported language: {0}")]
+    UnsupportedLanguage(String),
 }
 
 /// A generic interface that concrete tools may adopt.
@@ -27,6 +36,9 @@ pub trait CodeTool {
 pub mod fd_find;
 pub mod tree_sitter;
 
+/// Comprehensive tree-sitter query library for structural code analysis
+pub mod queries;
+
 /// AST-based agent tools for code analysis and transformation
 pub mod ast_agent_tools;
 
@@ -34,3 +46,7 @@ pub mod ast_agent_tools;
 pub mod ast_grep;
 
 // Intentionally no `comby` module: Comby is not used in AGCodex.
+
+// Include comprehensive tests for AST agent tools
+#[cfg(test)]
+mod ast_agent_tools_test;

@@ -2,11 +2,12 @@
 
 use super::CodeTool;
 use super::ToolError;
-use agcodex_ast::AstEngine;
-use agcodex_ast::CompressionLevel;
-use agcodex_ast::Language;
-use agcodex_ast::LanguageRegistry;
-use agcodex_ast::ParsedAst;
+use super::queries::{QueryLibrary, QueryType, CompiledQuery};
+use ast::AstEngine;
+use ast::CompressionLevel;
+use ast::Language;
+use ast::LanguageRegistry;
+use ast::ParsedAst;
 use dashmap::DashMap;
 use std::path::Path;
 use std::path::PathBuf;
@@ -23,6 +24,8 @@ pub struct TreeSitterTool {
     registry: Arc<LanguageRegistry>,
     runtime: Arc<Runtime>,
     query_engine: Arc<QueryEngine>,
+    /// New comprehensive query library
+    query_library: Arc<QueryLibrary>,
 }
 
 /// Query engine for compiling and caching tree-sitter queries
@@ -131,11 +134,19 @@ pub struct TsMatch {
 impl TreeSitterTool {
     pub fn new() -> Self {
         let registry = Arc::new(LanguageRegistry::new());
+        let query_library = Arc::new(QueryLibrary::new());
+        
+        // Precompile common queries for better performance
+        if let Err(e) = query_library.precompile_all() {
+            eprintln!("Warning: Failed to precompile queries: {}", e);
+        }
+        
         Self {
             engine: Arc::new(AstEngine::new(CompressionLevel::Medium)),
             registry: registry.clone(),
             runtime: Arc::new(Runtime::new().expect("Failed to create tokio runtime")),
             query_engine: Arc::new(QueryEngine::new(registry)),
+            query_library,
         }
     }
 
@@ -216,11 +227,24 @@ impl TreeSitterTool {
 
         match query.search_type {
             TsSearchType::Pattern => {
-                // Simple pattern matching - convert pattern to tree-sitter query
-                let query_pattern = self.convert_pattern_to_query(&query.pattern);
-                let compiled_query = self
-                    .query_engine
-                    .compile_query(ast.language, &query_pattern)?;
+                // Try structured query first, fall back to pattern conversion
+                let query_type = self.infer_query_type(&query.pattern);
+                
+                let compiled_query = if let Some(qt) = query_type {
+                    // Use structured query from library
+                    match self.get_structured_query(ast.language, qt) {
+                        Ok(structured) => structured.query.clone(),
+                        Err(_) => {
+                            // Fall back to pattern conversion
+                            let query_pattern = self.convert_pattern_to_query(&query.pattern);
+                            self.query_engine.compile_query(ast.language, &query_pattern)?
+                        }
+                    }
+                } else {
+                    // Use pattern conversion
+                    let query_pattern = self.convert_pattern_to_query(&query.pattern);
+                    self.query_engine.compile_query(ast.language, &query_pattern)?
+                };
 
                 let query_matches = self
                     .query_engine
@@ -300,7 +324,29 @@ impl TreeSitterTool {
         Ok(matches)
     }
 
-    /// Convert a simple pattern to tree-sitter query syntax
+    /// Infer query type from pattern string
+    fn infer_query_type(&self, pattern: &str) -> Option<QueryType> {
+        if pattern.starts_with("function ") || pattern.contains("function") {
+            Some(QueryType::Functions)
+        } else if pattern.starts_with("class ") || pattern.contains("class") {
+            Some(QueryType::Classes)
+        } else if pattern.starts_with("import ") || pattern.contains("import") {
+            Some(QueryType::Imports)
+        } else if pattern.starts_with("method ") || pattern.contains("method") {
+            Some(QueryType::Methods)
+        } else {
+            None
+        }
+    }
+
+    /// Get a structured query using the new query library
+    fn get_structured_query(&self, language: ast::Language, query_type: QueryType) -> Result<Arc<CompiledQuery>, ToolError> {
+        self.query_library
+            .get_query(language, query_type)
+            .map_err(|e| ToolError::InvalidQuery(format!("Query library error: {}", e)))
+    }
+
+    /// Convert a simple pattern to tree-sitter query syntax (legacy support)
     fn convert_pattern_to_query(&self, pattern: &str) -> String {
         // This is a simplified conversion - in practice, you'd want more sophisticated parsing
         // For now, we'll handle common patterns
@@ -356,6 +402,61 @@ impl TreeSitterTool {
             // Default: try to match as identifier
             format!("(identifier) @id (#eq? @id \"{}\")", pattern)
         }
+    }
+
+    /// Execute a structured query using the query library
+    pub async fn search_structured(&self, language: ast::Language, query_type: QueryType, files: Vec<PathBuf>) -> Result<Vec<TsMatch>, ToolError> {
+        let compiled_query = self.get_structured_query(language, query_type)?;
+        let mut all_matches = Vec::new();
+
+        for file_path in &files {
+            // Parse the file using AstEngine
+            let ast = self
+                .engine
+                .parse_file(file_path)
+                .await
+                .map_err(|e| ToolError::InvalidQuery(format!("Parse error: {}", e)))?;
+
+            // Skip if language doesn't match
+            if ast.language != language {
+                continue;
+            }
+
+            let source = ast.source.as_bytes();
+            let query_matches = self
+                .query_engine
+                .execute_query(&compiled_query.query, &ast, source);
+
+            for qm in query_matches {
+                all_matches.push(TsMatch {
+                    file: file_path.display().to_string(),
+                    line: qm.start_position.0 + 1,
+                    column: qm.start_position.1,
+                    end_line: qm.end_position.0 + 1,
+                    end_column: qm.end_position.1,
+                    matched_text: qm.text.clone(),
+                    node_kind: qm.node_kind,
+                    context: Some(self.extract_context(
+                        &ast.source,
+                        qm.start_position.0,
+                        qm.end_position.0,
+                        2,
+                    )),
+                });
+            }
+        }
+
+        Ok(all_matches)
+    }
+
+    /// Get query library statistics
+    pub fn query_stats(&self) -> crate::code_tools::queries::QueryLibraryStats {
+        self.query_library.stats()
+    }
+
+    /// Check if a language supports a specific query type
+    pub fn supports_query(&self, language: ast::Language, query_type: &QueryType) -> bool {
+        self.query_library.supports_query(language, query_type)
     }
 
     async fn search_async(&self, mut query: TsQuery) -> Result<Vec<TsMatch>, ToolError> {

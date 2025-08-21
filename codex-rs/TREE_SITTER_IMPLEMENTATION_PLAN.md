@@ -23,7 +23,7 @@ This document outlines the comprehensive implementation strategy for adding tree
 
 ### 1. Crate Structure
 ```
-agcodex-ast/                    # New crate for AST operations
+ast/                    # New crate for AST operations
 ├── src/
 │   ├── lib.rs                 # Public API
 │   ├── languages/             # Language-specific modules
@@ -121,7 +121,7 @@ tree-sitter-toml = "0.6"
 
 #### Task 1.2: Create Language Registry
 ```rust
-// agcodex-ast/src/languages/registry.rs
+// ast/src/languages/registry.rs
 pub struct LanguageRegistry {
     languages: HashMap<String, LanguageInfo>,
 }
@@ -151,7 +151,7 @@ impl LanguageRegistry {
 
 #### Task 2.1: Parser Pool
 ```rust
-// agcodex-ast/src/parser/pool.rs
+// ast/src/parser/pool.rs
 use dashmap::DashMap;
 
 pub struct ParserPool {
@@ -191,7 +191,7 @@ impl ParserPool {
 
 #### Task 2.2: AST Cache
 ```rust
-// agcodex-ast/src/parser/cache.rs
+// ast/src/parser/cache.rs
 use dashmap::DashMap;
 use lru::LruCache;
 
@@ -233,7 +233,7 @@ impl AstCache {
 
 #### Task 3.1: AI Distiller Implementation
 ```rust
-// agcodex-ast/src/compactor/distiller.rs
+// ast/src/compactor/distiller.rs
 pub struct AiDistiller {
     compression_level: CompressionLevel,
     preserve_semantics: bool,
@@ -286,7 +286,7 @@ impl AiDistiller {
 
 #### Task 3.2: Language-Specific Strategies
 ```rust
-// agcodex-ast/src/compactor/strategies.rs
+// ast/src/compactor/strategies.rs
 pub trait CompactionStrategy {
     fn should_keep_node(&self, node: &Node) -> bool;
     fn transform_node(&self, node: &Node, source: &str) -> Option<String>;
@@ -461,7 +461,7 @@ impl ContextRetriever {
 #### Task 6.1: Complete TreeSitterTool
 ```rust
 // core/src/code_tools/tree_sitter.rs
-use agcodex_ast::{ParserPool, AstCache, LanguageRegistry};
+use ast::{ParserPool, AstCache, LanguageRegistry};
 
 pub struct TreeSitterTool {
     parser_pool: Arc<ParserPool>,
@@ -508,7 +508,7 @@ impl CodeTool for TreeSitterTool {
 #### Task 6.2: Integrate with File Search
 ```rust
 // file-search/src/lib.rs
-use agcodex_ast::{ParserPool, SemanticIndex};
+use ast::{ParserPool, SemanticIndex};
 
 pub struct EnhancedFileSearch {
     fuzzy_matcher: NucleoMatcher,
@@ -549,7 +549,7 @@ impl EnhancedFileSearch {
 
 #### Task 7.1: Caching Strategy
 ```rust
-// agcodex-ast/src/parser/cache.rs
+// ast/src/parser/cache.rs
 pub struct CacheConfig {
     pub max_memory_mb: usize,      // e.g., 500 MB
     pub max_files: usize,          // e.g., 1000 files
@@ -594,7 +594,7 @@ impl OptimizedCache {
 
 #### Task 7.2: Parallel Processing
 ```rust
-// agcodex-ast/src/parser/pool.rs
+// ast/src/parser/pool.rs
 use rayon::prelude::*;
 
 pub struct ParallelProcessor {
@@ -752,8 +752,8 @@ criterion_main!(benches);
 
 ### Step 1: Add Dependencies (Day 1)
 1. Update workspace Cargo.toml with all tree-sitter languages
-2. Create agcodex-ast crate with basic structure
-3. Update core/Cargo.toml to depend on agcodex-ast
+2. Create ast crate with basic structure
+3. Update core/Cargo.toml to depend on ast
 
 ### Step 2: Implement Core (Days 2-4)
 1. Build LanguageRegistry with all 50+ languages
@@ -814,7 +814,7 @@ criterion_main!(benches);
 ## Next Steps
 
 1. **Immediate**: Add tree-sitter dependencies to Cargo.toml
-2. **Day 1**: Create agcodex-ast crate structure
+2. **Day 1**: Create ast crate structure
 3. **Day 2**: Implement LanguageRegistry
 4. **Day 3**: Build ParserPool and caching
 5. **Day 4**: Implement AiDistiller

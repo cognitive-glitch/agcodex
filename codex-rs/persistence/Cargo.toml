@@ -38,9 +38,7 @@ tempfile = "3.14"
 tracing = "0.1"
 
 # Internal dependencies
-# Temporarily disabled until core crate is fixed
-# agcodex-core = { path = "../core" }
-# agcodex-common = { path = "../common" }
+agcodex-core = { path = "../core" }
 
 [dev-dependencies]
 tokio = { version = "1.42", features = ["full", "test-util"] }

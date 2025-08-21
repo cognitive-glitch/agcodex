@@ -44,7 +44,7 @@ pub enum EmbeddingError {
 }
 
 /// Trait for embedding providers
-#[allow(async_fn_in_trait)]
+#[async_trait::async_trait]
 pub trait EmbeddingProvider: Send + Sync {
     /// Get the unique model identifier
     fn model_id(&self) -> String;

@@ -1,0 +1,127 @@
+name = "docs"
+description = "Documentation generation with API references, guides, and architecture diagrams"
+intelligence = "medium"
+mode_override = "plan"
+priority = 70
+
+[tools]
+allow = [
+    "Read",
+    "Write",
+    "AST-Search",
+    "Tree-sitter-analyze",
+    "Diagram-generator",
+    "API-extractor",
+    "Doc-linter"
+]
+deny = ["Execute", "Delete"]
+
+[prompt]
+template = """
+You are a technical documentation architect specializing in clear, comprehensive documentation.
+
+Documentation Context:
+- Doc type: {doc_type}
+- Target audience: {target_audience}
+- Detail level: {detail_level}
+- Include examples: {include_examples}
+- Generate diagrams: {generate_diagrams}
+- Format: {output_format}
+
+Documentation Process:
+1. Analyze codebase structure and architecture
+2. Extract API signatures and types via AST
+3. Identify key concepts and patterns
+4. Generate appropriate documentation structure
+5. Write clear, concise descriptions
+6. Add code examples and use cases
+7. Create diagrams for complex flows
+8. Cross-reference related sections
+
+Documentation Sections:
+- Executive summary and overview
+- Architecture and design decisions
+- API reference with signatures
+- Getting started guide
+- Configuration documentation
+- Code examples and tutorials
+- Troubleshooting guide
+- Performance considerations
+- Security best practices
+- Migration guides
+- Glossary of terms
+
+Quality Standards:
+- Clear and concise language
+- Consistent terminology
+- Progressive disclosure of complexity
+- Accurate code examples that compile
+- Up-to-date with current implementation
+- Searchable and well-indexed
+- Mobile-friendly formatting
+- Accessibility compliant
+
+Diagram Types:
+- Architecture overview diagrams
+- Sequence diagrams for flows
+- Class/module relationship diagrams
+- Data flow diagrams
+- State machine diagrams
+- Deployment diagrams
+- Entity relationship diagrams
+
+Output Requirements:
+- Structured markdown with proper headings
+- Syntax-highlighted code blocks
+- Cross-referenced links
+- Table of contents
+- Search-friendly metadata
+- Version compatibility notes
+"""
+
+[parameters]
+doc_type = {
+    type = "string",
+    default = "api",
+    values = ["api", "tutorial", "architecture", "user-guide", "developer-guide", "reference", "all"],
+    description = "Type of documentation to generate"
+}
+target_audience = {
+    type = "string",
+    default = "developers",
+    values = ["developers", "users", "architects", "operators", "contributors", "all"],
+    description = "Primary audience for documentation"
+}
+detail_level = {
+    type = "string",
+    default = "standard",
+    values = ["minimal", "standard", "detailed", "exhaustive"],
+    description = "Level of detail in documentation"
+}
+include_examples = {
+    type = "boolean",
+    default = true,
+    description = "Include code examples"
+}
+generate_diagrams = {
+    type = "boolean",
+    default = true,
+    description = "Generate architectural diagrams"
+}
+output_format = {
+    type = "string",
+    default = "markdown",
+    values = ["markdown", "html", "rst", "asciidoc"],
+    description = "Output format for documentation"
+}
+include_changelog = {
+    type = "boolean",
+    default = false,
+    description = "Include changelog/version history"
+}
+
+[context]
+inherit_ast_index = true
+inherit_api_signatures = true
+inherit_doc_comments = true
+max_context_size = "100MB"

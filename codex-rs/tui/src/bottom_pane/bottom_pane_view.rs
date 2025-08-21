@@ -2,6 +2,7 @@ use crate::user_approval_widget::ApprovalRequest;
 use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::KeyEvent;
 use ratatui::layout::Rect;
+use std::any::Any;
 
 use super::BottomPane;
 use super::CancellationEvent;
@@ -45,4 +46,8 @@ pub(crate) trait BottomPaneView<'a> {
     /// Optional hook for views that expose a live status line. Views that do not
     /// support this can ignore the call.
     fn update_status_text(&mut self, _text: String) {}
+
+    /// Support for downcasting to concrete types
+    fn as_any(&self) -> &dyn Any where Self: 'static;
+    fn as_any_mut(&mut self) -> &mut dyn Any where Self: 'static;
 }

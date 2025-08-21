@@ -42,11 +42,13 @@ use tracing::debug;
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::bottom_pane::BottomPane;
+use crate::widgets::MessageJump;
 use crate::bottom_pane::BottomPaneParams;
 use crate::bottom_pane::CancellationEvent;
 use crate::bottom_pane::InputResult;
 use crate::bottom_pane::SelectionAction;
 use crate::bottom_pane::SelectionItem;
+use crate::widgets::{SaveDialog, SaveDialogAction, SaveDialogState};
 use crate::history_cell;
 use crate::history_cell::CommandOutput;
 use crate::history_cell::ExecCell;
@@ -98,6 +100,10 @@ pub(crate) struct ChatWidget<'a> {
     // Whether a redraw is needed after handling the current event
     needs_redraw: bool,
     session_id: Option<Uuid>,
+    // Save dialog state
+    save_dialog_state: Option<SaveDialogState>,
+    // Message jump popup state
+    message_jump: MessageJump,
 }
 
 struct UserMessage {
@@ -534,6 +540,8 @@ impl ChatWidget<'_> {
             interrupts: InterruptManager::new(),
             needs_redraw: false,
             session_id: None,
+            save_dialog_state: None,
+            message_jump: MessageJump::new(),
         }
     }
 
@@ -546,6 +554,36 @@ impl ChatWidget<'_> {
     }
 
     pub(crate) fn handle_key_event(&mut self, key_event: KeyEvent) {
+        // Handle save dialog key events first if dialog is open
+        if let Some(ref mut dialog_state) = self.save_dialog_state {
+            let action = dialog_state.handle_key_event(key_event);
+            match action {
+                SaveDialogAction::Save => {
+                    let name = dialog_state.session_name.clone();
+                    let description = if dialog_state.description.is_empty() {
+                        None
+                    } else {
+                        Some(dialog_state.description.clone())
+                    };
+                    self.app_event_tx.send(AppEvent::SaveSession { name, description });
+                }
+                SaveDialogAction::Cancel => {
+                    self.app_event_tx.send(AppEvent::CloseSaveDialog);
+                }
+                SaveDialogAction::None => {
+                    // Dialog handled the key, mark for redraw if needed
+                    self.mark_needs_redraw();
+                }
+            }
+            return; // Don't process other key events when dialog is open
+        }
+
+        // Handle message jump popup key events if open
+        if self.message_jump.is_visible() {
+            self.handle_message_jump_key_event(key_event);
+            return; // Don't process other key events when message jump is open
+        }
+        
         if key_event.kind == KeyEventKind::Press {
             self.bottom_pane.clear_ctrl_c_quit_hint();
         }
@@ -811,6 +849,21 @@ impl ChatWidget<'_> {
         self.bottom_pane.on_file_search_result(query, matches);
     }
 
+    /// Show the load session dialog
+    pub(crate) fn show_load_dialog(&mut self) {
+        self.bottom_pane.show_load_dialog();
+    }
+
+    /// Forward session list results to the load dialog
+    pub(crate) fn apply_load_session_list_result(&mut self, sessions: Result<Vec<agcodex_persistence::types::SessionMetadata>, String>) {
+        self.bottom_pane.on_load_session_list_result(sessions);
+    }
+
+    /// Update search query in load dialog
+    pub(crate) fn apply_load_dialog_query_update(&mut self, query: String) {
+        self.bottom_pane.on_load_dialog_query_update(query);
+    }
+
     /// Handle Ctrl-C key press.
     /// Returns CancellationEvent::Handled if the event was consumed by the UI, or
     /// CancellationEvent::Ignored if the caller should handle it (e.g. exit).
@@ -838,6 +891,141 @@ impl ChatWidget<'_> {
     pub(crate) fn insert_str(&mut self, text: &str) {
         self.bottom_pane.insert_str(text);
     }
+    
+    /// Open the save session dialog
+    pub(crate) fn open_save_dialog(&mut self) {
+        self.save_dialog_state = Some(SaveDialogState::new());
+        self.mark_needs_redraw();
+    }
+    
+    /// Close the save session dialog
+    pub(crate) fn close_save_dialog(&mut self) {
+        self.save_dialog_state = None;
+        self.mark_needs_redraw();
+    }
+    
+    /// Save the current session with the provided name and description
+    pub(crate) fn save_session(&mut self, name: String, description: Option<String>) {
+        let should_save = if let Some(ref mut dialog_state) = self.save_dialog_state {
+            dialog_state.session_name = name.clone();
+            dialog_state.description = description.clone().unwrap_or_default();
+            
+            if !dialog_state.validate() {
+                self.mark_needs_redraw();
+                return;
+            }
+            
+            dialog_state.set_saving(true);
+            true
+        } else {
+            false
+        };
+        
+        if should_save {
+            self.mark_needs_redraw();
+            
+            // TODO: Integrate with SessionManager when persistence is fully implemented
+            // For now, simulate a save operation
+            let _session_name = name;
+            let _session_description = description;
+            
+            // Simulate async save operation
+            let tx = self.app_event_tx.clone();
+            tokio::spawn(async move {
+                // Simulate save delay
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                
+                // For now, just close the dialog after "saving"
+                // TODO: Replace with actual SessionManager integration
+                tx.send(AppEvent::CloseSaveDialog);
+            });
+        }
+    }
+
+    /// Show the message jump popup
+    pub(crate) fn show_message_jump(&mut self) {
+        // Get conversation history from the stream controller
+        let messages = self.get_conversation_history();
+        self.message_jump.show(messages);
+        self.mark_needs_redraw();
+    }
+
+    /// Hide the message jump popup
+    pub(crate) fn hide_message_jump(&mut self) {
+        self.message_jump.hide();
+        self.mark_needs_redraw();
+    }
+
+    /// Jump to a specific message index
+    pub(crate) fn jump_to_message(&mut self, _index: usize) {
+        // TODO: Implement context restoration
+        // For now, just hide the popup
+        self.hide_message_jump();
+        // TODO: Scroll to the message at the given index
+        // TODO: Update conversation state to that point
+    }
+
+    /// Update search query in message jump popup
+    pub(crate) fn update_message_jump_search(&mut self, query: String) {
+        self.message_jump.set_search_query(query);
+        self.mark_needs_redraw();
+    }
+
+    /// Cycle role filter in message jump popup
+    pub(crate) fn cycle_message_jump_filter(&mut self) {
+        self.message_jump.cycle_role_filter();
+        self.mark_needs_redraw();
+    }
+
+    /// Get conversation history as ResponseItems for message jump
+    fn get_conversation_history(&self) -> Vec<agcodex_core::models::ResponseItem> {
+        // TODO: Extract conversation history from the stream controller or other source
+        // For now, return empty vector as placeholder
+        Vec::new()
+    }
+
+    /// Handle key events when message jump popup is visible
+    fn handle_message_jump_key_event(&mut self, key_event: KeyEvent) {
+        use ratatui::crossterm::event::KeyCode;
+
+        if key_event.kind != KeyEventKind::Press {
+            return;
+        }
+
+        match key_event.code {
+            KeyCode::Esc => {
+                self.app_event_tx.send(AppEvent::HideMessageJump);
+            }
+            KeyCode::Enter => {
+                if let Some(selected) = self.message_jump.selected_message() {
+                    self.app_event_tx.send(AppEvent::JumpToMessage(selected.index));
+                }
+            }
+            KeyCode::Up => {
+                self.message_jump.move_up();
+                self.mark_needs_redraw();
+            }
+            KeyCode::Down => {
+                self.message_jump.move_down();
+                self.mark_needs_redraw();
+            }
+            KeyCode::Tab => {
+                self.app_event_tx.send(AppEvent::MessageJumpCycleFilter);
+            }
+            KeyCode::Char(c) => {
+                let mut query = self.message_jump.search_query().to_string();
+                query.push(c);
+                self.app_event_tx.send(AppEvent::MessageJumpSearch(query));
+            }
+            KeyCode::Backspace => {
+                let mut query = self.message_jump.search_query().to_string();
+                query.pop();
+                self.app_event_tx.send(AppEvent::MessageJumpSearch(query));
+            }
+            _ => {}
+        }
+    }
+
     /// Forward an `Op` directly to codex.
     pub(crate) fn submit_op(&self, op: Op) {
         // Record outbound operation for session replay fidelity.
@@ -886,6 +1074,30 @@ impl WidgetRef for &ChatWidget<'_> {
         (&self.bottom_pane).render(bottom_pane_area, buf);
         if let Some(cell) = &self.active_exec_cell {
             cell.render_ref(active_cell_area, buf);
+        }
+        
+        // Render save dialog as overlay if open
+        if let Some(ref dialog_state) = self.save_dialog_state {
+            let dialog = SaveDialog::new(dialog_state);
+            dialog.render_ref(area, buf);
+        }
+
+        // Render message jump popup as overlay if visible
+        if self.message_jump.is_visible() {
+            // Calculate popup area (centered, taking 80% of width and height)
+            let popup_width = (area.width as f32 * 0.8) as u16;
+            let popup_height = (area.height as f32 * 0.8) as u16;
+            let popup_x = (area.width.saturating_sub(popup_width)) / 2;
+            let popup_y = (area.height.saturating_sub(popup_height)) / 2;
+            
+            let popup_area = Rect {
+                x: area.x + popup_x,
+                y: area.y + popup_y,
+                width: popup_width,
+                height: popup_height,
+            };
+            
+            (&self.message_jump).render(popup_area, buf);
         }
     }
 }

@@ -17,6 +17,7 @@ use tokio::process::Child;
 use crate::error::CodexErr;
 use crate::error::Result;
 use crate::error::SandboxErr;
+use crate::modes::ModeRestrictions;
 use crate::landlock::spawn_command_under_linux_sandbox;
 use crate::protocol::Event;
 use crate::protocol::EventMsg;
@@ -81,7 +82,15 @@ pub async fn process_exec_tool_call(
     sandbox_policy: &SandboxPolicy,
     codex_linux_sandbox_exe: &Option<PathBuf>,
     stdout_stream: Option<StdoutStream>,
+    mode_restrictions: &ModeRestrictions,
 ) -> Result<ExecToolCallOutput> {
+    // Check mode restrictions before executing commands
+    if !mode_restrictions.allow_command_exec {
+        return Err(CodexErr::ModeRestriction(
+            "Command execution not allowed in current mode".to_string(),
+        ));
+    }
+
     let start = Instant::now();
 
     let raw_output_result: std::result::Result<RawExecToolCallOutput, CodexErr> = match sandbox_type

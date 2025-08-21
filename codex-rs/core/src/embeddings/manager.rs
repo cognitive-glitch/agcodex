@@ -5,6 +5,7 @@
 use super::{
     config::{EmbeddingsConfig, IntelligenceMode, ProviderSelection},
     index_manager::{EmbeddingIndexManager, SearchResult},
+    providers::{OpenAIProvider, GeminiProvider, VoyageProvider, voyage::VoyageInputType},
     EmbeddingError, EmbeddingProvider, EmbeddingVector,
 };
 use std::collections::HashMap;
@@ -59,10 +60,11 @@ impl EmbeddingsManager {
             if let Some(openai_config) = &config.openai {
                 providers.insert(
                     "openai".to_string(),
-                    Box::new(super::providers::OpenAIEmbeddings::new(
+                    Box::new(OpenAIProvider::new(
                         api_key,
                         openai_config.model.clone(),
                         openai_config.dimensions,
+                        None, // api_endpoint
                     )) as Box<dyn EmbeddingProvider>,
                 );
                 if active_provider.is_none() {
@@ -77,7 +79,7 @@ impl EmbeddingsManager {
             if let Some(gemini_config) = &config.gemini {
                 providers.insert(
                     "gemini".to_string(),
-                    Box::new(super::providers::GeminiEmbeddings::new(
+                    Box::new(GeminiProvider::new(
                         api_key,
                         gemini_config.model.clone(),
                     )) as Box<dyn EmbeddingProvider>,
@@ -92,12 +94,17 @@ impl EmbeddingsManager {
         if let Some(api_key) = super::config::get_embedding_api_key("voyage") {
             debug!("Voyage embedding API key found");
             if let Some(voyage_config) = &config.voyage {
+                let input_type = match voyage_config.input_type.as_str() {
+                    "query" => VoyageInputType::Query,
+                    _ => VoyageInputType::Document,
+                };
                 providers.insert(
                     "voyage".to_string(),
-                    Box::new(super::providers::VoyageEmbeddings::new(
+                    Box::new(VoyageProvider::new(
                         api_key,
                         voyage_config.model.clone(),
-                        voyage_config.input_type.clone(),
+                        input_type,
+                        None, // api_endpoint
                     )) as Box<dyn EmbeddingProvider>,
                 );
                 if active_provider.is_none() {
@@ -274,121 +281,6 @@ pub struct EmbeddingsStats {
     pub index_stats: Option<super::index_manager::IndexManagerStats>,
 }
 
-// Placeholder provider implementations
-// These would be implemented properly in providers/openai.rs, etc.
-pub(crate) mod providers {
-    use super::*;
-    
-    pub struct OpenAIEmbeddings {
-        api_key: String,
-        model: String,
-        dimensions: Option<usize>,
-    }
-    
-    impl OpenAIEmbeddings {
-        pub fn new(api_key: String, model: String, dimensions: Option<usize>) -> Self {
-            Self { api_key, model, dimensions }
-        }
-    }
-    
-    impl EmbeddingProvider for OpenAIEmbeddings {
-        fn model_id(&self) -> String {
-            format!("openai:{}", self.model)
-        }
-        
-        fn dimensions(&self) -> usize {
-            self.dimensions.unwrap_or(1536)
-        }
-        
-        async fn embed(&self, _text: &str) -> Result<EmbeddingVector, EmbeddingError> {
-            // TODO: Implement actual OpenAI API call
-            Ok(vec![0.1; self.dimensions()])
-        }
-        
-        async fn embed_batch(&self, texts: &[String]) -> Result<Vec<EmbeddingVector>, EmbeddingError> {
-            // TODO: Implement actual OpenAI batch API call
-            Ok(texts.iter().map(|_| vec![0.1; self.dimensions()]).collect())
-        }
-        
-        fn is_available(&self) -> bool {
-            !self.api_key.is_empty()
-        }
-    }
-    
-    pub struct GeminiEmbeddings {
-        api_key: String,
-        model: String,
-    }
-    
-    impl GeminiEmbeddings {
-        pub fn new(api_key: String, model: String) -> Self {
-            Self { api_key, model }
-        }
-    }
-    
-    impl EmbeddingProvider for GeminiEmbeddings {
-        fn model_id(&self) -> String {
-            format!("gemini:{}", self.model)
-        }
-        
-        fn dimensions(&self) -> usize {
-            768 // Default for gemini-embedding-001
-        }
-        
-        async fn embed(&self, _text: &str) -> Result<EmbeddingVector, EmbeddingError> {
-            // TODO: Implement actual Gemini API call
-            Ok(vec![0.2; self.dimensions()])
-        }
-        
-        async fn embed_batch(&self, texts: &[String]) -> Result<Vec<EmbeddingVector>, EmbeddingError> {
-            Ok(texts.iter().map(|_| vec![0.2; self.dimensions()]).collect())
-        }
-        
-        fn is_available(&self) -> bool {
-            !self.api_key.is_empty()
-        }
-    }
-    
-    pub struct VoyageEmbeddings {
-        api_key: String,
-        model: String,
-        input_type: String,
-    }
-    
-    impl VoyageEmbeddings {
-        pub fn new(api_key: String, model: String, input_type: String) -> Self {
-            Self { api_key, model, input_type }
-        }
-    }
-    
-    impl EmbeddingProvider for VoyageEmbeddings {
-        fn model_id(&self) -> String {
-            format!("voyage:{}", self.model)
-        }
-        
-        fn dimensions(&self) -> usize {
-            match self.model.as_str() {
-                "voyage-3.5-lite" => 512,
-                "voyage-3.5" => 1024,
-                "voyage-3-large" => 1536,
-                _ => 1024,
-            }
-        }
-        
-        async fn embed(&self, _text: &str) -> Result<EmbeddingVector, EmbeddingError> {
-            // TODO: Implement actual Voyage API call
-            Ok(vec![0.3; self.dimensions()])
-        }
-        
-        async fn embed_batch(&self, texts: &[String]) -> Result<Vec<EmbeddingVector>, EmbeddingError> {
-            Ok(texts.iter().map(|_| vec![0.3; self.dimensions()]).collect())
-        }
-        
-        fn is_available(&self) -> bool {
-            !self.api_key.is_empty()
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

@@ -770,12 +770,23 @@ impl Session {
         self.on_exec_command_begin(turn_diff_tracker, begin_ctx.clone())
             .await;
 
+        // TODO: Integrate proper mode management into Session
+        // For now, use default mode restrictions (Build mode) to maintain compatibility
+        let default_mode_restrictions = crate::modes::ModeRestrictions {
+            allow_file_write: true,
+            allow_command_exec: true,
+            allow_network_access: true,
+            allow_git_operations: true,
+            max_file_size: None,
+        };
+        
         let result = process_exec_tool_call(
             exec_args.params,
             exec_args.sandbox_type,
             exec_args.sandbox_policy,
             exec_args.codex_linux_sandbox_exe,
             exec_args.stdout_stream,
+            &default_mode_restrictions,
         )
         .await;
 

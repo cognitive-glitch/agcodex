@@ -2,6 +2,7 @@ use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::KeyCode;
 use ratatui::crossterm::event::KeyEvent;
 use ratatui::widgets::WidgetRef;
+use std::any::Any;
 
 use crate::app_event_sender::AppEventSender;
 use crate::bottom_pane::BottomPane;
@@ -46,5 +47,13 @@ impl BottomPaneView<'_> for StatusIndicatorView {
 
     fn update_status_text(&mut self, text: String) {
         self.update_text(text);
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }

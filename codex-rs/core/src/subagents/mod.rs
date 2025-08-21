@@ -1,0 +1,255 @@
+//! Subagent system for AGCodex
+//!
+//! The subagent system enables specialized AI assistants for task-specific workflows.
+//! Each subagent operates with its own context, custom prompts, and tool permissions.
+//!
+//! ## Key Features
+//! - **Specialized Agents**: Code review, refactoring, debugging, testing, etc.
+//! - **Mode Override**: Agents can override operating mode (Plan/Build/Review)
+//! - **Template System**: Reusable agent configurations
+//! - **Hot Reload**: Dynamic loading of agent configurations
+//! - **Chaining & Parallel**: Sequential (→) or parallel (+) execution
+//!
+//! ## Usage
+//! ```
+//! @agent-code-reviewer - Review code for quality and security
+//! @agent-refactorer → @agent-test-writer - Chain agents sequentially
+//! @agent-performance + @agent-security - Run agents in parallel
+//! ```
+//!
+//! ## Configuration
+//! Agents are configured via TOML files in:
+//! - `~/.agcodex/agents/global/` - Available everywhere
+//! - `./.agcodex/agents/` - Project-specific agents
+//! - `templates/` - Reusable templates
+
+pub mod agents;
+pub mod config;
+pub mod context;
+pub mod invocation;
+pub mod mcp_tools;
+pub mod orchestrator;
+pub mod registry;
+pub mod worktree;
+
+#[cfg(test)]
+pub mod benchmarks;
+
+// Re-export main types for convenience
+pub use agents::{
+    AgentRegistry, AgentResult, AgentStatus, CodeReviewerAgent, DebuggerAgent, DocsAgent,
+    Finding, PerformanceAgent, RefactorerAgent, SecurityAgent, Severity, Subagent, TestWriterAgent,
+};
+pub use config::{IntelligenceLevel, SubagentConfig, ToolPermission};
+pub use context::{
+    AgentContext, AgentContextSnapshot, AgentMessage, CancellationToken, 
+    ContextError, ContextFinding, ContextResult, ExecutionMetricsSnapshot,
+    FindingSeverity, MessagePriority, MessageReceiver, MessageTarget, MessageType,
+    ProgressEvent, ProgressInfo, ProgressStage, ProgressTracker,
+};
+pub use invocation::{AgentChain, AgentInvocation, ExecutionPlan, ExecutionStep, InvocationParser, InvocationRequest};
+pub use orchestrator::{
+    AgentOrchestrator, ContextSnapshot, OrchestratorConfig, OrchestratorResult,
+    ProgressUpdate, SharedContext,
+};
+pub use registry::{SubagentRegistry, SubagentRegistryError};
+pub use mcp_tools::{McpAgentTool, McpAgentToolProvider, McpAgentHandler};
+pub use worktree::{WorktreeManager, WorktreePool, AgentWorktree, ConflictStrategy, MergeResult};
+
+use crate::modes::OperatingMode;
+use std::collections::HashMap;
+use uuid::Uuid;
+
+/// Result type for subagent operations
+pub type SubagentResult<T> = std::result::Result<T, SubagentError>;
+
+/// Errors that can occur in the subagent system
+#[derive(thiserror::Error, Debug)]
+pub enum SubagentError {
+    #[error("agent not found: {name}")]
+    AgentNotFound { name: String },
+
+    #[error("invalid agent configuration: {0}")]
+    InvalidConfig(String),
+
+    #[error("agent execution failed: {0}")]
+    ExecutionFailed(String),
+
+    #[error("circular dependency detected in agent chain: {chain:?}")]
+    CircularDependency { chain: Vec<String> },
+
+    #[error("agent timeout: {name}")]
+    Timeout { name: String },
+
+    #[error("tool permission denied: {tool} for agent {agent}")]
+    ToolPermissionDenied { tool: String, agent: String },
+
+    #[error("mode restriction violation: {mode:?} does not allow {operation}")]
+    ModeRestriction {
+        mode: OperatingMode,
+        operation: String,
+    },
+
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("serialization error: {0}")]
+    Serialization(#[from] toml::de::Error),
+
+    #[error("tool error: {0}")]
+    Tool(#[from] crate::code_tools::ToolError),
+
+    #[error("file watching error: {0}")]
+    FileWatcher(String),
+
+    #[error("agent template not found: {name}")]
+    TemplateNotFound { name: String },
+}
+
+/// Context passed to subagents during execution
+#[derive(Debug, Clone)]
+pub struct SubagentContext {
+    /// Unique identifier for this execution
+    pub execution_id: Uuid,
+    
+    /// Current operating mode
+    pub mode: OperatingMode,
+    
+    /// Available tools for this agent
+    pub available_tools: Vec<String>,
+    
+    /// Conversation history (limited)
+    pub conversation_context: String,
+    
+    /// Current working directory
+    pub working_directory: std::path::PathBuf,
+    
+    /// User-provided parameters
+    pub parameters: HashMap<String, String>,
+    
+    /// Agent-specific metadata
+    pub metadata: HashMap<String, serde_json::Value>,
+}
+
+/// Status of a subagent execution
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SubagentStatus {
+    /// Agent is waiting to start
+    Pending,
+    /// Agent is currently running
+    Running,
+    /// Agent completed successfully
+    Completed,
+    /// Agent failed with an error
+    Failed(String),
+    /// Agent was cancelled
+    Cancelled,
+}
+
+/// Result of a subagent execution
+#[derive(Debug, Clone)]
+pub struct SubagentExecution {
+    /// Unique identifier for this execution
+    pub id: Uuid,
+    
+    /// Name of the agent that was executed
+    pub agent_name: String,
+    
+    /// Current status
+    pub status: SubagentStatus,
+    
+    /// Agent output/response
+    pub output: Option<String>,
+    
+    /// Files modified by the agent
+    pub modified_files: Vec<std::path::PathBuf>,
+    
+    /// Execution start time
+    pub started_at: std::time::SystemTime,
+    
+    /// Execution end time (if completed)
+    pub completed_at: Option<std::time::SystemTime>,
+    
+    /// Error information (if failed)
+    pub error: Option<String>,
+}
+
+impl SubagentExecution {
+    /// Create a new pending execution
+    pub fn new(agent_name: String) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            agent_name,
+            status: SubagentStatus::Pending,
+            output: None,
+            modified_files: Vec::new(),
+            started_at: std::time::SystemTime::now(),
+            completed_at: None,
+            error: None,
+        }
+    }
+    
+    /// Mark the execution as started
+    pub fn start(&mut self) {
+        self.status = SubagentStatus::Running;
+        self.started_at = std::time::SystemTime::now();
+    }
+    
+    /// Mark the execution as completed with output
+    pub fn complete(&mut self, output: String, modified_files: Vec<std::path::PathBuf>) {
+        self.status = SubagentStatus::Completed;
+        self.output = Some(output);
+        self.modified_files = modified_files;
+        self.completed_at = Some(std::time::SystemTime::now());
+    }
+    
+    /// Mark the execution as failed with an error
+    pub fn fail(&mut self, error: String) {
+        self.status = SubagentStatus::Failed(error.clone());
+        self.error = Some(error);
+        self.completed_at = Some(std::time::SystemTime::now());
+    }
+    
+    /// Get the execution duration
+    pub fn duration(&self) -> Option<std::time::Duration> {
+        self.completed_at
+            .and_then(|end| end.duration_since(self.started_at).ok())
+    }
+}
+
+#[cfg(test)]
+mod basic_tests {
+    use super::*;
+
+    #[test]
+    fn test_subagent_execution_lifecycle() {
+        let mut execution = SubagentExecution::new("test-agent".to_string());
+        
+        assert_eq!(execution.status, SubagentStatus::Pending);
+        assert_eq!(execution.agent_name, "test-agent");
+        
+        execution.start();
+        assert_eq!(execution.status, SubagentStatus::Running);
+        
+        execution.complete("Success!".to_string(), vec![]);
+        assert_eq!(execution.status, SubagentStatus::Completed);
+        assert_eq!(execution.output.as_ref().unwrap(), "Success!");
+        assert!(execution.duration().is_some());
+    }
+    
+    #[test]
+    fn test_subagent_execution_failure() {
+        let mut execution = SubagentExecution::new("failing-agent".to_string());
+        
+        execution.start();
+        execution.fail("Something went wrong".to_string());
+        
+        assert!(matches!(execution.status, SubagentStatus::Failed(_)));
+        assert_eq!(execution.error.as_ref().unwrap(), "Something went wrong");
+        assert!(execution.duration().is_some());
+    }
+}
+
+// Include comprehensive test suite from tests.rs
+#[cfg(test)]
+mod tests;

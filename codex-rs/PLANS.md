@@ -574,7 +574,7 @@ impl SubAgentCache {
 ### 3.1 Full Language Support (50+ Languages)
 
 ```toml
-# agcodex-ast/Cargo.toml
+# ast/Cargo.toml
 [dependencies]
 tree-sitter = "0.24"
 
@@ -647,7 +647,7 @@ tree-sitter-svelte = "0.11"
 ### 3.2 Language Registry with Auto-Detection
 
 ```rust
-// agcodex-ast/src/languages.rs
+// ast/src/languages.rs
 pub struct LanguageRegistry {
     languages: HashMap<String, LanguageInfo>,
 }
@@ -699,7 +699,7 @@ impl LanguageRegistry {
 ### 3.3 Universal Code Understanding
 
 ```rust
-// agcodex-ast/src/understand.rs
+// ast/src/understand.rs
 pub struct CodeUnderstander {
     registry: LanguageRegistry,
     cache: HashMap<PathBuf, ParsedFile>,

@@ -13,12 +13,14 @@ workspace = true
 
 [dependencies]
 async-channel = { workspace = true }
+async-trait = { workspace = true }
 base64 = { workspace = true }
+bincode = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
 dashmap = { workspace = true }
 agcodex-apply-patch = { path = "../apply-patch" }
-agcodex-ast = { path = "../agcodex-ast" }
+ast = { path = "../ast" }
 agcodex-login = { path = "../login" }
 agcodex-mcp-client = { path = "../mcp-client" }
 agcodex-protocol = { path = "../protocol" }
@@ -56,6 +58,8 @@ toml_edit = { workspace = true }
 tracing = { workspace = true, features = ["log"] }
 tree-sitter = { workspace = true }
 tree-sitter-bash = { workspace = true }
+rayon = { workspace = true }
+ignore = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 walkdir = { workspace = true }
 whoami = { workspace = true }
@@ -77,6 +81,7 @@ openssl-sys = { version = "*", features = ["vendored"] }
 [dev-dependencies]
 assert_cmd = "2"
 core_test_support = { path = "tests/common" }
+criterion = { workspace = true }
 maplit = "1.0.2"
 predicates = "3"
 pretty_assertions = "1.4.1"
@@ -84,3 +89,8 @@ tempfile = { workspace = true }
 tokio-test = "0.4"
 walkdir = "2.5.0"
 wiremock = "0.6"
+
+[[bench]]
+name = "subagent_benchmarks"
+harness = false
+path = "src/subagents/benchmarks.rs"

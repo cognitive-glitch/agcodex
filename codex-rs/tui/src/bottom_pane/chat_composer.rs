@@ -1,4 +1,5 @@
 use agcodex_core::protocol::TokenUsage;
+use agcodex_core::subagents::{InvocationParser, InvocationRequest};
 use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::KeyCode;
 use ratatui::crossterm::event::KeyEvent;
@@ -70,6 +71,7 @@ pub(crate) struct ChatComposer {
     token_usage_info: Option<TokenUsageInfo>,
     has_focus: bool,
     placeholder_text: String,
+    invocation_parser: InvocationParser,
 }
 
 /// Popup state – at most one can be visible at any time.
@@ -102,6 +104,7 @@ impl ChatComposer {
             token_usage_info: None,
             has_focus: has_input_focus,
             placeholder_text,
+            invocation_parser: InvocationParser::new(),
         }
     }
 
@@ -541,8 +544,14 @@ impl ChatComposer {
                 if text.is_empty() {
                     (InputResult::None, true)
                 } else {
-                    self.history.record_local_submission(&text);
-                    (InputResult::Submitted(text), true)
+                    // Check for agent invocations before submitting
+                    if let Ok(Some(invocation)) = self.invocation_parser.parse(&text) {
+                        self.app_event_tx.send(AppEvent::StartAgent(invocation));
+                        (InputResult::None, true)
+                    } else {
+                        self.history.record_local_submission(&text);
+                        (InputResult::Submitted(text), true)
+                    }
                 }
             }
             input => self.handle_input_basic(input),
