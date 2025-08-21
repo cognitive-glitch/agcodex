@@ -50,6 +50,7 @@ impl CompressionLevel {
 }
 
 /// AST compactor for code compression
+#[derive(Debug)]
 pub struct AstCompactor {
     compression_level: CompressionLevel,
     preserved_node_types: HashSet<String>,

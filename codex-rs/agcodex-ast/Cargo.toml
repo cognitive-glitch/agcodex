@@ -24,12 +24,8 @@ tree-sitter-c = { workspace = true }
 tree-sitter-cpp = { workspace = true }
 tree-sitter-c-sharp = { workspace = true }
 
-# Web languages
-tree-sitter-html = { workspace = true }
-tree-sitter-css = { workspace = true }
-tree-sitter-json = { workspace = true }
-tree-sitter-yaml = { workspace = true }
-tree-sitter-toml = { workspace = true }
+# Note: Web/config languages (HTML, CSS, JSON, YAML, TOML) removed
+# These should use patch-based editing, not AST operations
 
 # Scripting languages
 tree-sitter-bash = { workspace = true }
@@ -47,19 +43,11 @@ tree-sitter-clojure = { workspace = true }
 # Systems languages
 tree-sitter-zig = { workspace = true }
 tree-sitter-swift = { workspace = true }
-# tree-sitter-kotlin = { workspace = true } # Version conflict with tree-sitter 0.25
+tree-sitter-kotlin-ng = { workspace = true } # Compatible version for tree-sitter 0.25
 tree-sitter-objc = { workspace = true }
 
-# Config/Build languages
-tree-sitter-dockerfile = { workspace = true }
-tree-sitter-hcl = { workspace = true }
-tree-sitter-nix = { workspace = true }
-tree-sitter-make = { workspace = true }
-
-# Documentation
-tree-sitter-markdown = { workspace = true }
-tree-sitter-latex = { workspace = true }
-tree-sitter-rst = { workspace = true }
+# Note: Config/documentation languages removed
+# Use patch-based editing for these file types
 
 # Utility dependencies from workspace
 lru = { workspace = true }

@@ -30,6 +30,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 /// Main AST engine for AGCodex
+#[derive(Debug)]
 pub struct AstEngine {
     registry: Arc<LanguageRegistry>,
     cache: Arc<RwLock<ParserCache>>,

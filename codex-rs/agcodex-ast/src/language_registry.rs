@@ -1,15 +1,18 @@
-//! Language detection and parser management for 50+ languages
+//! Language detection and parser management for programming languages.
+//!
+//! Note: Configuration and markup languages (TOML, YAML, Markdown, etc.) are not supported
+//! for AST-based operations as they don't benefit from AST analysis. Use patch-based editing
+//! for those file types instead.
 
 use crate::error::AstError;
 use crate::error::AstResult;
 use crate::types::AstNode;
 use crate::types::ParsedAst;
 use dashmap::DashMap;
-// use once_cell::sync::Lazy; // unused
 use std::path::Path;
 use tree_sitter::Parser;
 
-/// Supported programming languages
+/// Supported programming languages for AST-based operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Language {
     // Core languages
@@ -22,12 +25,6 @@ pub enum Language {
     C,
     Cpp,
     CSharp,
-    // Web languages
-    Html,
-    Css,
-    Json,
-    Yaml,
-    Toml,
     // Scripting
     Bash,
     Ruby,
@@ -44,36 +41,21 @@ pub enum Language {
     Swift,
     Kotlin,
     ObjectiveC,
-    // Config/Build
-    Dockerfile,
-    Hcl,
-    Nix,
-    Make,
-    // Documentation
-    Markdown,
-    LaTeX,
-    Rst,
-    // Additional
-    Sql,
+    // Statistical/Scientific
     R,
     Julia,
+    // Mobile/Web
     Dart,
-    Vue,
-    Svelte,
-    GraphQL,
-    Proto,
+    // Shader languages
     Wgsl,
     Glsl,
 }
 
 impl Language {
     /// Get the tree-sitter language parser
-    ///
-    /// Note: Some languages use fallback parsers due to version incompatibilities
-    /// with tree-sitter 0.25. These are documented with inline comments.
-    /// Call `is_fallback()` to check if a language is using a fallback parser.
     pub fn parser(&self) -> tree_sitter::Language {
         match self {
+            // Core languages with proper parsers
             Self::Rust => tree_sitter_rust::LANGUAGE.into(),
             Self::Python => tree_sitter_python::LANGUAGE.into(),
             Self::JavaScript => tree_sitter_javascript::LANGUAGE.into(),
@@ -83,66 +65,36 @@ impl Language {
             Self::C => tree_sitter_c::LANGUAGE.into(),
             Self::Cpp => tree_sitter_cpp::LANGUAGE.into(),
             Self::CSharp => tree_sitter_c_sharp::LANGUAGE.into(),
-            Self::Html => tree_sitter_html::LANGUAGE.into(),
-            Self::Css => tree_sitter_css::LANGUAGE.into(),
-            Self::Json => tree_sitter_json::LANGUAGE.into(),
-            Self::Yaml => tree_sitter_yaml::LANGUAGE.into(),
-            Self::Toml => tree_sitter_json::LANGUAGE.into(), // toml v0.20 incompatible with tree-sitter v0.25, using JSON fallback
+            // Scripting languages
             Self::Bash => tree_sitter_bash::LANGUAGE.into(),
             Self::Ruby => tree_sitter_ruby::LANGUAGE.into(),
             Self::Php => tree_sitter_php::LANGUAGE_PHP.into(),
             Self::Lua => tree_sitter_lua::LANGUAGE.into(),
+            // Functional languages
             Self::Haskell => tree_sitter_haskell::LANGUAGE.into(),
             Self::Elixir => tree_sitter_elixir::LANGUAGE.into(),
             Self::Scala => tree_sitter_scala::LANGUAGE.into(),
             Self::OCaml => tree_sitter_ocaml::LANGUAGE_OCAML.into(),
-            Self::Clojure => tree_sitter_bash::LANGUAGE.into(), // clojure not compatible
+            Self::Clojure => tree_sitter_clojure::LANGUAGE.into(),
+            // Systems languages
             Self::Zig => tree_sitter_zig::LANGUAGE.into(),
             Self::Swift => tree_sitter_swift::LANGUAGE.into(),
-            Self::Kotlin => tree_sitter_bash::LANGUAGE.into(), // kotlin version conflict
+            Self::Kotlin => tree_sitter_kotlin_ng::LANGUAGE.into(),
             Self::ObjectiveC => tree_sitter_objc::LANGUAGE.into(),
-            Self::Dockerfile => tree_sitter_bash::LANGUAGE.into(), // dockerfile v0.2 incompatible, using Bash fallback
-            Self::Hcl => tree_sitter_hcl::LANGUAGE.into(),
-            Self::Nix => tree_sitter_bash::LANGUAGE.into(), // nix not compatible
-            Self::Make => tree_sitter_make::LANGUAGE.into(),
-            Self::Markdown => tree_sitter_bash::LANGUAGE.into(), // markdown not compatible
-            Self::LaTeX => tree_sitter_bash::LANGUAGE.into(),    // latex not compatible
-            Self::Rst => tree_sitter_bash::LANGUAGE.into(),      // rst not compatible
-            Self::Sql => tree_sitter_bash::LANGUAGE.into(),      // sql not compatible
-            Self::R => tree_sitter_bash::LANGUAGE.into(),        // r not compatible
-            Self::Julia => tree_sitter_bash::LANGUAGE.into(),    // julia not compatible
-            Self::Dart => tree_sitter_bash::LANGUAGE.into(),     // dart not compatible
-            Self::Vue => tree_sitter_html::LANGUAGE.into(),      // vue not compatible
-            Self::Svelte => tree_sitter_html::LANGUAGE.into(),   // svelte not compatible
-            Self::GraphQL => tree_sitter_json::LANGUAGE.into(),  // graphql not compatible
-            Self::Proto => tree_sitter_bash::LANGUAGE.into(),    // proto not compatible
-            Self::Wgsl => tree_sitter_bash::LANGUAGE.into(),     // wgsl not compatible
-            Self::Glsl => tree_sitter_bash::LANGUAGE.into(),     // glsl not compatible
+            // Languages without crates.io parsers (using fallbacks)
+            Self::R => tree_sitter_bash::LANGUAGE.into(), // R parser not available
+            Self::Julia => tree_sitter_bash::LANGUAGE.into(), // Julia parser not available
+            Self::Dart => tree_sitter_bash::LANGUAGE.into(), // Dart parser not available
+            Self::Wgsl => tree_sitter_bash::LANGUAGE.into(), // WGSL parser not available
+            Self::Glsl => tree_sitter_bash::LANGUAGE.into(), // GLSL parser not available
         }
     }
 
-    /// Returns true if this language is using a fallback parser due to version incompatibility
+    /// Returns true if this language is using a fallback parser
     pub const fn is_fallback(&self) -> bool {
         matches!(
             self,
-            Self::Toml
-                | Self::Clojure
-                | Self::Kotlin
-                | Self::Dockerfile
-                | Self::Nix
-                | Self::Markdown
-                | Self::LaTeX
-                | Self::Rst
-                | Self::Sql
-                | Self::R
-                | Self::Julia
-                | Self::Dart
-                | Self::Vue
-                | Self::Svelte
-                | Self::GraphQL
-                | Self::Proto
-                | Self::Wgsl
-                | Self::Glsl
+            Self::R | Self::Julia | Self::Dart | Self::Wgsl | Self::Glsl
         )
     }
 
@@ -152,23 +104,8 @@ impl Language {
             return self.name();
         }
 
-        match self {
-            Self::Toml | Self::GraphQL => "JSON (fallback)",
-            Self::Vue | Self::Svelte | Self::Markdown | Self::Rst => "HTML (fallback)",
-            Self::Clojure
-            | Self::Kotlin
-            | Self::Dockerfile
-            | Self::Nix
-            | Self::LaTeX
-            | Self::Sql
-            | Self::R
-            | Self::Julia
-            | Self::Dart
-            | Self::Proto
-            | Self::Wgsl
-            | Self::Glsl => "Bash (fallback)",
-            _ => self.name(),
-        }
+        // All current fallbacks use Bash parser
+        "Bash (fallback)"
     }
 
     /// Get language display name
@@ -183,11 +120,6 @@ impl Language {
             Self::C => "C",
             Self::Cpp => "C++",
             Self::CSharp => "C#",
-            Self::Html => "HTML",
-            Self::Css => "CSS",
-            Self::Json => "JSON",
-            Self::Yaml => "YAML",
-            Self::Toml => "TOML",
             Self::Bash => "Bash",
             Self::Ruby => "Ruby",
             Self::Php => "PHP",
@@ -201,21 +133,9 @@ impl Language {
             Self::Swift => "Swift",
             Self::Kotlin => "Kotlin",
             Self::ObjectiveC => "Objective-C",
-            Self::Dockerfile => "Dockerfile",
-            Self::Hcl => "HCL",
-            Self::Nix => "Nix",
-            Self::Make => "Makefile",
-            Self::Markdown => "Markdown",
-            Self::LaTeX => "LaTeX",
-            Self::Rst => "reStructuredText",
-            Self::Sql => "SQL",
             Self::R => "R",
             Self::Julia => "Julia",
             Self::Dart => "Dart",
-            Self::Vue => "Vue",
-            Self::Svelte => "Svelte",
-            Self::GraphQL => "GraphQL",
-            Self::Proto => "Protocol Buffers",
             Self::Wgsl => "WGSL",
             Self::Glsl => "GLSL",
         }
@@ -225,6 +145,14 @@ impl Language {
 /// Language registry for detection and parsing
 pub struct LanguageRegistry {
     parsers: DashMap<Language, Parser>,
+}
+
+impl std::fmt::Debug for LanguageRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LanguageRegistry")
+            .field("parsers_count", &self.parsers.len())
+            .finish()
+    }
 }
 
 impl LanguageRegistry {
@@ -254,67 +182,56 @@ impl LanguageRegistry {
     }
 
     /// Detect language from file path
+    /// Note: Returns error for config/markup files that should use patch-based editing
     pub fn detect_language(&self, path: &Path) -> AstResult<Language> {
-        let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        let extension = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .ok_or_else(|| AstError::LanguageDetectionFailed(path.display().to_string()))?;
 
-        // Check special filenames first
-        let lang = match filename {
-            "Dockerfile" | "Containerfile" => Language::Dockerfile,
-            "Makefile" | "makefile" | "GNUmakefile" => Language::Make,
-            _ => {
-                // Get extension and check by extension
-                let extension = path
-                    .extension()
-                    .and_then(|e| e.to_str())
-                    .ok_or_else(|| AstError::LanguageDetectionFailed(path.display().to_string()))?;
+        let lang = match extension {
+            // Programming languages
+            "rs" => Language::Rust,
+            "py" | "pyi" => Language::Python,
+            "js" | "mjs" | "cjs" => Language::JavaScript,
+            "ts" | "mts" | "cts" => Language::TypeScript,
+            "tsx" | "jsx" => Language::TypeScript,
+            "go" => Language::Go,
+            "java" => Language::Java,
+            "c" | "h" => Language::C,
+            "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "c++" => Language::Cpp,
+            "cs" => Language::CSharp,
+            "sh" | "bash" | "zsh" | "fish" => Language::Bash,
+            "rb" => Language::Ruby,
+            "php" => Language::Php,
+            "lua" => Language::Lua,
+            "hs" | "lhs" => Language::Haskell,
+            "ex" | "exs" => Language::Elixir,
+            "scala" | "sc" => Language::Scala,
+            "ml" | "mli" => Language::OCaml,
+            "clj" | "cljs" | "cljc" => Language::Clojure,
+            "zig" => Language::Zig,
+            "swift" => Language::Swift,
+            "kt" | "kts" => Language::Kotlin,
+            "m" | "mm" => Language::ObjectiveC,
+            "r" | "R" => Language::R,
+            "jl" => Language::Julia,
+            "dart" => Language::Dart,
+            "wgsl" => Language::Wgsl,
+            "glsl" | "vert" | "frag" => Language::Glsl,
 
-                match extension {
-                    "rs" => Language::Rust,
-                    "py" | "pyi" => Language::Python,
-                    "js" | "mjs" | "cjs" => Language::JavaScript,
-                    "ts" | "mts" | "cts" => Language::TypeScript,
-                    "tsx" | "jsx" => Language::TypeScript,
-                    "go" => Language::Go,
-                    "java" => Language::Java,
-                    "c" | "h" => Language::C,
-                    "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "c++" => Language::Cpp,
-                    "cs" => Language::CSharp,
-                    "html" | "htm" => Language::Html,
-                    "css" | "scss" | "sass" | "less" => Language::Css,
-                    "json" | "jsonc" => Language::Json,
-                    "yaml" | "yml" => Language::Yaml,
-                    "toml" => Language::Toml,
-                    "sh" | "bash" | "zsh" | "fish" => Language::Bash,
-                    "rb" => Language::Ruby,
-                    "php" => Language::Php,
-                    "lua" => Language::Lua,
-                    "hs" | "lhs" => Language::Haskell,
-                    "ex" | "exs" => Language::Elixir,
-                    "scala" | "sc" => Language::Scala,
-                    "ml" | "mli" => Language::OCaml,
-                    "clj" | "cljs" | "cljc" => Language::Clojure,
-                    "zig" => Language::Zig,
-                    "swift" => Language::Swift,
-                    "kt" | "kts" => Language::Kotlin,
-                    "m" | "mm" => Language::ObjectiveC,
-                    "hcl" | "tf" | "tfvars" => Language::Hcl,
-                    "nix" => Language::Nix,
-                    "md" | "markdown" => Language::Markdown,
-                    "tex" | "latex" => Language::LaTeX,
-                    "rst" => Language::Rst,
-                    "sql" => Language::Sql,
-                    "r" | "R" => Language::R,
-                    "jl" => Language::Julia,
-                    "dart" => Language::Dart,
-                    "vue" => Language::Vue,
-                    "svelte" => Language::Svelte,
-                    "graphql" | "gql" => Language::GraphQL,
-                    "proto" => Language::Proto,
-                    "wgsl" => Language::Wgsl,
-                    "glsl" | "vert" | "frag" => Language::Glsl,
-                    _ => return Err(AstError::UnsupportedLanguage(extension.to_string())),
-                }
+            // Config/markup files - not supported for AST operations
+            "toml" | "yaml" | "yml" | "json" | "jsonc" | "xml" | "html" | "htm" | "css"
+            | "scss" | "sass" | "less" | "md" | "markdown" | "tex" | "latex" | "rst" | "sql"
+            | "graphql" | "gql" | "proto" | "dockerfile" | "makefile" | "cmake" | "hcl" | "tf"
+            | "tfvars" | "nix" => {
+                return Err(AstError::UnsupportedLanguage(format!(
+                    "{} files should use patch-based editing, not AST operations",
+                    extension
+                )));
             }
+
+            _ => return Err(AstError::UnsupportedLanguage(extension.to_string())),
         };
 
         Ok(lang)
@@ -358,7 +275,7 @@ impl LanguageRegistry {
     pub fn stats(&self) -> LanguageRegistryStats {
         LanguageRegistryStats {
             loaded_parsers: self.parsers.len(),
-            total_languages: 47, // Total number of supported languages
+            total_languages: 27, // Total number of supported programming languages
         }
     }
 }
@@ -385,6 +302,7 @@ mod tests {
     fn test_language_detection() {
         let registry = LanguageRegistry::new();
 
+        // Programming languages should work
         assert_eq!(
             registry.detect_language(&PathBuf::from("test.rs")).unwrap(),
             Language::Rust
@@ -401,17 +319,23 @@ mod tests {
             registry.detect_language(&PathBuf::from("test.ts")).unwrap(),
             Language::TypeScript
         );
-        assert_eq!(
+
+        // Config/markup files should error with helpful message
+        assert!(
+            registry
+                .detect_language(&PathBuf::from("test.toml"))
+                .is_err()
+        );
+        assert!(
+            registry
+                .detect_language(&PathBuf::from("test.yaml"))
+                .is_err()
+        );
+        assert!(registry.detect_language(&PathBuf::from("test.md")).is_err());
+        assert!(
             registry
                 .detect_language(&PathBuf::from("Dockerfile"))
-                .unwrap(),
-            Language::Dockerfile
-        );
-        assert_eq!(
-            registry
-                .detect_language(&PathBuf::from("Makefile"))
-                .unwrap(),
-            Language::Make
+                .is_err()
         );
     }
 
@@ -429,5 +353,14 @@ fn main() {
         assert_eq!(ast.language, Language::Rust);
         assert_eq!(ast.root_node.kind, "source_file");
         assert!(ast.root_node.children_count > 0);
+    }
+
+    #[test]
+    fn test_fallback_detection() {
+        assert!(!Language::Rust.is_fallback());
+        assert!(!Language::Python.is_fallback());
+        assert!(Language::R.is_fallback());
+        assert!(Language::Julia.is_fallback());
+        assert!(Language::Wgsl.is_fallback());
     }
 }

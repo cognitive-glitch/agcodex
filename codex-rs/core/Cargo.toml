@@ -18,6 +18,7 @@ bytes = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
 dashmap = { workspace = true }
 agcodex-apply-patch = { path = "../apply-patch" }
+agcodex-ast = { path = "../agcodex-ast" }
 agcodex-login = { path = "../login" }
 agcodex-mcp-client = { path = "../mcp-client" }
 agcodex-protocol = { path = "../protocol" }
@@ -56,6 +57,7 @@ tracing = { workspace = true, features = ["log"] }
 tree-sitter = { workspace = true }
 tree-sitter-bash = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
+walkdir = { workspace = true }
 whoami = { workspace = true }
 wildmatch = { workspace = true }
 

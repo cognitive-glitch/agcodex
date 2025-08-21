@@ -159,7 +159,7 @@ tree-sitter-clojure = "0.1"
 # Systems languages
 tree-sitter-zig = "1.1"
 tree-sitter-swift = "0.7"
-tree-sitter-kotlin = "0.3"
+tree-sitter-kotlin-ng = "1.1"
 tree-sitter-objc = "3.0"
 # Config/Build languages
 tree-sitter-dockerfile = "0.2"

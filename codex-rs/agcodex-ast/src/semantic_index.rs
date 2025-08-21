@@ -66,6 +66,7 @@ impl SymbolKind {
 }
 
 /// Semantic index for code intelligence
+#[derive(Debug)]
 pub struct SemanticIndex {
     /// Symbol table: symbol_id -> Symbol
     symbols: DashMap<String, Symbol>,

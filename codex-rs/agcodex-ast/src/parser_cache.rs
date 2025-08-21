@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 /// Parser cache for AST reuse
+#[derive(Debug)]
 pub struct ParserCache {
     cache: LruCache<PathBuf, Arc<ParsedAst>>,
     max_size_bytes: usize,
