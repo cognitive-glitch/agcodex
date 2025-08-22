@@ -42,6 +42,7 @@ agcodex-protocol = { path = "../protocol" }
 color-eyre = { workspace = true }
 crossterm = { workspace = true, features = ["bracketed-paste"] }
 dirs = { workspace = true }
+fuzzy-matcher = "0.3"
 nucleo-matcher = { workspace = true }
 diffy = { workspace = true }
 image = { workspace = true, features = ["jpeg"] }

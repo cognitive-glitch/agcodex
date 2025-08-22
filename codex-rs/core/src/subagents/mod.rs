@@ -24,11 +24,14 @@
 //! - `templates/` - Reusable templates
 
 pub mod agents;
+pub mod built_in;
 pub mod config;
 pub mod context;
 pub mod invocation;
+pub mod manager;
 pub mod mcp_tools;
 pub mod orchestrator;
+pub mod parser;
 pub mod registry;
 pub mod worktree;
 
@@ -46,6 +49,8 @@ pub use agents::SecurityAgent;
 pub use agents::Severity;
 pub use agents::Subagent;
 pub use agents::TestWriterAgent;
+pub use built_in::create_default_registry;
+pub use built_in::register_built_in_agents;
 pub use config::IntelligenceLevel;
 pub use config::SubagentConfig;
 pub use config::ToolPermission;
@@ -72,6 +77,10 @@ pub use invocation::ExecutionPlan;
 pub use invocation::ExecutionStep;
 pub use invocation::InvocationParser;
 pub use invocation::InvocationRequest;
+pub use manager::AgentHandle;
+pub use manager::AgentManager;
+pub use manager::AgentStats;
+pub use manager::MessageBus;
 pub use mcp_tools::McpAgentHandler;
 pub use mcp_tools::McpAgentTool;
 pub use mcp_tools::McpAgentToolProvider;
@@ -81,6 +90,9 @@ pub use orchestrator::OrchestratorConfig;
 pub use orchestrator::OrchestratorResult;
 pub use orchestrator::ProgressUpdate;
 pub use orchestrator::SharedContext;
+pub use parser::AgentParser;
+pub use parser::ChainOperator;
+pub use parser::ParsedInvocation;
 pub use registry::SubagentRegistry;
 pub use registry::SubagentRegistryError;
 pub use worktree::AgentWorktree;

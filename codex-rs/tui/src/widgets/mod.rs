@@ -6,6 +6,7 @@ pub mod message_jump;
 pub mod mode_indicator;
 pub mod save_dialog;
 pub mod session_browser;
+pub mod session_switcher;
 
 pub use agent_panel::AgentPanel;
 pub use load_dialog::LoadDialog;
@@ -19,3 +20,5 @@ pub use session_browser::SessionAction;
 pub use session_browser::SessionBrowser;
 pub use session_browser::SortBy;
 pub use session_browser::ViewMode;
+pub use session_switcher::SessionSwitcher;
+pub use session_switcher::SessionSwitcherState;

@@ -48,6 +48,14 @@ pub enum PersistenceError {
     #[error("Corrupt session data: {0}")]
     CorruptData(String),
 
+    /// Invalid format
+    #[error("Invalid format: {0}")]
+    InvalidFormat(String),
+
+    /// Incompatible version
+    #[error("Incompatible version: expected {expected}, got {actual}")]
+    IncompatibleVersion { expected: u16, actual: u16 },
+
     /// Storage path does not exist
     #[error("Storage path does not exist: {0}")]
     PathNotFound(String),

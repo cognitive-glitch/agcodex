@@ -142,6 +142,21 @@ impl ModeManager {
         };
     }
 
+    /// Check if the current mode is read-only
+    pub const fn is_read_only(&self) -> bool {
+        matches!(self.current_mode, OperatingMode::Plan)
+    }
+
+    /// Check if file writes are allowed in the current mode
+    pub const fn allows_write(&self) -> bool {
+        self.restrictions.allow_file_write
+    }
+
+    /// Check if command execution is allowed in the current mode
+    pub const fn allows_execution(&self) -> bool {
+        self.restrictions.allow_command_exec
+    }
+
     /// Check if a file operation is allowed in the current mode
     pub const fn can_write_file(&self, file_size: Option<usize>) -> bool {
         if !self.restrictions.allow_file_write {
@@ -172,26 +187,72 @@ impl ModeManager {
 
     /// Get a user-friendly error message for disallowed operations
     pub fn restriction_message(&self, operation: &str) -> String {
-        let mode_name = match self.current_mode {
-            OperatingMode::Plan => "Plan",
-            OperatingMode::Build => "Build",
-            OperatingMode::Review => "Review",
-        };
-
         match self.current_mode {
             OperatingMode::Plan => format!(
-                "Operation '{}' not allowed in Plan mode (read-only). Switch to Build mode (Shift+Tab) for full access.",
+                "⛔ Operation '{}' not allowed in Plan mode (read-only). Switch to Build mode (Shift+Tab) for full access.",
                 operation
             ),
-            OperatingMode::Review => format!(
-                "Operation '{}' not allowed in Review mode (quality focus). Switch to Build mode (Shift+Tab) for full access.",
-                operation
-            ),
+            OperatingMode::Review => {
+                // Check if it's a size restriction issue
+                if operation.contains("file") || operation.contains("edit") {
+                    if let Some(max_size) = self.restrictions.max_file_size {
+                        format!(
+                            "⚠️ Operation '{}' is limited in Review mode. File edits must be under {} bytes. Switch to Build mode (Shift+Tab) for unlimited access.",
+                            operation, max_size
+                        )
+                    } else {
+                        format!(
+                            "⚠️ Operation '{}' not allowed in Review mode (quality focus). Switch to Build mode (Shift+Tab) for full access.",
+                            operation
+                        )
+                    }
+                } else {
+                    format!(
+                        "⚠️ Operation '{}' not allowed in Review mode (quality focus). Switch to Build mode (Shift+Tab) for full access.",
+                        operation
+                    )
+                }
+            }
             OperatingMode::Build => format!(
-                "Operation '{}' should be allowed in Build mode. This may be a bug.",
+                "✓ Operation '{}' should be allowed in Build mode. This may be a bug.",
                 operation
             ),
         }
+    }
+
+    /// Validate an operation and return a Result with appropriate error message
+    pub fn validate_file_write(&self, path: &str, size: Option<usize>) -> Result<(), String> {
+        if !self.allows_write() {
+            return Err(self.restriction_message(&format!("write to {}", path)));
+        }
+
+        if let Some(file_size) = size
+            && !self.can_write_file(Some(file_size))
+            && let Some(max_size) = self.restrictions.max_file_size
+        {
+            return Err(format!(
+                "⚠️ File '{}' exceeds the {} byte limit in Review mode. File size: {} bytes. Switch to Build mode (Shift+Tab) for unlimited file editing.",
+                path, max_size, file_size
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Validate command execution and return a Result with appropriate error message
+    pub fn validate_command_execution(&self, command: &str) -> Result<(), String> {
+        if !self.allows_execution() {
+            return Err(self.restriction_message(&format!("execute command '{}'", command)));
+        }
+        Ok(())
+    }
+
+    /// Validate git operations and return a Result with appropriate error message
+    pub fn validate_git_operation(&self, operation: &str) -> Result<(), String> {
+        if !self.can_perform_git_operations() {
+            return Err(self.restriction_message(&format!("git operation '{}'", operation)));
+        }
+        Ok(())
     }
 
     pub const fn prompt_suffix(&self) -> &'static str {
@@ -231,5 +292,157 @@ Focus on: bugs, performance, best practices, security
 "#
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mode_cycling() {
+        let mut manager = ModeManager::new(OperatingMode::Plan);
+        assert_eq!(manager.current_mode(), OperatingMode::Plan);
+
+        // Cycle from Plan to Build
+        manager.cycle();
+        assert_eq!(manager.current_mode(), OperatingMode::Build);
+
+        // Cycle from Build to Review
+        manager.cycle();
+        assert_eq!(manager.current_mode(), OperatingMode::Review);
+
+        // Cycle from Review back to Plan
+        manager.cycle();
+        assert_eq!(manager.current_mode(), OperatingMode::Plan);
+    }
+
+    #[test]
+    fn test_plan_mode_restrictions() {
+        let manager = ModeManager::new(OperatingMode::Plan);
+
+        assert!(manager.is_read_only());
+        assert!(!manager.allows_write());
+        assert!(!manager.allows_execution());
+        assert!(!manager.can_write_file(Some(100)));
+        assert!(!manager.can_execute_command());
+        assert!(!manager.can_perform_git_operations());
+        assert!(manager.can_access_network()); // Research is allowed
+    }
+
+    #[test]
+    fn test_build_mode_restrictions() {
+        let manager = ModeManager::new(OperatingMode::Build);
+
+        assert!(!manager.is_read_only());
+        assert!(manager.allows_write());
+        assert!(manager.allows_execution());
+        assert!(manager.can_write_file(Some(1_000_000))); // Any size allowed
+        assert!(manager.can_execute_command());
+        assert!(manager.can_perform_git_operations());
+        assert!(manager.can_access_network());
+    }
+
+    #[test]
+    fn test_review_mode_restrictions() {
+        let manager = ModeManager::new(OperatingMode::Review);
+
+        assert!(!manager.is_read_only());
+        assert!(manager.allows_write()); // Limited writes allowed
+        assert!(!manager.allows_execution());
+
+        // Test file size restrictions (10KB limit)
+        assert!(manager.can_write_file(Some(5_000))); // Under limit
+        assert!(manager.can_write_file(Some(10_000))); // At limit
+        assert!(!manager.can_write_file(Some(10_001))); // Over limit
+
+        assert!(!manager.can_execute_command());
+        assert!(!manager.can_perform_git_operations());
+        assert!(manager.can_access_network());
+    }
+
+    #[test]
+    fn test_validate_file_write() {
+        let mut manager = ModeManager::new(OperatingMode::Plan);
+
+        // Plan mode - no writes allowed
+        assert!(manager.validate_file_write("test.txt", Some(100)).is_err());
+
+        // Build mode - all writes allowed
+        manager.switch_mode(OperatingMode::Build);
+        assert!(
+            manager
+                .validate_file_write("test.txt", Some(1_000_000))
+                .is_ok()
+        );
+
+        // Review mode - limited writes
+        manager.switch_mode(OperatingMode::Review);
+        assert!(manager.validate_file_write("test.txt", Some(5_000)).is_ok());
+        assert!(
+            manager
+                .validate_file_write("test.txt", Some(20_000))
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_validate_command_execution() {
+        let mut manager = ModeManager::new(OperatingMode::Plan);
+
+        // Plan mode - no execution
+        assert!(manager.validate_command_execution("ls").is_err());
+
+        // Build mode - execution allowed
+        manager.switch_mode(OperatingMode::Build);
+        assert!(manager.validate_command_execution("ls").is_ok());
+
+        // Review mode - no execution
+        manager.switch_mode(OperatingMode::Review);
+        assert!(manager.validate_command_execution("rm -rf /").is_err());
+    }
+
+    #[test]
+    fn test_mode_history() {
+        let mut manager = ModeManager::new(OperatingMode::Plan);
+        assert_eq!(manager.mode_history.len(), 0);
+
+        manager.switch_mode(OperatingMode::Build);
+        assert_eq!(manager.mode_history.len(), 1);
+        assert_eq!(manager.mode_history[0].0, OperatingMode::Plan);
+
+        manager.switch_mode(OperatingMode::Review);
+        assert_eq!(manager.mode_history.len(), 2);
+        assert_eq!(manager.mode_history[1].0, OperatingMode::Build);
+    }
+
+    #[test]
+    fn test_restriction_messages() {
+        let manager = ModeManager::new(OperatingMode::Plan);
+        let msg = manager.restriction_message("write file");
+        assert!(msg.contains("Plan mode"));
+        assert!(msg.contains("read-only"));
+        assert!(msg.contains("Shift+Tab"));
+
+        let manager = ModeManager::new(OperatingMode::Review);
+        let msg = manager.restriction_message("edit large file");
+        assert!(msg.contains("Review mode"));
+        assert!(msg.contains("10000 bytes")); // Should mention the size limit
+
+        let manager = ModeManager::new(OperatingMode::Build);
+        let msg = manager.restriction_message("anything");
+        assert!(msg.contains("should be allowed"));
+        assert!(msg.contains("Build mode"));
+    }
+
+    #[test]
+    fn test_mode_visuals() {
+        assert_eq!(OperatingMode::Plan.visuals().indicator, "📋 PLAN");
+        assert_eq!(OperatingMode::Build.visuals().indicator, "🔨 BUILD");
+        assert_eq!(OperatingMode::Review.visuals().indicator, "🔍 REVIEW");
+
+        assert_eq!(OperatingMode::Plan.visuals().color, ModeColor::Blue);
+        assert_eq!(OperatingMode::Build.visuals().color, ModeColor::Green);
+        assert_eq!(OperatingMode::Review.visuals().color, ModeColor::Yellow);
     }
 }

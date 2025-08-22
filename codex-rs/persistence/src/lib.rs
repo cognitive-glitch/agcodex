@@ -7,6 +7,7 @@ pub mod compression;
 pub mod error;
 pub mod migration;
 pub mod session_manager;
+pub mod session_store;
 pub mod storage;
 pub mod types;
 
@@ -20,6 +21,9 @@ pub use error::Result;
 pub use migration::MigrationManager;
 pub use session_manager::SessionManager;
 pub use session_manager::SessionManagerConfig;
+pub use session_store::SessionStore;
+pub use session_store::SessionStoreConfig;
+pub use session_store::StorageStatistics;
 pub use storage::SessionStorage;
 pub use storage::StorageBackend;
 pub use types::Checkpoint;

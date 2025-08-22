@@ -127,13 +127,15 @@ pub struct EmbeddingCacheState {
 }
 
 /// Session state for UI restoration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SessionState {
     pub cursor_position: usize,
     pub scroll_offset: usize,
     pub selected_message: Option<Uuid>,
     pub expanded_messages: Vec<Uuid>,
+    #[serde(default)]
     pub active_panel: String,
+    #[serde(default)]
     pub panel_sizes: HashMap<String, f32>,
     pub search_query: Option<String>,
     pub filter_settings: FilterSettings,

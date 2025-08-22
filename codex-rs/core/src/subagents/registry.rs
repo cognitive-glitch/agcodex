@@ -93,6 +93,9 @@ pub struct SubagentRegistry {
     /// Loaded agent configurations
     agents: Arc<Mutex<HashMap<String, AgentInfo>>>,
 
+    /// Executable agents (for built-in and programmatic agents)
+    executable_agents: Arc<Mutex<HashMap<String, Arc<dyn super::agents::Subagent>>>>,
+
     /// Loaded templates
     templates: Arc<Mutex<HashMap<String, TemplateInfo>>>,
 
@@ -121,6 +124,7 @@ impl SubagentRegistry {
             project_agents_dir,
             templates_dir,
             agents: Arc::new(Mutex::new(HashMap::new())),
+            executable_agents: Arc::new(Mutex::new(HashMap::new())),
             templates: Arc::new(Mutex::new(HashMap::new())),
             watch_enabled: true,
             last_scan: Arc::new(Mutex::new(SystemTime::UNIX_EPOCH)),
@@ -421,9 +425,50 @@ impl SubagentRegistry {
         Ok(())
     }
 
+    /// Register an agent programmatically (for built-in agents)
+    pub fn register(&self, name: &str, agent: Arc<dyn super::agents::Subagent>) {
+        // Create a minimal SubagentConfig for built-in agents
+        let config = SubagentConfig {
+            name: name.to_string(),
+            description: format!("Built-in {} agent", name),
+            mode_override: None,
+            intelligence: super::config::IntelligenceLevel::Medium,
+            tools: HashMap::new(),
+            prompt: String::new(),
+            parameters: vec![],
+            template: None,
+            timeout_seconds: 300,
+            chainable: true,
+            parallelizable: true,
+            metadata: HashMap::new(),
+            file_patterns: vec![],
+            tags: vec![],
+        };
+
+        let info = AgentInfo {
+            config,
+            config_path: PathBuf::new(),
+            last_modified: SystemTime::now(),
+            is_global: false,
+        };
+
+        // Store both configuration and executable agent
+        let mut agents = self.agents.lock().unwrap();
+        agents.insert(name.to_string(), info);
+        drop(agents);
+
+        let mut executable_agents = self.executable_agents.lock().unwrap();
+        executable_agents.insert(name.to_string(), agent);
+    }
+
     /// Get an agent configuration by name
     pub fn get_agent(&self, name: &str) -> Option<AgentInfo> {
         self.agents.lock().unwrap().get(name).cloned()
+    }
+
+    /// Get an executable agent by name
+    pub fn get_executable_agent(&self, name: &str) -> Option<Arc<dyn super::agents::Subagent>> {
+        self.executable_agents.lock().unwrap().get(name).cloned()
     }
 
     /// Get all loaded agents
@@ -597,6 +642,7 @@ mod tests {
             project_agents_dir: None,
             templates_dir,
             agents: Arc::new(Mutex::new(HashMap::new())),
+            executable_agents: Arc::new(Mutex::new(HashMap::new())),
             templates: Arc::new(Mutex::new(HashMap::new())),
             watch_enabled: false,
             last_scan: Arc::new(Mutex::new(SystemTime::UNIX_EPOCH)),

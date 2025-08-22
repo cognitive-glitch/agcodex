@@ -498,7 +498,7 @@ pub enum MessageTarget {
 }
 
 /// Message types
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MessageType {
     Info,
     Warning,

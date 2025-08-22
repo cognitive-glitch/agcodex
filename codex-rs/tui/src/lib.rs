@@ -34,8 +34,10 @@ mod citation_regex;
 mod cli;
 mod common;
 pub mod custom_terminal;
+mod dialogs;
 mod diff_render;
 mod exec_command;
+mod features;
 mod file_search;
 mod get_git_diff;
 mod history_cell;
@@ -67,7 +69,16 @@ mod updates;
 use color_eyre::owo_colors::OwoColorize;
 
 pub use cli::Cli;
+pub use dialogs::LoadSessionBrowser;
+pub use dialogs::LoadSessionState;
+pub use dialogs::SaveSessionDialog;
+pub use dialogs::SaveSessionState;
+pub use features::HistoryBrowser;
+pub use features::MessageJump;
+pub use features::RoleFilter;
 pub use widgets::SessionBrowser;
+pub use widgets::SessionSwitcher;
+pub use widgets::SessionSwitcherState;
 
 // (tests access modules directly within the crate)
 

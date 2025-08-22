@@ -96,7 +96,7 @@ pub enum Severity {
 }
 
 /// Core trait for all subagents
-pub trait Subagent: Send + Sync {
+pub trait Subagent: Send + Sync + std::fmt::Debug {
     /// Agent name identifier
     fn name(&self) -> &str;
 
@@ -125,6 +125,7 @@ pub trait Subagent: Send + Sync {
 }
 
 /// Code review agent for AST-based quality analysis
+#[derive(Debug)]
 pub struct CodeReviewerAgent {
     config: ReviewConfig,
 }
@@ -564,6 +565,7 @@ impl CodeReviewerAgent {
 }
 
 /// Systematic refactoring agent
+#[derive(Debug)]
 pub struct RefactorerAgent {
     config: RefactorConfig,
 }
@@ -713,6 +715,7 @@ impl Subagent for RefactorerAgent {
 }
 
 /// Deep debugging analysis agent
+#[derive(Debug)]
 pub struct DebuggerAgent;
 
 impl Default for DebuggerAgent {
@@ -821,6 +824,7 @@ impl Subagent for DebuggerAgent {
 }
 
 /// Test generation and coverage analysis agent
+#[derive(Debug)]
 pub struct TestWriterAgent;
 
 impl Default for TestWriterAgent {
@@ -980,6 +984,7 @@ impl TestWriterAgent {
 }
 
 /// Performance optimization agent
+#[derive(Debug)]
 pub struct PerformanceAgent;
 
 impl Default for PerformanceAgent {
@@ -1095,6 +1100,7 @@ impl Subagent for PerformanceAgent {
 }
 
 /// Security vulnerability detection agent
+#[derive(Debug)]
 pub struct SecurityAgent;
 
 impl Default for SecurityAgent {
@@ -1234,6 +1240,7 @@ impl Subagent for SecurityAgent {
 }
 
 /// Documentation generation agent
+#[derive(Debug)]
 pub struct DocsAgent;
 
 impl Default for DocsAgent {

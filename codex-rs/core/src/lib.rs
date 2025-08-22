@@ -18,6 +18,7 @@ pub mod config;
 pub mod config_profile;
 pub mod config_types;
 pub mod context_engine;
+pub mod conversation;
 mod conversation_history;
 pub mod embeddings;
 pub mod embeddings_capability;

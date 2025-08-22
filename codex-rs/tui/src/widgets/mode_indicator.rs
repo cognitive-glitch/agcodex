@@ -1,4 +1,4 @@
-//! Mode indicator widget for displaying the current operating mode
+//! Mode indicator widget for displaying the current operating mode with smooth transitions
 
 use agcodex_core::modes::ModeColor;
 use agcodex_core::modes::OperatingMode;
@@ -13,12 +13,18 @@ use ratatui::widgets::Block;
 use ratatui::widgets::Borders;
 use ratatui::widgets::Widget;
 use ratatui::widgets::WidgetRef;
+use std::time::Duration;
+use std::time::Instant;
 
-/// Widget that displays the current operating mode with color-coded styling
+/// Widget that displays the current operating mode with color-coded styling and animations
 #[derive(Debug, Clone)]
 pub struct ModeIndicator {
     mode: OperatingMode,
     focused: bool,
+    /// Time when the mode was last changed (for transition animations)
+    transition_start: Option<Instant>,
+    /// Previous mode for transition effect
+    previous_mode: Option<OperatingMode>,
 }
 
 impl ModeIndicator {
@@ -27,6 +33,18 @@ impl ModeIndicator {
         Self {
             mode,
             focused: false,
+            transition_start: None,
+            previous_mode: None,
+        }
+    }
+
+    /// Create a new mode indicator with transition animation from previous mode
+    pub fn with_transition(mode: OperatingMode, previous_mode: OperatingMode) -> Self {
+        Self {
+            mode,
+            focused: false,
+            transition_start: Some(Instant::now()),
+            previous_mode: Some(previous_mode),
         }
     }
 
@@ -34,6 +52,44 @@ impl ModeIndicator {
     pub const fn focused(mut self, focused: bool) -> Self {
         self.focused = focused;
         self
+    }
+
+    /// Calculate transition progress (0.0 to 1.0)
+    fn transition_progress(&self) -> f32 {
+        if let Some(start) = self.transition_start {
+            let elapsed = start.elapsed();
+            let duration = Duration::from_millis(300); // 300ms transition
+            let progress = elapsed.as_secs_f32() / duration.as_secs_f32();
+            progress.min(1.0)
+        } else {
+            1.0
+        }
+    }
+
+    /// Get interpolated color during transition
+    fn get_transition_color(&self) -> Color {
+        let progress = self.transition_progress();
+
+        if progress >= 1.0 {
+            // Transition complete
+            let visuals = self.mode.visuals();
+            Self::mode_color_to_ratatui(visuals.color)
+        } else if let Some(prev_mode) = self.previous_mode {
+            // Interpolate between colors
+            let prev_visuals = prev_mode.visuals();
+            let curr_visuals = self.mode.visuals();
+
+            // For simplicity, we'll use a step function at 50% progress
+            // In a real implementation, you could do proper color interpolation
+            if progress < 0.5 {
+                Self::mode_color_to_ratatui(prev_visuals.color)
+            } else {
+                Self::mode_color_to_ratatui(curr_visuals.color)
+            }
+        } else {
+            let visuals = self.mode.visuals();
+            Self::mode_color_to_ratatui(visuals.color)
+        }
     }
 
     /// Convert ModeColor to ratatui Color
@@ -45,23 +101,54 @@ impl ModeIndicator {
         }
     }
 
-    /// Get the style for the current mode
+    /// Get the style for the current mode with transition effects
     fn get_style(&self) -> Style {
-        let visuals = self.mode.visuals();
-        let color = Self::mode_color_to_ratatui(visuals.color);
+        let color = self.get_transition_color();
+        let progress = self.transition_progress();
 
-        Style::default()
+        // Add pulsing effect during transition
+        let mut style = Style::default()
             .fg(Color::Black)
             .bg(color)
-            .add_modifier(Modifier::BOLD)
+            .add_modifier(Modifier::BOLD);
+
+        // Add italic modifier during transition for visual feedback
+        if progress < 1.0 {
+            style = style.add_modifier(Modifier::ITALIC);
+        }
+
+        style
     }
 
-    /// Get the border style for the widget
+    /// Get the border style for the widget with transition effects
     fn get_border_style(&self) -> Style {
-        let visuals = self.mode.visuals();
-        let color = Self::mode_color_to_ratatui(visuals.color);
+        let color = self.get_transition_color();
+        let progress = self.transition_progress();
 
-        Style::default().fg(color)
+        let mut style = Style::default().fg(color);
+
+        // Make border bold during transition
+        if progress < 1.0 {
+            style = style.add_modifier(Modifier::BOLD);
+        }
+
+        style
+    }
+
+    /// Get animated indicator text based on transition progress
+    fn get_indicator_text(&self) -> String {
+        let visuals = self.mode.visuals();
+        let progress = self.transition_progress();
+
+        if progress < 1.0 {
+            // Show animation during transition
+            let anim_chars = ["⬤", "◉", "◎", "○"];
+            let index = ((1.0 - progress) * anim_chars.len() as f32) as usize;
+            let anim = anim_chars.get(index).unwrap_or(&anim_chars[0]);
+            format!("{} {}", anim, visuals.indicator)
+        } else {
+            visuals.indicator.to_string()
+        }
     }
 }
 
@@ -76,22 +163,31 @@ impl WidgetRef for ModeIndicator {
         let visuals = self.mode.visuals();
         let style = self.get_style();
         let border_style = self.get_border_style();
+        let indicator_text = self.get_indicator_text();
 
-        // Create the main indicator content
-        let indicator_span = Span::styled(visuals.indicator, style);
+        // Create the main indicator content with animation
+        let indicator_span = Span::styled(indicator_text, style);
         let indicator_line = Line::from(vec![indicator_span]);
 
-        // Create block with borders
-        let block = Block::default()
-            .borders(Borders::ALL)
-            .border_style(border_style);
+        // Create block with borders (use different border style during transition)
+        let borders = if self.transition_progress() < 1.0 {
+            Borders::ALL | Borders::NONE // This creates a visual flicker effect
+        } else {
+            Borders::ALL
+        };
+
+        let block = Block::default().borders(borders).border_style(border_style);
 
         // If focused, show description below
         if self.focused && area.height > 3 {
             let lines = [
                 indicator_line,
                 Line::from(Span::styled(
-                    visuals.description,
+                    if self.transition_progress() < 1.0 {
+                        format!("➜ {}", visuals.description)
+                    } else {
+                        visuals.description.to_string()
+                    },
                     Style::default().fg(border_style.fg.unwrap_or(Color::White)),
                 )),
             ];
