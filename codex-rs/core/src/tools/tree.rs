@@ -15,8 +15,9 @@
 
 use super::InternalTool;
 use super::ToolMetadata;
-use super::ToolOutput;
+use super::output::ComprehensiveToolOutput as ToolOutput;
 use crate::subagents::IntelligenceLevel;
+use ast::SourceLocation;
 
 use dashmap::DashMap;
 use lru::LruCache;
@@ -1616,27 +1617,42 @@ impl InternalTool for TreeTool {
         let execution_time = start_time.elapsed();
         let cache_stats = self.cache_stats().unwrap_or_default();
 
-        Ok(ToolOutput::success(result)
-            .with_message(format!(
-                "Tree operation '{}' completed successfully",
-                operation
-            ))
-            .with_metadata(
-                "execution_time_ms".to_string(),
-                serde_json::Value::Number((execution_time.as_millis() as u64).into()),
-            )
-            .with_metadata(
-                "cache_stats".to_string(),
-                serde_json::Value::Object(cache_stats.into_iter().collect()),
-            )
-            .with_metadata(
-                "intelligence_level".to_string(),
-                serde_json::Value::String(match self.intelligence_level {
-                    IntelligenceLevel::Light => "light".to_string(),
-                    IntelligenceLevel::Medium => "medium".to_string(),
-                    IntelligenceLevel::Hard => "hard".to_string(),
-                }),
-            ))
+        // Create a minimal location for the result
+        let location = SourceLocation {
+            file_path: "<tree-tool>".to_string(),
+            start_line: 0,
+            start_column: 0,
+            end_line: 0,
+            end_column: 0,
+            byte_range: (0, 0),
+        };
+
+        let mut output = ToolOutput::new(
+            result,
+            "tree",
+            format!("Tree operation: {}", operation),
+            location,
+        );
+
+        // Add metadata
+        output.metadata.parameters.insert(
+            "execution_time_ms".to_string(),
+            (execution_time.as_millis() as u64).to_string(),
+        );
+        output
+            .metadata
+            .parameters
+            .insert("cache_stats".to_string(), format!("{:?}", cache_stats));
+        output.metadata.parameters.insert(
+            "intelligence_level".to_string(),
+            match self.intelligence_level {
+                IntelligenceLevel::Light => "light".to_string(),
+                IntelligenceLevel::Medium => "medium".to_string(),
+                IntelligenceLevel::Hard => "hard".to_string(),
+            },
+        );
+
+        Ok(output)
     }
 
     fn metadata(&self) -> ToolMetadata {

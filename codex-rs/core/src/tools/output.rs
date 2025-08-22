@@ -13,7 +13,7 @@
 
 // use ast::AstNode; // unused
 use ast::Language;
-use ast::SourceLocation;
+pub use ast::SourceLocation;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;

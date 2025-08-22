@@ -9,7 +9,6 @@
 //! - <100ms performance target for 10k files
 
 use super::output::ComprehensiveToolOutput;
-use ast::SourceLocation;
 use ignore::DirEntry;
 use ignore::Walk;
 use ignore::WalkBuilder;

@@ -48,9 +48,6 @@ pub mod ast_grep;
 /// Multi-layer search engine with Tantivy integration
 pub mod search;
 
-/// Internal reasoning think tool with multiple strategies
-pub mod think;
-
 // Intentionally no `comby` module: Comby is not used in AGCodex.
 
 // Include comprehensive tests for AST agent tools

@@ -1,215 +1,249 @@
-//! Integration examples for the ThinkTool with AGCodex
+//! Integration examples for the simplified ThinkTool with AGCodex
 //!
-//! This module demonstrates how the internal reasoning think tool integrates
+//! This module demonstrates how the simplified internal reasoning think tool integrates
 //! with AGCodex's architecture and workflow.
 
-use crate::code_tools::think::{ThinkTool, ThinkQuery, ProblemType, Context};
-use crate::code_tools::CodeTool;
-use std::collections::HashMap;
+use crate::tools::think::{ThinkTool, ThinkResult, ThinkError};
 
 /// Example: Using think tool for code refactoring decisions
 pub fn example_refactoring_reasoning() -> Result<(), Box<dyn std::error::Error>> {
-    let think_tool = ThinkTool::new();
+    let problem = "This function has O(n²) complexity and high memory usage. How should we refactor it for better performance while maintaining readability?";
     
-    let mut context = Context::default();
-    context.references.push("src/main.rs:45-67".to_string());
-    context.references.push("src/lib.rs:123-150".to_string());
-    context.variables.insert("complexity".to_string(), "O(n²)".to_string());
-    context.variables.insert("memory_usage".to_string(), "high".to_string());
-    context.assumptions.push("Performance is critical".to_string());
-    context.assumptions.push("Memory constraints exist".to_string());
-
-    let query = ThinkQuery {
-        problem: "This function has O(n²) complexity and high memory usage. How should we refactor it for better performance while maintaining readability?".to_string(),
-        problem_type: Some(ProblemType::Systematic),
-        preferred_strategy: Some("shannon".to_string()),
-        context: Some(context),
-        confidence_threshold: Some(0.8),
-    };
-
-    let output = think_tool.search(query)?;
+    let result = ThinkTool::think(problem)?;
     
-    println!("🧠 Reasoning Session Started");
-    println!("Strategy: {}", output.strategy);
-    println!("Problem Type: {:?}", output.problem_type);
-    println!("Confidence: {:.2}", output.confidence);
-    println!("\nSummary: {}", output.summary);
+    println!("🧠 Refactoring Reasoning Session");
+    println!("Problem: {}", problem);
+    println!("Confidence: {:.2}", result.confidence);
+    println!("Steps: {}", result.steps.len());
     
-    if let Some(next_action) = output.next_action {
-        println!("Next Action: {}", next_action);
+    println!("\n--- Reasoning Steps ---");
+    for step in &result.steps {
+        println!("{}. {}", step.step_number, step.thought);
+        println!("   Reasoning: {}", step.reasoning);
+        println!();
     }
     
-    println!("\n--- Reasoning Trace ---");
-    println!("{}", output.reasoning_trace);
+    println!("--- Conclusion ---");
+    println!("{}", result.conclusion);
     
     Ok(())
 }
 
 /// Example: Using think tool for architecture decisions
 pub fn example_architecture_reasoning() -> Result<(), Box<dyn std::error::Error>> {
-    let think_tool = ThinkTool::new();
+    let problem = "We need to design a caching layer that can handle 100k+ concurrent users with sub-100ms latency. Should we use Redis, Memcached, or an in-memory solution?";
     
-    let mut context = Context::default();
-    context.references.push("architecture/current_design.md".to_string());
-    context.variables.insert("users".to_string(), "100k+".to_string());
-    context.variables.insert("latency_requirement".to_string(), "<100ms".to_string());
-    context.assumptions.push("Microservices architecture".to_string());
-    context.assumptions.push("Cloud deployment".to_string());
-
-    let query = ThinkQuery {
-        problem: "We need to design a caching layer that can handle 100k+ concurrent users with sub-100ms latency. Should we use Redis, Memcached, or an in-memory solution?".to_string(),
-        problem_type: Some(ProblemType::Evaluation), // Will use actor-critic
-        preferred_strategy: None, // Auto-select
-        context: Some(context),
-        confidence_threshold: None, // Use default
-    };
-
-    let output = think_tool.search(query)?;
+    let result = ThinkTool::think(problem)?;
     
     println!("🏗️ Architecture Decision Reasoning");
-    println!("Strategy: {} (auto-selected)", output.strategy);
-    println!("Problem Type: {:?}", output.problem_type);
+    println!("Problem: {}", problem);
+    println!("Confidence: {:.2}", result.confidence);
     
-    println!("\n--- Reasoning Process ---");
-    println!("{}", output.reasoning_trace);
+    println!("\n--- Decision Process ---");
+    for step in &result.steps {
+        println!("Step {}: {}", step.step_number, step.thought);
+        println!("Analysis: {}", step.reasoning);
+        println!();
+    }
+    
+    println!("--- Final Recommendation ---");
+    println!("{}", result.conclusion);
     
     Ok(())
 }
 
 /// Example: Sequential reasoning for debugging
 pub fn example_debugging_reasoning() -> Result<(), Box<dyn std::error::Error>> {
-    let think_tool = ThinkTool::new();
+    let problem = "Users are experiencing database timeouts every 5 minutes, affecting 15% of requests. Error logs show connection pool exhaustion. What's the systematic approach to debug and fix this?";
     
-    let mut context = Context::default();
-    context.references.push("logs/error_2025-08-21.log".to_string());
-    context.references.push("src/database/connection.rs:89".to_string());
-    context.variables.insert("error_frequency".to_string(), "every 5 minutes".to_string());
-    context.variables.insert("affected_users".to_string(), "15%".to_string());
-    context.assumptions.push("Database connection issue".to_string());
-    context.assumptions.push("Load-related problem".to_string());
-
-    let query = ThinkQuery {
-        problem: "Users are experiencing database timeouts every 5 minutes, affecting 15% of requests. Error logs show connection pool exhaustion. What's the systematic approach to debug and fix this?".to_string(),
-        problem_type: Some(ProblemType::Sequential),
-        preferred_strategy: Some("sequential".to_string()),
-        context: Some(context),
-        confidence_threshold: Some(0.7),
-    };
-
-    let output = think_tool.search(query)?;
+    let result = ThinkTool::think(problem)?;
     
     println!("🐛 Debugging Reasoning Session");
-    println!("Using sequential thinking for step-by-step analysis");
-    println!("Confidence threshold: 0.7");
+    println!("Problem: {}", problem);
+    println!("Confidence: {:.2}", result.confidence);
     
-    println!("\n{}", output.reasoning_trace);
+    println!("\n--- Debugging Steps ---");
+    for step in &result.steps {
+        println!("{}. {}", step.step_number, step.thought);
+        println!("   Analysis: {}", step.reasoning);
+        println!();
+    }
+    
+    println!("--- Resolution Strategy ---");
+    println!("{}", result.conclusion);
     
     Ok(())
 }
 
 /// Example: Creative problem-solving for new feature design
 pub fn example_creative_reasoning() -> Result<(), Box<dyn std::error::Error>> {
-    let think_tool = ThinkTool::new();
+    let problem = "Users want a 'smart suggestions' feature that learns from their coding patterns. How can we implement this creatively within 2 weeks while maintaining our existing UX?";
     
-    let mut context = Context::default();
-    context.references.push("requirements/user_feedback.md".to_string());
-    context.references.push("competitive_analysis.md".to_string());
-    context.variables.insert("target_users".to_string(), "power users".to_string());
-    context.variables.insert("development_time".to_string(), "2 weeks".to_string());
-    context.assumptions.push("Limited development resources".to_string());
-    context.assumptions.push("Must maintain existing UX".to_string());
-
-    let query = ThinkQuery {
-        problem: "Users want a 'smart suggestions' feature that learns from their coding patterns. How can we implement this creatively within 2 weeks while maintaining our existing UX?".to_string(),
-        problem_type: Some(ProblemType::Creative),
-        preferred_strategy: Some("actor-critic".to_string()),
-        context: Some(context),
-        confidence_threshold: Some(0.75),
-    };
-
-    let output = think_tool.search(query)?;
+    let result = ThinkTool::think(problem)?;
     
     println!("🎨 Creative Problem-Solving Session");
-    println!("Using actor-critic approach for balanced innovation");
+    println!("Challenge: {}", problem);
+    println!("Confidence: {:.2}", result.confidence);
     
-    println!("\n{}", output.reasoning_trace);
+    println!("\n--- Creative Process ---");
+    for step in &result.steps {
+        println!("Step {}: {}", step.step_number, step.thought);
+        println!("Insight: {}", step.reasoning);
+        println!();
+    }
+    
+    println!("--- Implementation Strategy ---");
+    println!("{}", result.conclusion);
     
     Ok(())
 }
 
 /// Integration with AGCodex workflow
-pub struct AGCodexThinkingIntegration {
-    think_tool: ThinkTool,
-}
+pub struct AGCodexThinkingIntegration;
 
 impl AGCodexThinkingIntegration {
     pub fn new() -> Self {
-        Self {
-            think_tool: ThinkTool::new(),
-        }
+        Self
     }
 
     /// Think before executing a complex task
     pub fn think_before_action(&self, task_description: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let problem_type = self.think_tool.detect_problem_type(task_description);
-        
-        let query = ThinkQuery {
-            problem: task_description.to_string(),
-            problem_type: Some(problem_type.clone()),
-            preferred_strategy: None, // Auto-select
-            context: None,
-            confidence_threshold: Some(0.8),
-        };
-
-        let output = self.think_tool.search(query)?;
+        let result = ThinkTool::think(task_description)?;
         
         // Generate action plan based on reasoning
-        let action_plan = format!(
+        let mut action_plan = format!(
             "# Reasoning-Based Action Plan\n\n\
             **Task:** {}\n\
-            **Strategy:** {} (auto-selected for {:?})\n\
-            **Confidence:** {:.2}\n\n\
-            ## Reasoning Process\n\
-            {}\n\n\
-            ## Recommended Next Steps\n\
-            {}\n",
+            **Confidence:** {:.2}\n\
+            **Steps Analyzed:** {}\n\n\
+            ## Reasoning Process\n",
             task_description,
-            output.strategy,
-            output.problem_type,
-            output.confidence,
-            output.reasoning_trace,
-            output.next_action.unwrap_or_else(|| "Proceed with implementation".to_string())
+            result.confidence,
+            result.steps.len()
         );
+
+        for step in &result.steps {
+            action_plan.push_str(&format!(
+                "### Step {}: {}\n{}\n\n",
+                step.step_number,
+                step.thought,
+                step.reasoning
+            ));
+        }
+
+        action_plan.push_str(&format!(
+            "## Recommended Approach\n{}\n",
+            result.conclusion
+        ));
 
         Ok(action_plan)
     }
 
     /// Auto-reasoning for code review
     pub fn auto_code_review_reasoning(&self, file_path: &str, changes: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let mut context = Context::default();
-        context.references.push(file_path.to_string());
-        context.variables.insert("changes_size".to_string(), changes.len().to_string());
+        let problem = format!(
+            "Review these code changes in {} for quality, security, and maintainability:\n\n{}",
+            file_path,
+            changes
+        );
 
-        let query = ThinkQuery {
-            problem: format!("Review these code changes for quality, security, and maintainability:\n\n{}", changes),
-            problem_type: Some(ProblemType::Evaluation),
-            preferred_strategy: Some("actor-critic".to_string()),
-            context: Some(context),
-            confidence_threshold: Some(0.85),
-        };
-
-        let output = self.think_tool.search(query)?;
+        let result = ThinkTool::think(&problem)?;
         
-        Ok(format!(
+        let mut review = format!(
             "# Automated Code Review Reasoning\n\n\
             **File:** {}\n\
-            **Review Strategy:** Actor-Critic Analysis\n\
-            **Confidence:** {:.2}\n\n\
-            {}",
+            **Changes Size:** {} characters\n\
+            **Review Confidence:** {:.2}\n\n\
+            ## Review Process\n",
             file_path,
-            output.confidence,
-            output.reasoning_trace
-        ))
+            changes.len(),
+            result.confidence
+        );
+
+        for step in &result.steps {
+            review.push_str(&format!(
+                "### {}\n{}\n\n",
+                step.thought,
+                step.reasoning
+            ));
+        }
+
+        review.push_str(&format!(
+            "## Review Summary\n{}\n",
+            result.conclusion
+        ));
+
+        Ok(review)
+    }
+
+    /// Generate reasoning for error analysis
+    pub fn error_analysis_reasoning(&self, error_message: &str, context: &str) -> Result<String, Box<dyn std::error::Error>> {
+        let problem = format!(
+            "Analyze this error and provide debugging guidance:\n\nError: {}\nContext: {}",
+            error_message,
+            context
+        );
+
+        let result = ThinkTool::think(&problem)?;
+
+        let mut analysis = format!(
+            "# Error Analysis Reasoning\n\n\
+            **Error:** {}\n\
+            **Analysis Confidence:** {:.2}\n\n\
+            ## Investigation Steps\n",
+            error_message,
+            result.confidence
+        );
+
+        for step in &result.steps {
+            analysis.push_str(&format!(
+                "**Step {}:** {}\n\n*Analysis:* {}\n\n",
+                step.step_number,
+                step.thought,
+                step.reasoning
+            ));
+        }
+
+        analysis.push_str(&format!(
+            "## Recommended Solution Approach\n{}\n",
+            result.conclusion
+        ));
+
+        Ok(analysis)
+    }
+
+    /// Performance optimization reasoning
+    pub fn performance_optimization_reasoning(&self, performance_issue: &str) -> Result<String, Box<dyn std::error::Error>> {
+        let problem = format!(
+            "Analyze this performance issue and suggest optimization strategies: {}",
+            performance_issue
+        );
+
+        let result = ThinkTool::think(&problem)?;
+
+        let mut optimization = format!(
+            "# Performance Optimization Reasoning\n\n\
+            **Issue:** {}\n\
+            **Analysis Confidence:** {:.2}\n\n\
+            ## Optimization Analysis\n",
+            performance_issue,
+            result.confidence
+        );
+
+        for step in &result.steps {
+            optimization.push_str(&format!(
+                "### {}\n{}\n\n",
+                step.thought,
+                step.reasoning
+            ));
+        }
+
+        optimization.push_str(&format!(
+            "## Optimization Strategy\n{}\n",
+            result.conclusion
+        ));
+
+        Ok(optimization)
     }
 }
 
@@ -230,6 +264,24 @@ mod tests {
     }
 
     #[test]
+    fn test_architecture_reasoning_example() {
+        let result = example_architecture_reasoning();
+        assert!(result.is_ok(), "Architecture reasoning should work");
+    }
+
+    #[test]
+    fn test_debugging_reasoning_example() {
+        let result = example_debugging_reasoning();
+        assert!(result.is_ok(), "Debugging reasoning should work");
+    }
+
+    #[test]
+    fn test_creative_reasoning_example() {
+        let result = example_creative_reasoning();
+        assert!(result.is_ok(), "Creative reasoning should work");
+    }
+
+    #[test]
     fn test_integration_think_before_action() {
         let integration = AGCodexThinkingIntegration::new();
         let result = integration.think_before_action("Refactor the database layer for better performance");
@@ -237,7 +289,8 @@ mod tests {
         assert!(result.is_ok());
         let action_plan = result.unwrap();
         assert!(action_plan.contains("Reasoning-Based Action Plan"));
-        assert!(action_plan.contains("Strategy:"));
+        assert!(action_plan.contains("Confidence:"));
+        assert!(action_plan.contains("Reasoning Process"));
     }
 
     #[test]
@@ -251,6 +304,45 @@ mod tests {
         assert!(result.is_ok());
         let review = result.unwrap();
         assert!(review.contains("Automated Code Review Reasoning"));
-        assert!(review.contains("Actor-Critic Analysis"));
+        assert!(review.contains("Review Process"));
+        assert!(review.contains("Review Summary"));
+    }
+
+    #[test]
+    fn test_error_analysis_reasoning() {
+        let integration = AGCodexThinkingIntegration::new();
+        let result = integration.error_analysis_reasoning(
+            "segmentation fault",
+            "occurred in memory allocation function"
+        );
+        
+        assert!(result.is_ok());
+        let analysis = result.unwrap();
+        assert!(analysis.contains("Error Analysis Reasoning"));
+        assert!(analysis.contains("Investigation Steps"));
+    }
+
+    #[test]
+    fn test_performance_optimization_reasoning() {
+        let integration = AGCodexThinkingIntegration::new();
+        let result = integration.performance_optimization_reasoning(
+            "Database queries are taking 5+ seconds"
+        );
+        
+        assert!(result.is_ok());
+        let optimization = result.unwrap();
+        assert!(optimization.contains("Performance Optimization Reasoning"));
+        assert!(optimization.contains("Optimization Analysis"));
+    }
+
+    #[test]
+    fn test_simple_think_tool_usage() {
+        let result = ThinkTool::think("How to improve code readability?");
+        
+        assert!(result.is_ok());
+        let think_result = result.unwrap();
+        assert!(think_result.steps.len() >= 3);
+        assert!(!think_result.conclusion.is_empty());
+        assert!(think_result.confidence > 0.0 && think_result.confidence <= 1.0);
     }
 }

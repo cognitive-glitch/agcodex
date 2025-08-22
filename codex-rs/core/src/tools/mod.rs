@@ -10,6 +10,7 @@ pub mod integration_example;
 pub mod output;
 pub mod patch;
 pub mod plan;
+pub mod think;
 pub mod tree;
 
 #[cfg(test)]
@@ -105,46 +106,35 @@ pub use output::{
     simple_success,
     single_file_modification,
 };
-pub use patch::ApiChange;
-pub use patch::AppliedTransformation;
-pub use patch::AstSummary;
-pub use patch::BeforeAfterComparison;
-pub use patch::BehavioralChange;
-pub use patch::ChangeType;
-pub use patch::CodeChange;
-pub use patch::DependencyChange;
-pub use patch::Parameter;
+// Simplified patch tool exports
+pub use patch::ExtractStats;
+pub use patch::ImportStats;
 pub use patch::PatchError;
-pub use patch::PatchInput;
-pub use patch::PatchOptions;
-pub use patch::PatchOutput;
 pub use patch::PatchResult;
 pub use patch::PatchTool;
-pub use patch::PerformanceImpact;
-pub use patch::RiskLevel;
-pub use patch::SemanticImpact;
-pub use patch::SemanticTransformation;
-pub use patch::StructuralDifference;
-pub use patch::TransformationCondition;
-pub use patch::TransformationType;
-pub use patch::ValidationResult;
+pub use patch::RenameScope;
+pub use patch::RenameStats;
 pub use plan::AgentType;
 pub use plan::DependencyGraph;
 pub use plan::MetaTask;
 pub use plan::MetaTaskPlanner;
+pub use plan::Plan;
 pub use plan::PlanContext;
 pub use plan::PlanError;
 pub use plan::PlanExecutionPlan;
 pub use plan::PlanExecutionStep;
 pub use plan::PlanIntelligenceLevel;
-pub use plan::PlanResult;
 pub use plan::PlanTool;
 pub use plan::SubTask;
 pub use plan::SubTaskPlanner;
 pub use plan::TaskGroup;
 pub use plan::TaskPriority;
 pub use plan::TaskStatus;
-pub use plan::ToolOutput;
+// ToolOutput is already exported from output module, no need to import from plan
+pub use think::ThinkError;
+pub use think::ThinkResult;
+pub use think::ThinkStep;
+pub use think::ThinkTool;
 pub use tree::DiffNode;
 pub use tree::ModifiedNode;
 pub use tree::MovedNode;

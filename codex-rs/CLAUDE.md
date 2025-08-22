@@ -152,7 +152,7 @@ cargo test --all-features --no-fail-fast
 cargo check --all-features --all-targets --workspace --tests
 
 # Format code (REQUIRED before committing)
-cargo fmt --all
+cargo +nightly fmt --all
 
 # Lint autofix
 cargo clippy --all-features --all-targets --workspace --tests --fix --allow-dirty
