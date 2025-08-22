@@ -5,8 +5,269 @@
 
 use serde::Deserialize;
 use serde::Serialize;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
+
+/// Tool recommendation for a thinking step
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolRecommendation {
+    /// Name of the tool being recommended
+    pub tool: String,
+    /// Confidence level in this recommendation (0.0 to 1.0)
+    pub confidence: f32,
+    /// Rationale for why this tool is recommended
+    pub rationale: String,
+    /// Priority order in the recommendation sequence
+    pub priority: usize,
+}
+
+/// Description of a step in the thinking process
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StepDescription {
+    /// What needs to be done in this step
+    pub description: String,
+    /// Expected outcome from this step
+    pub expected_outcome: String,
+    /// Conditions to consider for the next step
+    pub next_conditions: Vec<String>,
+}
+
+/// Enhanced thought data structure inspired by MCP sequential-thinking
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThoughtData {
+    /// The actual thought content
+    pub thought: String,
+    /// Current thought number in the sequence
+    pub thought_number: usize,
+    /// Total estimated thoughts needed
+    pub total_thoughts: usize,
+    /// Whether another thought step is needed
+    pub next_thought_needed: bool,
+    /// Whether this thought revises a previous one
+    pub is_revision: bool,
+    /// Which thought number is being revised (if is_revision is true)
+    pub revises_thought: Option<usize>,
+    /// If branching, which thought is the branch point
+    pub branch_from_thought: Option<usize>,
+    /// Identifier for the current branch (if any)
+    pub branch_id: Option<String>,
+    /// Tools recommended for this thinking step
+    pub recommended_tools: Vec<ToolRecommendation>,
+    /// Current step description
+    pub current_step: Option<StepDescription>,
+    /// Previous steps that have been completed
+    pub previous_steps: Vec<StepDescription>,
+    /// Remaining high-level steps
+    pub remaining_steps: Vec<String>,
+    /// Confidence level for this thought (0.0 to 1.0)
+    pub confidence: f32,
+    /// Timestamp when this thought was created
+    pub timestamp: u64,
+}
+
+impl ThoughtData {
+    /// Create a new thought with basic information
+    pub fn new(thought: String, thought_number: usize, total_thoughts: usize) -> Self {
+        Self {
+            thought,
+            thought_number,
+            total_thoughts,
+            next_thought_needed: thought_number < total_thoughts,
+            is_revision: false,
+            revises_thought: None,
+            branch_from_thought: None,
+            branch_id: None,
+            recommended_tools: Vec::new(),
+            current_step: None,
+            previous_steps: Vec::new(),
+            remaining_steps: Vec::new(),
+            confidence: 0.5,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0),
+        }
+    }
+
+    /// Mark this thought as a revision of a previous thought
+    pub const fn as_revision(mut self, revises: usize) -> Self {
+        self.is_revision = true;
+        self.revises_thought = Some(revises);
+        self
+    }
+
+    /// Set this thought as part of a branch
+    pub fn with_branch(mut self, branch_from: usize, branch_id: String) -> Self {
+        self.branch_from_thought = Some(branch_from);
+        self.branch_id = Some(branch_id);
+        self
+    }
+
+    /// Add tool recommendations to this thought
+    pub fn with_tools(mut self, tools: Vec<ToolRecommendation>) -> Self {
+        self.recommended_tools = tools;
+        self
+    }
+
+    /// Set the confidence level for this thought
+    pub const fn with_confidence(mut self, confidence: f32) -> Self {
+        self.confidence = confidence.max(0.0).min(1.0);
+        self
+    }
+}
+
+/// Session manager for tracking thought history and branches
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThinkSession {
+    /// Main thought history
+    pub thought_history: Vec<ThoughtData>,
+    /// Branches of thought (key is branch_id)
+    pub branches: HashMap<String, Vec<ThoughtData>>,
+    /// Maximum number of thoughts to keep in history
+    pub max_history_size: usize,
+    /// Session identifier
+    pub session_id: String,
+    /// Current active branch (if any)
+    pub active_branch: Option<String>,
+    /// Total thoughts across all branches
+    pub total_thought_count: usize,
+    /// Session creation timestamp
+    pub created_at: u64,
+    /// Last activity timestamp
+    pub last_activity: u64,
+}
+
+impl ThinkSession {
+    /// Create a new thinking session
+    pub fn new(max_history_size: usize) -> Self {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        Self {
+            thought_history: Vec::new(),
+            branches: HashMap::new(),
+            max_history_size,
+            session_id: format!("think_{}", now),
+            active_branch: None,
+            total_thought_count: 0,
+            created_at: now,
+            last_activity: now,
+        }
+    }
+
+    /// Add a thought to the current history (main or branch)
+    pub fn add_thought(&mut self, thought: ThoughtData) {
+        self.total_thought_count += 1;
+        self.last_activity = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        if let Some(branch_id) = &self.active_branch {
+            // Add to branch
+            self.branches
+                .entry(branch_id.clone())
+                .or_default()
+                .push(thought);
+            
+            // Trim branch if it exceeds max size
+            if let Some(branch) = self.branches.get_mut(branch_id) {
+                while branch.len() > self.max_history_size {
+                    branch.remove(0);
+                }
+            }
+        } else {
+            // Add to main history
+            self.thought_history.push(thought);
+            
+            // Trim history if it exceeds max size
+            while self.thought_history.len() > self.max_history_size {
+                self.thought_history.remove(0);
+            }
+        }
+    }
+
+    /// Create a new branch from a specific thought
+    pub fn create_branch(&mut self, from_thought: usize, branch_id: String) {
+        let branch_point = if let Some(branch_id) = &self.active_branch {
+            // Branching from within a branch
+            self.branches
+                .get(branch_id)
+                .and_then(|b| b.get(from_thought))
+                .cloned()
+        } else {
+            // Branching from main history
+            self.thought_history.get(from_thought).cloned()
+        };
+
+        if let Some(thought) = branch_point {
+            let mut branch_history = vec![thought];
+            branch_history[0].branch_from_thought = Some(from_thought);
+            branch_history[0].branch_id = Some(branch_id.clone());
+            self.branches.insert(branch_id.clone(), branch_history);
+            self.active_branch = Some(branch_id);
+        }
+    }
+
+    /// Switch to a different branch or back to main
+    pub fn switch_branch(&mut self, branch_id: Option<String>) {
+        self.active_branch = branch_id;
+    }
+
+    /// Get the current thought history (main or branch)
+    pub fn current_history(&self) -> &[ThoughtData] {
+        if let Some(branch_id) = &self.active_branch {
+            self.branches.get(branch_id).map(Vec::as_slice).unwrap_or(&[])
+        } else {
+            &self.thought_history
+        }
+    }
+
+    /// Find a thought that can be revised
+    pub fn find_thought_to_revise(&self, thought_number: usize) -> Option<&ThoughtData> {
+        self.current_history().iter().find(|t| t.thought_number == thought_number)
+    }
+
+    /// Get all thoughts that revised other thoughts
+    pub fn get_revisions(&self) -> Vec<&ThoughtData> {
+        self.current_history()
+            .iter()
+            .filter(|t| t.is_revision)
+            .collect()
+    }
+
+    /// Get thoughts with high confidence
+    pub fn get_high_confidence_thoughts(&self, threshold: f32) -> Vec<&ThoughtData> {
+        self.current_history()
+            .iter()
+            .filter(|t| t.confidence >= threshold)
+            .collect()
+    }
+
+    /// Get recommended tools from all thoughts
+    pub fn get_all_recommended_tools(&self) -> Vec<&ToolRecommendation> {
+        self.current_history()
+            .iter()
+            .flat_map(|t| &t.recommended_tools)
+            .collect()
+    }
+
+    /// Check if more thoughts are needed
+    pub fn needs_more_thoughts(&self) -> bool {
+        self.current_history()
+            .last()
+            .map(|t| t.next_thought_needed)
+            .unwrap_or(true)
+    }
+}
+
+impl Default for ThinkSession {
+    fn default() -> Self {
+        Self::new(100) // Default to keeping 100 thoughts in history
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum ThinkError {
@@ -19,6 +280,7 @@ pub enum ThinkError {
     #[error("confidence calculation error: {0}")]
     ConfidenceError(String),
 }
+
 
 /// A single step in the reasoning process
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,6 +334,8 @@ pub struct CodeThinkResult {
     pub problem_type: CodeProblemType,
 }
 
+
+
 /// Complete result from the think tool (backward compatibility)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThinkResult {
@@ -81,16 +345,221 @@ pub struct ThinkResult {
     pub conclusion: String,
     /// Confidence level (0.0 to 1.0)
     pub confidence: f32,
+    /// Thought data for sequential thinking
+    pub thought_data: Option<ThoughtData>,
 }
+
 
 /// Simple think tool implementation
 #[derive(Debug)]
-pub struct ThinkTool;
+pub struct ThinkTool {
+    /// Optional session for maintaining thinking state
+    pub session: Option<ThinkSession>,
+}
 
 impl ThinkTool {
     /// Create a new think tool instance
     pub const fn new() -> Self {
-        Self
+        Self { session: None }
+    }
+
+    /// Create a new think tool with a session
+    pub fn with_session(max_history_size: usize) -> Self {
+        Self {
+            session: Some(ThinkSession::new(max_history_size)),
+        }
+    }
+
+    /// Process a single thought with revision support and tool recommendations
+    pub fn process_thought(
+        &mut self,
+        thought: String,
+        thought_number: usize,
+        total_thoughts: usize,
+        next_thought_needed: bool,
+        is_revision: Option<bool>,
+        revises_thought: Option<usize>,
+    ) -> Result<ThinkResult, ThinkError> {
+        // Generate tool recommendations based on thought content
+        let recommended_tools = self.analyze_for_tool_recommendations(&thought);
+
+        // Create thought data using the constructor
+        let mut thought_data = ThoughtData::new(thought.clone(), thought_number, total_thoughts)
+            .with_tools(recommended_tools);
+        
+        // Handle revision if specified
+        if let Some(true) = is_revision {
+            thought_data.is_revision = true;
+            thought_data.revises_thought = revises_thought;
+        }
+        
+        // Update next_thought_needed if different from default
+        thought_data.next_thought_needed = next_thought_needed;
+
+        // Store in session if available
+        if let Some(ref mut session) = self.session {
+            session.add_thought(thought_data.clone());
+        }
+
+        // Generate simple result for compatibility
+        let steps = vec![ThinkStep {
+            step_number: thought_number,
+            thought: thought.clone(),
+            reasoning: format!("Processing thought {} of {}", thought_number, total_thoughts),
+        }];
+
+        let conclusion = if next_thought_needed {
+            format!("Thought {} processed. More thoughts needed.", thought_number)
+        } else {
+            format!("Thought {} processed. Thinking complete.", thought_number)
+        };
+
+        Ok(ThinkResult {
+            steps,
+            conclusion,
+            confidence: 0.7, // Default confidence
+            thought_data: Some(thought_data),
+        })
+    }
+
+    /// Analyze thought content to recommend appropriate tools
+    fn analyze_for_tool_recommendations(&self, thought: &str) -> Vec<ToolRecommendation> {
+        let mut recommendations = Vec::new();
+        let thought_lower = thought.to_lowercase();
+        let mut priority = 1;
+
+        // Search tool recommendations
+        if thought_lower.contains("search")
+            || thought_lower.contains("find")
+            || thought_lower.contains("look")
+            || thought_lower.contains("locate")
+            || thought_lower.contains("discover")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "search".to_string(),
+                confidence: 0.9,
+                rationale: "Thought indicates need for code search or discovery".to_string(),
+                priority,
+            });
+            priority += 1;
+        }
+
+        // Edit tool recommendations
+        if thought_lower.contains("edit")
+            || thought_lower.contains("modify")
+            || thought_lower.contains("change")
+            || thought_lower.contains("update")
+            || thought_lower.contains("fix")
+            || thought_lower.contains("correct")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "edit".to_string(),
+                confidence: 0.85,
+                rationale: "Thought suggests code modification needed".to_string(),
+                priority,
+            });
+            priority += 1;
+        }
+
+        // Patch tool recommendations (for more complex refactoring)
+        if thought_lower.contains("refactor")
+            || thought_lower.contains("rename")
+            || thought_lower.contains("restructure")
+            || thought_lower.contains("reorganize")
+            || thought_lower.contains("extract")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "patch".to_string(),
+                confidence: 0.9,
+                rationale: "Thought indicates structural code changes".to_string(),
+                priority,
+            });
+            priority += 1;
+        }
+
+        // Test tool recommendations
+        if thought_lower.contains("test")
+            || thought_lower.contains("verify")
+            || thought_lower.contains("validate")
+            || thought_lower.contains("check")
+            || thought_lower.contains("ensure")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "test".to_string(),
+                confidence: 0.8,
+                rationale: "Thought suggests verification or testing needed".to_string(),
+                priority,
+            });
+            priority += 1;
+        }
+
+        // Tree tool recommendations (AST analysis)
+        if thought_lower.contains("parse")
+            || thought_lower.contains("ast")
+            || thought_lower.contains("syntax")
+            || thought_lower.contains("structure")
+            || thought_lower.contains("analyze")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "tree".to_string(),
+                confidence: 0.75,
+                rationale: "Thought indicates need for AST or structural analysis".to_string(),
+                priority,
+            });
+            priority += 1;
+        }
+
+        // Index tool recommendations
+        if thought_lower.contains("index")
+            || thought_lower.contains("catalog")
+            || thought_lower.contains("organize")
+            || thought_lower.contains("scan")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "index".to_string(),
+                confidence: 0.7,
+                rationale: "Thought suggests indexing or cataloging needed".to_string(),
+                priority,
+            });
+            priority += 1;
+        }
+
+        // Glob tool recommendations (file discovery)
+        if thought_lower.contains("file")
+            || thought_lower.contains("files")
+            || thought_lower.contains("directory")
+            || thought_lower.contains("folder")
+            || thought_lower.contains("glob")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "glob".to_string(),
+                confidence: 0.75,
+                rationale: "Thought indicates file system operations".to_string(),
+                priority,
+            });
+            priority += 1;
+        }
+
+        // Plan tool recommendations
+        if thought_lower.contains("plan")
+            || thought_lower.contains("decompose")
+            || thought_lower.contains("break down")
+            || thought_lower.contains("strategy")
+            || thought_lower.contains("approach")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "plan".to_string(),
+                confidence: 0.8,
+                rationale: "Thought suggests need for task planning".to_string(),
+                priority,
+            });
+            priority += 1;
+        }
+
+        // Sort by priority (already in order, but ensure consistency)
+        recommendations.sort_by_key(|r| r.priority);
+
+        recommendations
     }
 
     /// Perform step-by-step reasoning on a question or problem
@@ -107,6 +576,7 @@ impl ThinkTool {
             steps,
             conclusion,
             confidence,
+            thought_data: None,
         })
     }
 
@@ -1200,6 +1670,370 @@ impl ThinkTool {
             Complexity::Simple
         }
     }
+
+    /// Recommend tools based on the code problem type
+    pub fn recommend_tools_for_problem(
+        &self,
+        problem_type: &CodeProblemType,
+    ) -> Vec<ToolRecommendation> {
+        match problem_type {
+            CodeProblemType::BugFix => vec![
+                ToolRecommendation {
+                    tool: "search".to_string(),
+                    confidence: 0.9,
+                    rationale: "Search tool helps locate error patterns, find related code sections, and identify all instances of the problematic code across the codebase".to_string(),
+                    priority: 1,
+                },
+                ToolRecommendation {
+                    tool: "edit".to_string(),
+                    confidence: 0.85,
+                    rationale: "Edit tool enables precise line-based fixes for identified bugs with immediate feedback and validation".to_string(),
+                    priority: 2,
+                },
+                ToolRecommendation {
+                    tool: "test".to_string(),
+                    confidence: 0.8,
+                    rationale: "Test tool ensures the bug fix doesn't introduce regressions and validates the solution works correctly".to_string(),
+                    priority: 3,
+                },
+            ],
+            CodeProblemType::Refactoring => vec![
+                ToolRecommendation {
+                    tool: "search".to_string(),
+                    confidence: 0.85,
+                    rationale: "Search tool identifies all code locations that need refactoring and finds usage patterns to ensure consistent changes".to_string(),
+                    priority: 1,
+                },
+                ToolRecommendation {
+                    tool: "patch".to_string(),
+                    confidence: 0.9,
+                    rationale: "Patch tool performs semantic-aware AST transformations that preserve code structure and behavior during refactoring".to_string(),
+                    priority: 2,
+                },
+                ToolRecommendation {
+                    tool: "test".to_string(),
+                    confidence: 0.8,
+                    rationale: "Test tool verifies behavior preservation after refactoring and ensures no functionality is broken".to_string(),
+                    priority: 3,
+                },
+            ],
+            CodeProblemType::Implementation => vec![
+                ToolRecommendation {
+                    tool: "plan".to_string(),
+                    confidence: 0.9,
+                    rationale: "Plan tool breaks down implementation into manageable tasks with dependencies and parallel execution opportunities".to_string(),
+                    priority: 1,                },
+                ToolRecommendation {
+                    tool: "edit".to_string(),
+                    confidence: 0.85,
+                    rationale: "Edit tool creates new code sections and implements features with fast iteration and immediate validation".to_string(),
+                    priority: 2,                },
+                ToolRecommendation {
+                    tool: "test".to_string(),
+                    confidence: 0.8,
+                    rationale: "Test tool validates new implementation meets requirements and integrates correctly with existing code".to_string(),
+                    priority: 3,                },
+            ],
+            CodeProblemType::Performance => vec![
+                ToolRecommendation {
+                    tool: "search".to_string(),
+                    confidence: 0.8,
+                    rationale: "Search tool locates performance-critical code sections, bottlenecks, and resource-intensive operations".to_string(),
+                    priority: 1,                },
+                ToolRecommendation {
+                    tool: "analyze".to_string(),
+                    confidence: 0.85,
+                    rationale: "Analyze tool profiles code execution, measures performance metrics, and identifies optimization opportunities".to_string(),
+                    priority: 2,                },
+                ToolRecommendation {
+                    tool: "patch".to_string(),
+                    confidence: 0.8,
+                    rationale: "Patch tool applies algorithmic optimizations and structural improvements while maintaining correctness".to_string(),
+                    priority: 3,                },
+            ],
+            CodeProblemType::Security => vec![
+                ToolRecommendation {
+                    tool: "search".to_string(),
+                    confidence: 0.9,
+                    rationale: "Search tool identifies security-sensitive code patterns, vulnerable functions, and potential attack vectors".to_string(),
+                    priority: 1,                },
+                ToolRecommendation {
+                    tool: "analyze".to_string(),
+                    confidence: 0.9,
+                    rationale: "Analyze tool performs security scanning, vulnerability assessment, and compliance checking against security standards".to_string(),
+                    priority: 2,                },
+                ToolRecommendation {
+                    tool: "edit".to_string(),
+                    confidence: 0.85,
+                    rationale: "Edit tool applies security patches, input validation, and defensive programming techniques".to_string(),
+                    priority: 3,                },
+            ],
+            CodeProblemType::Testing => vec![
+                ToolRecommendation {
+                    tool: "search".to_string(),
+                    confidence: 0.7,
+                    rationale: "Search tool finds existing test patterns, identifies untested code, and locates test utilities".to_string(),
+                    priority: 1,                },
+                ToolRecommendation {
+                    tool: "edit".to_string(),
+                    confidence: 0.9,
+                    rationale: "Edit tool creates test cases, implements assertions, and builds comprehensive test suites".to_string(),
+                    priority: 2,                },
+                ToolRecommendation {
+                    tool: "test".to_string(),
+                    confidence: 0.95,
+                    rationale: "Test tool executes test suites, validates coverage, and ensures all tests pass successfully".to_string(),
+                    priority: 3,                },
+            ],
+            CodeProblemType::Documentation => vec![
+                ToolRecommendation {
+                    tool: "search".to_string(),
+                    confidence: 0.8,
+                    rationale: "Search tool analyzes code structure, finds undocumented functions, and identifies documentation patterns".to_string(),
+                    priority: 1,                },
+                ToolRecommendation {
+                    tool: "edit".to_string(),
+                    confidence: 0.9,
+                    rationale: "Edit tool adds documentation comments, creates README files, and updates API documentation".to_string(),
+                    priority: 2,                },
+            ],
+            CodeProblemType::Architecture => vec![
+                ToolRecommendation {
+                    tool: "plan".to_string(),
+                    confidence: 0.95,
+                    rationale: "Plan tool designs system architecture, defines component relationships, and creates implementation roadmaps".to_string(),
+                    priority: 1,                },
+                ToolRecommendation {
+                    tool: "think".to_string(),
+                    confidence: 0.85,
+                    rationale: "Think tool reasons through architectural decisions, evaluates trade-offs, and considers long-term implications".to_string(),
+                    priority: 2,                },
+                ToolRecommendation {
+                    tool: "edit".to_string(),
+                    confidence: 0.7,
+                    rationale: "Edit tool implements architectural scaffolding, creates interfaces, and establishes module boundaries".to_string(),
+                    priority: 3,                },
+            ],
+            CodeProblemType::CodeReview => vec![
+                ToolRecommendation {
+                    tool: "search".to_string(),
+                    confidence: 0.9,
+                    rationale: "Search tool examines code patterns, finds similar implementations, and checks for consistency across codebase".to_string(),
+                    priority: 1,                },
+                ToolRecommendation {
+                    tool: "analyze".to_string(),
+                    confidence: 0.85,
+                    rationale: "Analyze tool evaluates code quality metrics, complexity scores, and adherence to best practices".to_string(),
+                    priority: 2,                },
+            ],
+        }
+    }
+
+    /// Analyze thought content to identify mentioned tools and generate recommendations
+    pub fn analyze_thought_for_tools(&self, thought: &str) -> Vec<ToolRecommendation> {
+        let thought_lower = thought.to_lowercase();
+        let mut recommendations = Vec::new();
+        let mut priority = 1;
+
+        // Check for search-related keywords
+        if thought_lower.contains("search")
+            || thought_lower.contains("find")
+            || thought_lower.contains("locate")
+            || thought_lower.contains("look for")
+            || thought_lower.contains("identify")
+            || thought_lower.contains("discover")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "search".to_string(),
+                confidence: 0.9,
+                rationale: "Thought mentions searching or finding - search tool provides multi-layer search with symbol, full-text, and AST capabilities".to_string(),
+                priority,            });
+            priority += 1;
+        }
+
+        // Check for edit-related keywords
+        if thought_lower.contains("edit")
+            || thought_lower.contains("modify")
+            || thought_lower.contains("change")
+            || thought_lower.contains("update")
+            || thought_lower.contains("fix")
+            || thought_lower.contains("replace")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "edit".to_string(),
+                confidence: 0.85,
+                rationale: "Thought mentions editing or modifying - edit tool provides fast line-based changes with context awareness".to_string(),
+                priority,            });
+            priority += 1;
+        }
+
+        // Check for planning-related keywords
+        if thought_lower.contains("plan")
+            || thought_lower.contains("organize")
+            || thought_lower.contains("structure")
+            || thought_lower.contains("break down")
+            || thought_lower.contains("decompose")
+            || thought_lower.contains("strategy")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "plan".to_string(),
+                confidence: 0.9,
+                rationale: "Thought mentions planning or organization - plan tool provides task decomposition with dependency analysis".to_string(),
+                priority,            });
+            priority += 1;
+        }
+
+        // Check for analysis-related keywords
+        if thought_lower.contains("analyze")
+            || thought_lower.contains("examine")
+            || thought_lower.contains("investigate")
+            || thought_lower.contains("review")
+            || thought_lower.contains("evaluate")
+            || thought_lower.contains("assess")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "analyze".to_string(),
+                confidence: 0.85,
+                rationale: "Thought mentions analysis or investigation - analyze tool provides deep code analysis and metrics".to_string(),
+                priority,            });
+            priority += 1;
+        }
+
+        // Check for testing-related keywords
+        if thought_lower.contains("test")
+            || thought_lower.contains("verify")
+            || thought_lower.contains("validate")
+            || thought_lower.contains("check")
+            || thought_lower.contains("ensure")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "test".to_string(),
+                confidence: 0.8,
+                rationale: "Thought mentions testing or validation - test tool ensures correctness and prevents regressions".to_string(),
+                priority,            });
+            priority += 1;
+        }
+
+        // Check for AST/tree-related keywords
+        if thought_lower.contains("ast")
+            || thought_lower.contains("syntax")
+            || thought_lower.contains("parse")
+            || thought_lower.contains("tree")
+            || thought_lower.contains("structure")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "tree".to_string(),
+                confidence: 0.85,
+                rationale: "Thought mentions AST or syntax - tree tool provides tree-sitter parsing for 27+ languages".to_string(),
+                priority,            });
+            priority += 1;
+        }
+
+        // Check for pattern matching keywords
+        if thought_lower.contains("pattern")
+            || thought_lower.contains("grep")
+            || thought_lower.contains("match")
+            || thought_lower.contains("regex")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "grep".to_string(),
+                confidence: 0.8,
+                rationale: "Thought mentions patterns or matching - grep tool provides AST-aware pattern matching".to_string(),
+                priority,            });
+            priority += 1;
+        }
+
+        // Check for file discovery keywords
+        if thought_lower.contains("files")
+            || thought_lower.contains("directory")
+            || thought_lower.contains("folder")
+            || thought_lower.contains("glob")
+            || thought_lower.contains("discover files")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "glob".to_string(),
+                confidence: 0.75,
+                rationale: "Thought mentions file discovery - glob tool provides fast parallel file finding with pattern support".to_string(),
+                priority,            });
+            priority += 1;
+        }
+
+        // Check for command/script execution keywords
+        if thought_lower.contains("run")
+            || thought_lower.contains("execute")
+            || thought_lower.contains("command")
+            || thought_lower.contains("script")
+            || thought_lower.contains("bash")
+            || thought_lower.contains("shell")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "bash".to_string(),
+                confidence: 0.7,
+                rationale: "Thought mentions execution or commands - bash tool provides safe command execution with validation".to_string(),
+                priority,            });
+            priority += 1;
+        }
+
+        // Check for refactoring/transformation keywords
+        if thought_lower.contains("refactor")
+            || thought_lower.contains("transform")
+            || thought_lower.contains("restructure")
+            || thought_lower.contains("patch")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "patch".to_string(),
+                confidence: 0.9,
+                rationale: "Thought mentions refactoring or transformation - patch tool provides semantic-aware AST transformations".to_string(),
+                priority,            });
+            priority += 1;
+        }
+
+        // Check for indexing keywords
+        if thought_lower.contains("index")
+            || thought_lower.contains("catalog")
+            || thought_lower.contains("full-text")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "index".to_string(),
+                confidence: 0.75,
+                rationale: "Thought mentions indexing - index tool provides Tantivy-based full-text indexing for fast searches".to_string(),
+                priority,            });
+            priority += 1;
+        }
+
+        // Check for reasoning/thinking keywords
+        if thought_lower.contains("think")
+            || thought_lower.contains("reason")
+            || thought_lower.contains("consider")
+            || thought_lower.contains("evaluate options")
+        {
+            recommendations.push(ToolRecommendation {
+                tool: "think".to_string(),
+                confidence: 0.8,
+                rationale: "Thought mentions reasoning or consideration - think tool provides structured reasoning strategies".to_string(),
+                priority,            });
+            priority += 1;
+        }
+
+        // If no specific tools were identified, provide general recommendations based on context
+        if recommendations.is_empty() {
+            // Default to search and edit as they're the most commonly needed tools
+            recommendations.push(ToolRecommendation {
+                tool: "search".to_string(),
+                confidence: 0.6,
+                rationale: "No specific tools mentioned - search tool helps understand the codebase before making changes".to_string(),
+                priority: 1,            });
+            recommendations.push(ToolRecommendation {
+                tool: "edit".to_string(),
+                confidence: 0.5,
+                rationale: "No specific tools mentioned - edit tool enables making necessary code changes".to_string(),
+                priority: 2,            });
+        }
+
+        // Sort by priority to ensure correct order
+        recommendations.sort_by_key(|r| r.priority);
+        recommendations
+    }
 }
 
 impl Default for ThinkTool {
@@ -1485,5 +2319,427 @@ mod tests {
         assert!(result.steps.len() >= 3);
         assert!(!result.conclusion.is_empty());
         assert!(result.confidence > 0.0 && result.confidence <= 1.0);
+    }
+
+    // Sequential thinking capability tests
+
+    #[test]
+    fn test_sequential_thinking_basic() {
+        // Test basic sequential thought processing with multiple problems
+        let problems = [
+            "How to debug a segmentation fault?",
+            "What's the best approach for database optimization?",
+            "How to implement user authentication securely?",
+        ];
+
+        let mut results = Vec::new();
+        for problem in problems {
+            let result = ThinkTool::think_about_code(problem, Some("rust"), None).unwrap();
+            results.push(result);
+        }
+
+        // Verify each result has proper sequential structure
+        for (i, result) in results.iter().enumerate() {
+            assert!(result.steps.len() >= 3, "Problem {} should have at least 3 steps", i);
+            
+            // Verify steps are properly numbered sequentially
+            for (step_idx, step) in result.steps.iter().enumerate() {
+                assert_eq!(step.step_number, step_idx + 1, "Step numbering should be sequential");
+                assert!(!step.thought.is_empty(), "Each thought should have content");
+                assert!(!step.reasoning.is_empty(), "Each step should have reasoning");
+            }
+
+            // Verify metadata consistency
+            assert!(result.confidence >= 0.1 && result.confidence <= 0.95, "Confidence should be in valid range");
+            assert!(!result.conclusion.is_empty(), "Should have a conclusion");
+            assert!(!result.recommended_action.is_empty(), "Should have recommended action");
+        }
+
+        // Verify different problems produce different classifications
+        let problem_types: Vec<_> = results.iter().map(|r| &r.problem_type).collect();
+        assert!(problem_types.contains(&&CodeProblemType::BugFix));
+        assert!(problem_types.contains(&&CodeProblemType::Performance));
+        assert!(problem_types.contains(&&CodeProblemType::Implementation));
+    }
+
+    #[test]
+    fn test_thought_revision() {
+        // Test the capability to revise previous thoughts through re-analysis
+        let initial_problem = "Fix the authentication bug";
+        
+        // Initial analysis
+        let initial_result = ThinkTool::think_about_code(initial_problem, Some("rust"), None).unwrap();
+        assert_eq!(initial_result.problem_type, CodeProblemType::BugFix);
+        
+        // More specific problem with additional context (simulating revision)
+        let revised_problem = "Fix the authentication bug that causes null pointer exception in login validation";
+        let revised_result = ThinkTool::think_about_code(revised_problem, Some("rust"), Some("src/auth.rs")).unwrap();
+        
+        // Verify revision produces more detailed analysis
+        assert!(revised_result.steps.len() >= initial_result.steps.len(), "Revised analysis should be as detailed or more");
+        assert!(!revised_result.affected_files.is_empty(), "Revised analysis should identify affected files");
+        assert!(revised_result.confidence >= initial_result.confidence - 0.1, "Confidence should not significantly decrease");
+        
+        // Error-specific analysis should be more targeted
+        let error_result = ThinkTool::analyze_error("NullPointerException in auth validation").unwrap();
+        assert_eq!(error_result.problem_type, CodeProblemType::BugFix);
+        assert!(error_result.recommended_action.contains("null") || error_result.recommended_action.contains("check"));
+        
+        // Test thought data revision capability
+        let thought1 = ThoughtData::new("Initial analysis".to_string(), 1, 3);
+        let thought2 = ThoughtData::new("Revised analysis".to_string(), 2, 3)
+            .as_revision(1);
+        
+        assert!(!thought1.is_revision);
+        assert!(thought2.is_revision);
+        assert_eq!(thought2.revises_thought, Some(1));
+    }
+
+    #[test]
+    fn test_tool_recommendations() {
+        // Test that appropriate tools are recommended for different problem types
+        let test_cases = [
+            ("Debug memory leak in C++ application", CodeProblemType::BugFix, "debug"),
+            ("Optimize slow database queries", CodeProblemType::Performance, "profile"),
+            ("Refactor messy legacy code", CodeProblemType::Refactoring, "refactor"),
+            ("Implement user registration feature", CodeProblemType::Implementation, "implement"),
+            ("Fix SQL injection vulnerability", CodeProblemType::Security, "security"),
+            ("Write comprehensive unit tests", CodeProblemType::Testing, "test"),
+            ("Document the REST API endpoints", CodeProblemType::Documentation, "documentation"),
+            ("Design microservices architecture", CodeProblemType::Architecture, "architecture"),
+            ("Review code for best practices", CodeProblemType::CodeReview, "review"),
+        ];
+
+        for (problem, expected_type, expected_action_keyword) in test_cases {
+            let result = ThinkTool::think_about_code(problem, Some("rust"), None).unwrap();
+            
+            assert_eq!(result.problem_type, expected_type, "Problem '{}' should be classified as {:?}", problem, expected_type);
+            
+            let action_lower = result.recommended_action.to_lowercase();
+            assert!(action_lower.contains(expected_action_keyword), 
+                "Recommended action '{}' should contain '{}' for problem type {:?}", 
+                result.recommended_action, expected_action_keyword, expected_type);
+                
+            // Verify approach reasoning contains problem-specific guidance
+            let has_relevant_step = result.steps.iter().any(|step| {
+                let step_content = format!("{} {}", step.thought, step.reasoning).to_lowercase();
+                step_content.contains(expected_action_keyword) || 
+                step_content.contains(&format!("{:?}", expected_type).to_lowercase())
+            });
+            assert!(has_relevant_step, "Steps should contain problem-type specific reasoning for {:?}", expected_type);
+        }
+        
+        // Test tool recommendation structure
+        let tool_rec = ToolRecommendation {
+            tool: "search".to_string(),
+            confidence: 0.8,
+            rationale: "Need to find relevant code".to_string(),
+            priority: 1,
+        };
+        
+        assert_eq!(tool_rec.tool, "search");
+        assert!(tool_rec.confidence > 0.0 && tool_rec.confidence <= 1.0);
+        assert!(!tool_rec.rationale.is_empty());
+    }
+
+    #[test]
+    fn test_branch_management() {
+        // Test branching thoughts for alternative approaches
+        
+        // Analyze from performance perspective
+        let perf_result = ThinkTool::think_about_code(
+            "Optimize performance bottlenecks in authentication system",
+            Some("rust"),
+            Some("src/auth.rs")
+        ).unwrap();
+        
+        // Analyze from security perspective  
+        let security_result = ThinkTool::think_about_code(
+            "Fix security vulnerabilities in authentication system",
+            Some("rust"),
+            Some("src/auth.rs")
+        ).unwrap();
+        
+        // Verify different approaches are taken
+        assert_eq!(perf_result.problem_type, CodeProblemType::Performance);
+        assert_eq!(security_result.problem_type, CodeProblemType::Security);
+        
+        // Performance branch should focus on optimization
+        let perf_actions = perf_result.recommended_action.to_lowercase();
+        assert!(perf_actions.contains("profile") || perf_actions.contains("measure") || perf_actions.contains("performance"));
+        
+        // Security branch should focus on vulnerabilities
+        let security_actions = security_result.recommended_action.to_lowercase();
+        assert!(security_actions.contains("security") || security_actions.contains("vulnerability") || security_actions.contains("assessment"));
+        
+        // Both should identify the same affected files but different approaches
+        assert_eq!(perf_result.affected_files, security_result.affected_files);
+        assert_ne!(perf_result.recommended_action, security_result.recommended_action);
+        
+        // Test ThoughtData branching functionality
+        let mut session = ThinkSession::new(100);
+        session.add_thought(ThoughtData::new("Main thought".to_string(), 1, 3));
+        
+        // Create a branch from the first thought
+        session.create_branch(0, "security-branch".to_string());
+        assert!(session.branches.contains_key("security-branch"));
+        
+        // Test thought with branch data
+        let branched_thought = ThoughtData::new("Security analysis".to_string(), 1, 2)
+            .with_branch(1, "security-branch".to_string());
+        
+        assert_eq!(branched_thought.branch_from_thought, Some(1));
+        assert_eq!(branched_thought.branch_id, Some("security-branch".to_string()));
+        
+        // Error analysis branching - different error types should produce different strategies
+        let null_error = ThinkTool::analyze_error("NullPointerException in user service").unwrap();
+        let memory_error = ThinkTool::analyze_error("Segmentation fault in buffer handling").unwrap();
+        let network_error = ThinkTool::analyze_error("Connection timeout in API client").unwrap();
+        
+        // All should be bug fixes but with different approaches
+        assert_eq!(null_error.problem_type, CodeProblemType::BugFix);
+        assert_eq!(memory_error.problem_type, CodeProblemType::BugFix);
+        assert_eq!(network_error.problem_type, CodeProblemType::BugFix);
+        
+        // But recommended actions should be different
+        let actions = [&null_error.recommended_action, &memory_error.recommended_action, &network_error.recommended_action];
+        assert!(actions.iter().all(|action| !action.is_empty()));
+        // Actions should be unique (no two identical approaches)
+        for (i, action1) in actions.iter().enumerate() {
+            for (j, action2) in actions.iter().enumerate() {
+                if i != j {
+                    assert_ne!(action1, action2, "Different error types should have different recommended actions");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_session_history() {
+        // Test that thought history is maintained correctly across multiple analyses
+        let mut session = ThinkSession::new(100);
+        
+        // Simulate a debugging session with progressive problem refinement
+        let problems = [
+            "Application crashes on startup",
+            "Application crashes when loading configuration", 
+            "Null pointer when parsing config file in src/config.rs line 45",
+        ];
+        
+        let mut session_results = Vec::new();
+        
+        for (i, problem) in problems.iter().enumerate() {
+            let context = if i == 2 { Some("src/config.rs") } else { None };
+            let result = if i == 2 {
+                ThinkTool::analyze_error(problem).unwrap()
+            } else {
+                ThinkTool::think_about_code(problem, Some("rust"), context).unwrap()
+            };
+            
+            // Add thought to session
+            let thought = ThoughtData::new(format!("Problem {}: {}", i + 1, problem), i + 1, 3)
+                .with_confidence(result.confidence);
+            session.add_thought(thought);
+            
+            session_results.push(result);
+        }
+        
+        // Verify session history
+        assert_eq!(session.thought_history.len(), 3);
+        assert_eq!(session.total_thought_count, 3);
+        
+        // Verify progression in specificity and confidence
+        assert!(session_results.len() == 3);
+        
+        // Later results should be more specific
+        assert!(session_results[2].affected_files.len() >= session_results[0].affected_files.len());
+        
+        // Error analysis (last) should have high confidence
+        assert!(session_results[2].confidence >= 0.7, "Error analysis should have high confidence");
+        
+        // All should be related to debugging/bug fixing
+        let problem_types: Vec<_> = session_results.iter().map(|r| &r.problem_type).collect();
+        assert!(problem_types.iter().all(|&pt| matches!(pt, &CodeProblemType::BugFix | &CodeProblemType::Implementation)));
+        
+        // Recommended actions should become more specific
+        let actions: Vec<_> = session_results.iter().map(|r| &r.recommended_action).collect();
+        assert!(actions[2].len() >= actions[0].len(), "Later actions should be more detailed");
+        
+        // Test session history access
+        let current_history = session.current_history();
+        assert_eq!(current_history.len(), 3);
+        
+        // Test session thought progression
+        for (i, thought) in current_history.iter().enumerate() {
+            assert_eq!(thought.thought_number, i + 1);
+            assert!(!thought.thought.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_tool_confidence_scores() {
+        // Verify confidence scores are appropriate for each problem type
+        let test_cases = [
+            // High confidence cases (well-defined, specific problems)
+            ("Fix NullPointerException in UserService.java line 42", CodeProblemType::BugFix, 0.7, 0.95),
+            ("Write unit tests for calculateTax method", CodeProblemType::Testing, 0.7, 0.95),
+            ("Document the getUserById API endpoint", CodeProblemType::Documentation, 0.7, 0.95),
+            
+            // Medium confidence cases (moderately complex)
+            ("Implement user authentication with JWT", CodeProblemType::Implementation, 0.5, 0.8),
+            ("Refactor the large UserService class", CodeProblemType::Refactoring, 0.5, 0.8),
+            
+            // Lower confidence cases (complex, contextual)
+            ("Design scalable microservices architecture", CodeProblemType::Architecture, 0.4, 0.7),
+            ("Optimize overall system performance", CodeProblemType::Performance, 0.4, 0.7),
+            ("Review codebase for security issues", CodeProblemType::Security, 0.4, 0.7),
+        ];
+        
+        for (problem, expected_type, min_confidence, max_confidence) in test_cases {
+            let result = ThinkTool::think_about_code(problem, Some("java"), None).unwrap();
+            
+            assert_eq!(result.problem_type, expected_type, "Problem type should match for: {}", problem);
+            
+            assert!(result.confidence >= min_confidence && result.confidence <= max_confidence,
+                "Confidence {:.2} should be between {:.2} and {:.2} for {:?} problem: '{}'",
+                result.confidence, min_confidence, max_confidence, expected_type, problem);
+        }
+        
+        // Test confidence with technical specificity
+        let vague_problem = "Fix something that's broken";
+        let specific_problem = "Fix memory leak in ArrayList resize operation in Java HashMap implementation";
+        
+        let vague_result = ThinkTool::think_about_code(vague_problem, Some("java"), None).unwrap();
+        let specific_result = ThinkTool::think_about_code(specific_problem, Some("java"), None).unwrap();
+        
+        assert!(specific_result.confidence > vague_result.confidence,
+            "Specific problems should have higher confidence than vague ones");
+        
+        // Test confidence with language context
+        let rust_result = ThinkTool::think_about_code("Implement memory-safe linked list", Some("rust"), None).unwrap();
+        let assembly_result = ThinkTool::think_about_code("Implement memory-safe linked list", Some("assembly"), None).unwrap();
+        
+        // Assembly should have lower confidence due to complexity
+        assert!(rust_result.confidence >= assembly_result.confidence,
+            "Complex languages should not increase confidence unnecessarily");
+            
+        // Test error analysis confidence
+        let error_result = ThinkTool::analyze_error("java.lang.NullPointerException: Cannot invoke method on null object").unwrap();
+        assert!(error_result.confidence >= 0.7, "Error analysis with clear error messages should have high confidence");
+        
+        // Test refactoring confidence
+        let refactoring_result = ThinkTool::plan_refactoring("Long method with 200 lines").unwrap();
+        assert!(refactoring_result.confidence >= 0.8, "Clear refactoring problems should have high confidence");
+        
+        // Test ThoughtData confidence
+        let thought = ThoughtData::new("Test thought".to_string(), 1, 3)
+            .with_confidence(0.85);
+        assert_eq!(thought.confidence, 0.85);
+        
+        // Test confidence bounds
+        let bounded_thought = ThoughtData::new("Test".to_string(), 1, 1)
+            .with_confidence(1.5); // Should be clamped to 1.0
+        assert_eq!(bounded_thought.confidence, 1.0);
+    }
+
+    #[test]
+    fn test_sequential_thinking_step_quality() {
+        // Test the quality and coherence of sequential thinking steps
+        let complex_problem = "Design and implement a secure, scalable user authentication system with OAuth2 integration";
+        
+        let result = ThinkTool::think_about_code(complex_problem, Some("typescript"), Some("src/auth/")).unwrap();
+        
+        // Should generate multiple detailed steps for complex problems
+        assert!(result.steps.len() >= 4, "Complex problems should generate more detailed analysis");
+        
+        // Verify step progression makes logical sense
+        let step_keywords = result.steps.iter().map(|step| {
+            format!("{} {}", step.thought, step.reasoning).to_lowercase()
+        }).collect::<Vec<_>>();
+        
+        // Early steps should focus on understanding/analysis
+        assert!(step_keywords[0].contains("context") || step_keywords[0].contains("understand") || step_keywords[0].contains("analyz"));
+        
+        // Later steps should focus on implementation/solution
+        let last_steps = &step_keywords[step_keywords.len().saturating_sub(2)..];
+        assert!(last_steps.iter().any(|step| {
+            step.contains("implement") || step.contains("solution") || step.contains("strategy")
+        }));
+        
+        // Verify step content quality
+        for (i, step) in result.steps.iter().enumerate() {
+            assert!(step.thought.len() >= 20, "Step {} thought should be substantial", i + 1);
+            assert!(step.reasoning.len() >= 30, "Step {} reasoning should be detailed", i + 1);
+            
+            // Steps should not be repetitive
+            for (j, other_step) in result.steps.iter().enumerate() {
+                if i != j {
+                    assert_ne!(step.thought, other_step.thought, "Steps should not be identical");
+                }
+            }
+        }
+        
+        // Verify conclusion incorporates the analysis
+        assert!(result.conclusion.len() >= 50, "Conclusion should be comprehensive");
+        assert!(result.conclusion.contains("auth") || result.conclusion.contains("security") || result.conclusion.contains("OAuth"));
+        
+        // Verify recommended action is specific and actionable
+        assert!(result.recommended_action.len() >= 30, "Recommended action should be detailed");
+        assert!(!result.recommended_action.contains("TODO") && !result.recommended_action.contains("..."));
+        
+        // Test step description structure
+        let step_desc = StepDescription {
+            description: "Analyze authentication requirements".to_string(),
+            expected_outcome: "Clear understanding of auth needs".to_string(),
+            next_conditions: vec!["Security requirements defined".to_string()],
+        };
+        
+        assert!(!step_desc.description.is_empty());
+        assert!(!step_desc.expected_outcome.is_empty());
+        assert!(!step_desc.next_conditions.is_empty());
+    }
+
+    #[test]
+    fn test_thinking_consistency() {
+        // Test that repeated analysis of the same problem produces consistent results
+        let problem = "Optimize database query performance for user search";
+        
+        let results: Vec<_> = (0..3).map(|_| {
+            ThinkTool::think_about_code(problem, Some("sql"), Some("queries/user_search.sql")).unwrap()
+        }).collect();
+        
+        // All results should have same classification
+        let problem_types: Vec<_> = results.iter().map(|r| &r.problem_type).collect();
+        assert!(problem_types.iter().all(|&pt| pt == &CodeProblemType::Performance));
+        
+        // Confidence should be consistent (within reasonable variance)
+        let confidences: Vec<_> = results.iter().map(|r| r.confidence).collect();
+        let confidence_variance = {
+            let mean = confidences.iter().sum::<f32>() / confidences.len() as f32;
+            confidences.iter().map(|c| (c - mean).abs()).sum::<f32>() / confidences.len() as f32
+        };
+        assert!(confidence_variance < 0.1, "Confidence should be consistent across runs");
+        
+        // Step count should be consistent
+        let step_counts: Vec<_> = results.iter().map(|r| r.steps.len()).collect();
+        let min_steps = *step_counts.iter().min().unwrap();
+        let max_steps = *step_counts.iter().max().unwrap();
+        assert!(max_steps - min_steps <= 1, "Step count should be consistent");
+        
+        // Recommended actions should be similar (same problem type)
+        let actions: Vec<_> = results.iter().map(|r| &r.recommended_action).collect();
+        assert!(actions.iter().all(|action| {
+            action.to_lowercase().contains("profile") || 
+            action.to_lowercase().contains("measure") ||
+            action.to_lowercase().contains("performance")
+        }));
+        
+        // Test basic ThinkResult with thought_data
+        let basic_result = ThinkTool::think("How to solve this?").unwrap();
+        assert!(basic_result.steps.len() >= 3);
+        assert!(!basic_result.conclusion.is_empty());
+        assert!(basic_result.confidence > 0.0);
+        // thought_data should be None for basic thinking
+        assert!(basic_result.thought_data.is_none());
     }
 }
