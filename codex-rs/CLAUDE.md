@@ -4,73 +4,125 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**AGCodex** is a complete overhaul of the original AGCodex project - an independent, TUI-first AI coding assistant that runs locally. This is NOT a migration but a completely rebranded and redesigned system with enhanced AST-based intelligence, configurable operating modes, and comprehensive language support via tree-sitter.
+**AGCodex** is a complete overhaul transforming the original Codex project into an independent, TUI-first AI coding assistant that runs locally. This is a completely rebranded and redesigned system with enhanced AST-based intelligence, configurable operating modes, and comprehensive language support via tree-sitter.
 
-### Key Transformation Goals
-- **Complete rebranding**: agcodex → agcodex across all crates and repositories
-- **Three operating modes**: Plan (read-only), Build (full access), Review (quality focus)
-- **50+ language support**: Comprehensive tree-sitter integration out of the box
-- **AST-RAG intelligence**: Hierarchical retrieval with 90%+ code compression
-- **Session persistence**: Efficient storage at ~/.agcodex/history with Zstd compression
-- **GPT-5 best practices**: Structured XML-like prompts, high reasoning/verbosity defaults
-- **Internal agent tools**: AST-powered code analysis and transformation tools
+### Core Architecture Philosophy
+- **Three simple operating modes**: Plan (read-only), Build (full access), Review (quality focus) with Shift+Tab switching
+- **Comprehensive language support**: Tree-sitter integration for 27+ languages (extensible to 50+)
+- **AST-RAG intelligence**: Hierarchical retrieval with multi-layer search and 70-95% code compression
+- **Efficient session persistence**: Storage at ~/.agcodex/history with Zstd compression
+- **GPT-5 optimized**: Structured XML-like prompts, high reasoning/verbosity defaults
+- **Internal agent tools**: Simple names (search, edit, think, plan) hiding sophisticated implementations
 
-## Current Implementation State (Updated: 2025-01-21)
+## Current Architecture
 
-### What's Working ✅ MAJOR MILESTONE ACHIEVED
-- **TUI Foundation**: Basic ChatWidget, onboarding flow, file search integration
-- **Conversation Management**: UUID-based tracking, turn history, diff tracking
-- **Client Architecture**: Dual API support (Responses/Chat), streaming, multi-provider
-- **Sandboxing**: Platform-specific (Seatbelt/Landlock/seccomp) with approval workflows
-- **MCP Protocol**: Client/server modes with tool discovery and invocation
-- **Basic Agent Support**: Simple spawn_agent function in TUI
-- **AST Infrastructure**: ✅ COMPLETE tree-sitter integration with 27 languages
-- **Internal Tools Suite**: ✅ COMPLETE - 10 tools with context-aware outputs:
-  - **search**: Multi-layer Tantivy engine (<1ms symbol, <5ms full-text)
-  - **edit**: Basic patch-based editing (<1ms performance)
-  - **think**: 3 reasoning strategies (Sequential, Shannon, Actor-Critic)
-  - **plan**: Double-planning with parallelization analysis
-  - **glob**: File discovery with ignore crate (fd_find.rs)
-  - **tree**: Tree-sitter parser with 27 languages
-  - **grep**: AST-grep pattern matching (scaffolding ready)
-  - **bash**: Enhanced safety validation pipeline
-  - **index**: Tantivy indexing (integrated in search)
-  - **patch**: AST transformations (planned)
-- **Context-Aware Outputs**: All tools provide rich LLM-friendly context
-- **Search Engine**: Multi-layer architecture with 4 tiers:
-  - Symbol index (<1ms)
-  - Tantivy full-text (<5ms)
-  - AST cache (<10ms)
-  - Ripgrep fallback
-- **Code Compression**: AI Distiller-style compaction achieving 70-95% reduction
-- **Terminal Notifications**: Bell notifications integrated in TUI (no separate tool)
-- **Operating Modes**: Basic ModeManager implementation with Plan/Build/Review (2025-01-21)
-- **Error Handling**: Domain-specific error types with thiserror (2025-01-21)
-- **Workspace Dependencies**: Consolidated ~80 dependencies in root Cargo.toml (2025-01-21)
+### Core Systems Implemented
 
-### Critical Gaps (Must Implement)
-- ~~**Error Handling**: 21 anyhow uses vs 4 thiserror~~ ✅ **COMPLETE** (2025-08-21)
-- ~~**AST Intelligence**: Tree-sitter (27 langs), ast-grep, AI Distiller-style compaction~~ ✅ **COMPLETE** (2025-08-21)
-  - **Implemented**: Full tree-sitter with LanguageRegistry, 70-95% compression
-- ~~**Session Management**: Persistence at ~/.agcodex/history~~ ✅ **COMPLETE** (2025-08-21)
-  - **Implemented**: Zstd compression, bincode/MessagePack serialization
-- ~~**Operating Modes**: No Plan/Build/Review modes~~ ✅ **SCAFFOLDED** (needs TUI integration)
-- **Mode Switching**: Missing Shift+Tab for instant mode cycling in TUI
-  - **Plan created**: ModeIndicator widget and integration strategy ready
-- **Embeddings**: No configurable Light/Medium/Hard intelligence options
-  - **Plan created**: Multi-provider support with complete separation from chat models
-- ~~**Location Awareness**: Precise file:line:column metadata~~ ✅ **COMPLETE** (2025-08-21)
-  - **Implemented**: SourceLocation type with full metadata tracking
-- ~~**Internal Agent Tools**: AST-based analysis, search, and transformation tools~~ ✅ **COMPLETE** (2025-01-21)
-  - **Implemented**: Full suite of 10 tools with context-aware outputs
-  - **Simple naming**: search, edit, think, plan, glob, tree, grep, bash, index, patch
-  - **Double-planning**: Meta-task → sub-task decomposition for parallelization
-  - **Context-aware**: Every tool returns rich metadata for LLM consumption
-- ~~**Defaults**: Need HIGH reasoning effort and verbosity~~ ✅ **COMPLETE** (2025-08-21)
-- **Multi-Agent**: No orchestrator, worktree management, or coordination
-- **Type Safety**: Minimal newtype/builder/typestate patterns
-- ~~**TUI Features**: Terminal bell notifications~~ ✅ **COMPLETE** (2025-08-21)
-- **TUI Features**: Missing Ctrl+J, Ctrl+H, Ctrl+S, Ctrl+A, Ctrl+Z/Y functionality
+#### TUI Foundation
+- **ChatWidget**: Main conversation interface with streaming support
+- **Bottom pane**: Input handling with enhanced keyboard support
+- **Onboarding flow**: First-run user guidance
+- **File search**: Integration with tree-sitter AST search
+
+#### Conversation Management  
+- **UUID-based tracking**: Each conversation has unique identifier
+- **Turn history**: Complete conversation state preservation
+- **Diff tracking**: Changes tracked between conversation turns
+- **Stream controller**: Manages streaming responses from LLMs
+
+#### Client Architecture
+- **Dual API support**: Both Responses and Chat Completions APIs
+- **Multi-provider**: OpenAI, Anthropic, Ollama, custom endpoints
+- **Streaming**: Real-time response streaming with backpressure
+- **Authentication**: API keys and ChatGPT login support
+
+#### Security & Sandboxing
+- **Platform-specific**: Seatbelt (macOS), Landlock (Linux), seccomp
+- **Approval workflows**: User consent for dangerous operations  
+- **Execution policies**: Configurable security restrictions
+
+#### Internal Tools Architecture
+```rust
+// Simple external names, sophisticated internal implementations
+pub enum Tool {
+    Search,  // Multi-layer Tantivy engine
+    Edit,    // Basic patch-based editing  
+    Think,   // Internal reasoning strategies
+    Plan,    // Double-planning decomposition
+    Glob,    // File discovery (fd_find.rs)
+    Tree,    // Tree-sitter parser (27 languages)
+    Grep,    // AST-grep pattern matching
+    Bash,    // Enhanced safety validation
+    Index,   // Tantivy indexing
+    Patch,   // AST transformations (planned)
+}
+```
+
+#### Search Engine Architecture
+```rust
+pub struct SearchEngine {
+    symbol_index: Arc<DashMap<String, Vec<Symbol>>>,  // Layer 1: <1ms
+    tantivy: Arc<TantivyIndex>,                       // Layer 2: <5ms
+    ast_cache: Arc<DashMap<PathBuf, ParsedAST>>,     // Layer 3: <10ms
+    ripgrep: RipgrepFallback,                        // Layer 4: fallback
+}
+```
+
+#### AST Intelligence
+- **Tree-sitter**: 27 language parsers integrated
+- **Language registry**: Auto-detection from file extensions
+- **Code compression**: 70-95% reduction (3 levels)
+- **Location tracking**: Precise file:line:column metadata
+
+### Planned Architecture Enhancements
+
+#### Operating Modes System
+```rust
+// Target: Shift+Tab instant switching
+pub enum OperatingMode {
+    Plan,    // Read-only analysis
+    Build,   // Full access (default)
+    Review,  // Quality focus, limited edits
+}
+```
+
+#### Subagent System
+```rust
+// Target: @agent-name invocation
+pub struct SubAgent {
+    name: String,
+    mode_override: Option<OperatingMode>,
+    tools: Vec<Tool>,
+    custom_prompt: String,
+}
+```
+
+#### Multi-Agent Orchestration
+- **AgentOrchestrator**: Coordinate multiple agents
+- **Git worktree support**: Isolated development branches
+- **Message bus**: Inter-agent communication
+- **Context inheritance**: Shared AST indices
+
+#### Enhanced TUI Features
+- **Ctrl+J**: Jump to message with context restoration
+- **Ctrl+H**: History browser with timeline
+- **Ctrl+S/O**: Session save/load dialogs
+- **Ctrl+A**: Agent panel with progress bars
+- **Ctrl+Z/Y**: Undo/redo conversation turns
+
+#### Type System Improvements
+- **Newtype pattern**: Strong typing for domain concepts
+- **Builder pattern**: Fluent API construction
+- **Typestate pattern**: Compile-time state machines
+
+#### Independent Embeddings System
+```rust
+// Target: Optional, zero-overhead when disabled
+pub struct EmbeddingsManager {
+    config: Option<EmbeddingsConfig>,  // None = disabled
+    providers: HashMap<String, Box<dyn EmbeddingProvider>>,
+}
+```
 
 ## Build and Development Commands
 
@@ -229,45 +281,26 @@ The codebase is organized as a Cargo workspace with the following crates:
 - `notification.rs`: In-TUI notification system
 - `widgets/`: Custom Ratatui widgets for AGCodex
 
-## Refactoring Priority Roadmap
+## Implementation Roadmap
 
-### Phase 1: Foundation & Rebranding (IMMEDIATE)
-1. **Complete rebranding**: agcodex → agcodex across all 19+ crates
-   - **Status**: Plan created with automated script for 8,773 occurrences
-2. **Implement operating modes**: Plan/Build/Review with Shift+Tab switching
-   - **Status**: ModeManager scaffolded, TUI integration plan ready
-3. **Session persistence**: Create ~/.agcodex/history with Zstd compression
-   - **Status**: Design complete, implementation pending
-4. ~~**Set HIGH defaults**: reasoning_effort=high, verbosity=high~~ ✅ **COMPLETE**
-5. ~~**Complete anyhow→thiserror migration**~~ ✅ **COMPLETE** (2025-08-21)
+### Immediate Priorities
+1. **Complete rebranding**: Run script for agcodex → agcodex (8,773 occurrences)
+2. **Wire TUI mode switching**: Implement Shift+Tab with ModeIndicator widget
+3. **Complete patch tool**: AST transformation implementation
+4. **Subagent integration**: Link planning tool with orchestrator
 
-### Phase 2: AST Intelligence ✅ **COMPLETE** (2025-01-21)
-1. ~~**Tree-sitter integration**: 27 programming language parsers~~ ✅ **COMPLETE**
-   - Full LanguageRegistry with auto-detection
-   - Support for: Rust, Python, JS/TS, Go, Java, C/C++, C#, Ruby, and 19 more
-2. ~~**AST-RAG engine**: Hierarchical retrieval with Tantivy indexing~~ ✅ **COMPLETE**
-   - Multi-layer search: Symbol → Tantivy → AST → Ripgrep
-   - Performance: <1ms symbol, <5ms full-text, <10ms AST
-3. ~~**AI Distiller compaction**: 70-95% code compression~~ ✅ **COMPLETE**
-   - Three levels: Light (70%), Standard (85%), Maximum (95%)
-4. ~~**Location-aware embeddings**: Precise file:line:column metadata~~ ✅ **COMPLETE**
-   - SourceLocation type with full metadata tracking
-5. ~~**Internal agent tools**: Full suite with context-aware outputs~~ ✅ **COMPLETE**
-   - 10 tools: search, edit, think, plan, glob, tree, grep, bash, index, patch
-   - All tools return ToolOutput<T> with context, changes, metadata, and LLM summary
-
-### Phase 3: Core TUI Features (HIGH PRIORITY)
+### Core TUI Features
 1. **Message Navigation** (Ctrl+J jump with context restoration)
-2. **History Browser** (Ctrl+H with timeline visualization)
-3. **Session switching**: Smooth UX for switching between sessions
-4. **Multi-Agent Orchestrator** with git worktree support
-5. **Notification system** (terminal bell, desktop notifications)
+2. **History Browser** (Ctrl+H with timeline visualization)  
+3. **Session Management** (Ctrl+S save, Ctrl+O load)
+4. **Multi-Agent Panel** (Ctrl+A with progress bars)
+5. **Undo/Redo** (Ctrl+Z/Y for conversation turns)
 
-### Phase 4: Enhancement (MEDIUM PRIORITY)
+### Architecture Enhancements
 1. **Type system improvements** (newtype, builder, typestate patterns)
-2. **Configurable intelligence**: Light/Medium/Hard embedding options
-3. **GPT-5 prompt optimization**: XML-structured prompts
-4. **AST-based edit tools**: Precise patches with location metadata
+2. **Independent embeddings** (optional, multi-provider)
+3. **Subagent system** (@agent-name invocation)
+4. **Git worktree integration** (isolated development)
 
 ## AGCodex Operating Modes
 
@@ -384,68 +417,24 @@ prompt: |
 - **Chaining**: Sequential (→) or parallel (+) execution
 - **Context Inheritance**: AST indices, embeddings, and session history preserved
 
-## Critical Refactoring Requirements
+## Design Requirements
 
-### 1. Complete Migration from anyhow to thiserror
-**MANDATORY**: Replace all uses of `anyhow` with idiomatic `thiserror` patterns throughout the codebase.
-- Create domain-specific error types in each crate
-- Replace `anyhow::Result` with specific `Result<T, DomainError>`
-- Use `#[from]` for automatic error conversion
-- Add contextual information to error variants
+### Error Handling Strategy
+- **Use thiserror exclusively**: Domain-specific error types in each crate
+- **No anyhow**: Replace all `anyhow::Result` with specific `Result<T, DomainError>`
+- **Rich error context**: Include file locations, operation details in errors
 
-### 2. Enhanced AST-Based Code Intelligence ✅ **COMPLETE**
+### Type System Requirements
+- **Newtype pattern**: Strong typing for FilePath, LineNumber, AstNodeId
+- **Builder pattern**: Fluent APIs for complex configurations
+- **Typestate pattern**: Compile-time guarantees for state machines
 
-**Implemented State**: Full AST-powered search and analysis with semantic understanding.
-
-**Completed Enhancements**:
-
-#### A. Tree-sitter Integration (27 Languages) ✅
-Implemented comprehensive language support with LanguageRegistry:
-- **Core**: Rust, Python, JavaScript, TypeScript, Go, Java, C, C++, C#
-- **Web**: HTML, CSS, JSON, YAML, TOML
-- **Scripting**: Bash, Ruby, PHP
-- **Functional**: Haskell, Elixir
-- **Systems**: Swift, Kotlin
-- **Config/Data**: SQL, Dockerfile
-- **Documentation**: Markdown
-
-#### B. AST-grep Integration ✅
-Added `ast-grep-core` and `ast-grep-language` for:
-- Pattern-based AST matching
-- YAML rule support
-- Semantic transformations
-
-#### C. Smart Context Retrieval Architecture ✅
-Implemented multi-layer search engine:
-- **Symbol Index**: <1ms lookup with DashMap
-- **Tantivy Engine**: <5ms full-text search
-- **AST Cache**: <10ms parsed tree access
-- **Query Cache**: LRU caching for frequent searches
-- **Compression**: 70-95% code reduction
-
-### 3. Robust Type System Enhancements
-
-**Required Patterns**:
-- **Newtype Pattern**: Strong typing for domain concepts (FilePath, LineNumber, AstNodeId)
-- **Builder Pattern**: Fluent APIs for complex type construction
-- **Typestate Pattern**: Compile-time state machine guarantees
-
-### 4. Native Tool Integration ✅ **COMPLETE**
-
-**fd-find Integration**: Native file discovery using `ignore::WalkBuilder` with parallel search support.
-- Implemented as `glob` tool in fd_find.rs
-- Respects .gitignore patterns
-- Parallel walking for performance
-
-**AST Search Tools**: Tree-sitter powered search with semantic understanding and precise location tracking.
-- Multi-layer search engine with Tantivy
-- Symbol indexing for instant lookups
-- Context-aware output with surrounding code
-
-**Unified Tool Interface**: All tools implement consistent patterns:
-- Context-aware ToolOutput<T> structure
-- Rich metadata for LLM consumption
-- Before/after states and semantic impact analysis
+### Tool Design Principles
+1. **Simple external names**: search, edit, think, plan, glob, tree, grep, bash, index, patch
+2. **Sophisticated internals**: Multi-layer engines, caching, optimization
+3. **Context-aware outputs**: Rich metadata for LLM consumption
+4. **Performance tiers**: Fast (edit) → Smart (patch) → Comprehensive (search)
+5. **No redundancy**: Each tool has unique, clear purpose
 
 ### 5. Session Management and Persistence
 
@@ -823,38 +812,24 @@ input_type = "document"
 - **Fast Loading**: Memory-mapped metadata with lazy message loading
 - **Version Header**: Magic bytes "AGCX" for format detection
 
-## Implementation Status (2025-01-21)
+## Testing Strategy
 
-### ✅ Completed (Major Milestone)
-- **Internal Tools Suite**: Full implementation of 10 tools
-  - search (multi-layer with Tantivy)
-  - edit (basic patching, <1ms)
-  - think (3 reasoning strategies)
-  - plan (double-planning)
-  - glob (file discovery)
-  - tree (27 languages)
-  - grep (AST patterns)
-  - bash (safety validation)
-  - index (Tantivy)
-  - patch (planned for AST transforms)
-- **Context-Aware Outputs**: Rich metadata for all tools
-- **AST Infrastructure**: Complete with 27 languages
-- **Search Engine**: 4-layer architecture achieving targets
-- **Terminal Notifications**: Integrated in TUI
-- **Session Persistence**: Zstd compression ready
-- **Error Handling**: Full thiserror migration
+### Unit Testing
+- Each tool has dedicated test module
+- Mock AST structures for parser testing
+- Performance benchmarks for each operation
 
-### 🚀 Next Priority
-- **Rebranding**: Run script for 8,773 occurrences
-- **TUI Mode Switching**: Wire Shift+Tab with ModeIndicator
-- **Patch Tool**: Complete AST transformation implementation
-- **Subagent Integration**: Link planning with orchestrator
-- **Testing**: Fix remaining 57 test compilation errors
+### Integration Testing  
+- Tool combination tests (search → edit → patch)
+- Mode switching with permission enforcement
+- Session persistence round-trips
 
-### 📦 Deferred
-- **50+ Languages**: Currently 27, expandable later
-- **Embeddings**: Optional system, disabled by default
-- **Desktop Notifications**: Terminal bells sufficient for now
+### Performance Testing
+```bash
+cargo bench --bench context_engine
+cargo bench --bench ast_indexer  
+cargo bench --bench session_persistence
+```
 
 ## Performance Targets
 
