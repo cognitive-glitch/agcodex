@@ -14,7 +14,7 @@ use serde::Serialize;
 use serde_json::json;
 use tracing::error;
 
-use crate::agcodex_tool_runner::INVALID_PARAMS_ERROR_CODE;
+use crate::codex_tool_runner::INVALID_PARAMS_ERROR_CODE;
 
 /// Conforms to [`agcodex_mcp_types::ElicitRequestParams`] so that it can be used as the
 /// `params` field of an [`ElicitRequest`].

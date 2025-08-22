@@ -9,8 +9,8 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize logging
-    tracing_subscriber::fmt::init();
+    // Initialize logging if needed
+    // tracing_subscriber::fmt::init();
 
     // Get the current directory or use provided argument
     let search_dir = env::args()
@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create glob tool with parallel processing enabled
     let glob_tool = GlobTool::new(search_dir.clone())
-        .with_parallel(true)
+        .with_parallelism(4)
         .with_max_results(Some(50)) // Limit for demo
         .with_include_hidden(false);
 
@@ -31,28 +31,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📋 Demo 1: Finding all Rust files (*.rs)");
     match glob_tool.find_type("rs") {
         Ok(result) => {
+            let duration = result
+                .metadata
+                .completed_at
+                .duration_since(result.metadata.started_at)
+                .unwrap_or_default();
             println!(
                 "✅ Found {} Rust files in {}ms",
                 result.result.len(),
-                result.metadata.search_duration.as_millis()
+                duration.as_millis()
             );
 
             for file_match in result.result.iter().take(10) {
                 let file_type_emoji = match file_match.file_type {
-                    FileType::Source => "📄",
-                    FileType::Test => "🧪",
-                    FileType::Config => "⚙️",
-                    FileType::Documentation => "📚",
-                    FileType::Generated => "🔧",
-                    FileType::Binary => "🔵",
-                    FileType::Unknown => "❓",
+                    FileType::File => "📄",
+                    FileType::Directory => "📁",
+                    FileType::Symlink => "🔗",
+                    FileType::Other => "❓",
                 };
 
                 println!(
                     "  {} {} ({} bytes)",
                     file_type_emoji,
                     file_match.relative_path.display(),
-                    file_match.size
+                    file_match.size.unwrap_or(0)
                 );
             }
 
@@ -61,8 +63,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             println!(
-                "📊 Performance: {} threads, {}KB memory used",
-                result.performance.threads_used, result.performance.memory_used_kb
+                "📊 Performance: {}ms execution time, {}KB peak memory",
+                result.performance.execution_time.as_millis(),
+                result.performance.memory_usage.peak_bytes / 1024
             );
         }
         Err(e) => println!("❌ Error: {}", e),
@@ -93,24 +96,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!();
 
-    // Demo 3: Find test files (smart classification)
-    println!("📋 Demo 3: Finding test files (intelligent classification)");
+    // Demo 3: Find all files (filtering regular files)
+    println!("📋 Demo 3: Finding all regular files");
     match glob_tool.glob("*") {
         Ok(result) => {
-            let test_files: Vec<_> = result
+            let regular_files: Vec<_> = result
                 .result
                 .iter()
-                .filter(|f| f.file_type == FileType::Test)
+                .filter(|f| f.file_type == FileType::File)
                 .collect();
 
-            println!("✅ Found {} test files", test_files.len());
+            println!("✅ Found {} regular files", regular_files.len());
 
-            for file_match in test_files.iter().take(5) {
-                println!("  🧪 {}", file_match.relative_path.display());
+            for file_match in regular_files.iter().take(5) {
+                println!("  📄 {}", file_match.relative_path.display());
             }
 
-            if test_files.len() > 5 {
-                println!("  ... and {} more test files", test_files.len() - 5);
+            if regular_files.len() > 5 {
+                println!("  ... and {} more files", regular_files.len() - 5);
             }
         }
         Err(e) => println!("❌ Error: {}", e),
@@ -132,16 +135,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 for (file_type, count) in type_counts {
-                    let emoji = match file_type {
-                        FileType::Source => "📄",
-                        FileType::Test => "🧪",
-                        FileType::Config => "⚙️",
-                        FileType::Documentation => "📚",
-                        FileType::Generated => "🔧",
-                        FileType::Binary => "🔵",
-                        FileType::Unknown => "❓",
+                    let emoji = match &file_type {
+                        FileType::File => "📄",
+                        FileType::Directory => "📁",
+                        FileType::Symlink => "🔗",
+                        FileType::Other => "❓",
                     };
-                    println!("  {} {:?}: {} files", emoji, file_type, count);
+                    println!("  {} {:?}: {} items", emoji, file_type, count);
                 }
             }
             Err(e) => println!("❌ Error: {}", e),

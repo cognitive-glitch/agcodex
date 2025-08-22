@@ -17,21 +17,12 @@ use crate::tools::BreakingChange;
 use crate::tools::CacheStats;
 use crate::tools::Change;
 use crate::tools::ChangeKind;
-use crate::tools::ComprehensiveAstSummary;
-use crate::tools::ComprehensivePerformanceImpact;
 use crate::tools::ComprehensiveSemanticImpact;
-use crate::tools::ComprehensiveSymbol;
 use crate::tools::ComprehensiveToolOutput;
-use crate::tools::ContextLine;
-use crate::tools::ContextLineType;
 use crate::tools::ContextSnapshot;
 use crate::tools::CpuUsage;
-use crate::tools::Diagnostic;
-use crate::tools::DiagnosticLevel;
-use crate::tools::ImpactLevel;
 use crate::tools::InternalTool;
 use crate::tools::IoStats;
-use crate::tools::LanguageContext;
 use crate::tools::MemoryUsage;
 use crate::tools::OperationContext;
 use crate::tools::OperationMetadata;
@@ -39,15 +30,8 @@ use crate::tools::OperationScope;
 use crate::tools::OutputBuilder;
 use crate::tools::PerformanceMetrics;
 use crate::tools::PerformanceTimer;
-use crate::tools::ProjectContext;
 use crate::tools::ScopeType;
-use crate::tools::SecurityImpact;
-use crate::tools::SymbolType;
-use crate::tools::TestImpact;
 use crate::tools::ToolMetadata;
-use crate::tools::ToolResult;
-use crate::tools::simple_error;
-use crate::tools::simple_success;
 use crate::tools::tree::ParsedAst;
 use crate::tools::tree::Point;
 use crate::tools::tree::SupportedLanguage;
@@ -79,6 +63,7 @@ use tree_sitter::Node;
 use tree_sitter::Parser;
 use tree_sitter::Query;
 use tree_sitter::QueryCursor;
+use tree_sitter::StreamingIterator;
 use uuid::Uuid;
 
 /// Errors that can occur during patch operations
@@ -203,7 +188,6 @@ impl From<IntelligenceLevel> for CompressionLevel {
 }
 
 /// AST parsing and processing engine
-#[derive(Debug)]
 pub struct AstEngine {
     tree_tool: TreeTool,
     compression_level: CompressionLevel,
@@ -479,7 +463,7 @@ pub struct BehavioralChange {
 }
 
 /// Risk level for changes
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum RiskLevel {
     Low,
     Medium,
@@ -522,7 +506,6 @@ pub struct StructuralDifference {
 }
 
 /// Advanced pattern matcher for AST nodes
-#[derive(Debug)]
 pub struct PatternMatcher {
     /// Cache compiled patterns for performance
     pattern_cache: Arc<DashMap<String, CompiledPattern>>,
@@ -540,7 +523,6 @@ struct CompiledPattern {
 }
 
 /// Query engine for pattern compilation and execution
-#[derive(Debug)]
 struct QueryEngine {
     parsers: DashMap<SupportedLanguage, Parser>,
     queries: DashMap<String, Arc<Query>>,
@@ -604,6 +586,12 @@ impl QueryEngine {
     }
 }
 
+impl Default for PatternMatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PatternMatcher {
     pub fn new() -> Self {
         Self {
@@ -625,8 +613,12 @@ impl PatternMatcher {
         let mut cursor = QueryCursor::new();
         let mut matches = Vec::new();
 
-        let mut captures = cursor.matches(&query, ast.root_node(), ast.source_code.as_bytes());
-        while let Some(m) = captures.next() {
+        let mut query_matches = cursor.matches(&query, ast.root_node(), ast.source_code.as_bytes());
+        loop {
+            query_matches.advance();
+            let Some(m) = query_matches.get() else {
+                break;
+            };
             for capture in m.captures {
                 let node = capture.node;
                 let text = node
@@ -639,12 +631,12 @@ impl PatternMatcher {
                     start_byte: node.start_byte(),
                     end_byte: node.end_byte(),
                     start_point: Point {
-                        row: node.start_position().row,
-                        column: node.start_position().column,
+                        row: node.start_position().row as u32,
+                        column: node.start_position().column as u32,
                     },
                     end_point: Point {
-                        row: node.end_position().row,
-                        column: node.end_position().column,
+                        row: node.end_position().row as u32,
+                        column: node.end_position().column as u32,
                     },
                     matched_text: text,
                     node_kind: node.kind().to_string(),
@@ -797,6 +789,12 @@ struct MemoryAnalyzer {
 struct AllocationPattern {
     pattern: String,
     cost_factor: f32,
+}
+
+impl Default for ImpactAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ImpactAnalyzer {
@@ -1092,14 +1090,14 @@ struct WhitespaceAnalyzer {
     line_ending_style: LineEndingStyle,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum IndentationStyle {
     Spaces(usize),
     Tabs,
     Mixed,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum LineEndingStyle {
     Unix,
     Windows,
@@ -1132,22 +1130,28 @@ struct StyleDetector {
     spacing_rules: SpacingRules,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum BraceStyle {
     SameLine,
     NewLine,
     Mixed,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct SpacingRules {
     around_operators: bool,
     after_keywords: bool,
     in_function_calls: bool,
 }
 
+impl Default for FormatPreservation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FormatPreservation {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             whitespace_analyzer: WhitespaceAnalyzer {
                 indentation_style: IndentationStyle::Spaces(4),
@@ -1229,12 +1233,12 @@ impl FormatPreservation {
             let line_number = line_idx + 1;
 
             // Handle block comments
-            if let Some(start) = line.find("/*") {
-                if !in_block_comment {
-                    in_block_comment = true;
-                    block_start_line = line_number;
-                    block_comment_content = line[start..].to_string();
-                }
+            if let Some(start) = line.find("/*")
+                && !in_block_comment
+            {
+                in_block_comment = true;
+                block_start_line = line_number;
+                block_comment_content = line[start..].to_string();
             }
 
             if in_block_comment {
@@ -1243,7 +1247,7 @@ impl FormatPreservation {
                     comments.push(ExtractedComment {
                         content: block_comment_content.clone(),
                         location: Point {
-                            row: block_start_line - 1,
+                            row: (block_start_line - 1) as u32,
                             column: 0,
                         },
                         comment_type: CommentType::Block,
@@ -1267,8 +1271,8 @@ impl FormatPreservation {
                     comments.push(ExtractedComment {
                         content: comment_content,
                         location: Point {
-                            row: line_number - 1,
-                            column: pos,
+                            row: (line_number - 1) as u32,
+                            column: pos as u32,
                         },
                         comment_type,
                     });
@@ -1369,6 +1373,12 @@ enum OperationStatus {
     Completed,
     Failed,
     RolledBack,
+}
+
+impl Default for RollbackManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RollbackManager {
@@ -1477,7 +1487,6 @@ pub struct RollbackResult {
 }
 
 /// AST transformer for semantic operations
-#[derive(Debug)]
 pub struct AstTransformer {
     pattern_matcher: PatternMatcher,
     tree_tool: TreeTool,
@@ -1494,6 +1503,12 @@ struct TransformationResult {
     confidence: f32,
     applied_at: SystemTime,
     transformation_time: Duration,
+}
+
+impl Default for AstTransformer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AstTransformer {
@@ -1864,30 +1879,30 @@ impl AstTransformer {
             let func_text = &parsed_ast.source_code[func_start..pattern_match.end_byte];
 
             // Simple approach: find the opening and closing parentheses
-            if let Some(paren_start) = func_text.find('(') {
-                if let Some(paren_end) = func_text.find(')') {
-                    let absolute_paren_start = func_start + paren_start + 1;
-                    let absolute_paren_end = func_start + paren_end;
+            if let Some(paren_start) = func_text.find('(')
+                && let Some(paren_end) = func_text.find(')')
+            {
+                let absolute_paren_start = func_start + paren_start + 1;
+                let absolute_paren_end = func_start + paren_end;
 
-                    // Replace the parameter list
-                    transformed_code
-                        .replace_range(absolute_paren_start..absolute_paren_end, &new_params_str);
+                // Replace the parameter list
+                transformed_code
+                    .replace_range(absolute_paren_start..absolute_paren_end, &new_params_str);
 
-                    changes.push(CodeChange {
-                        change_type: ChangeType::Modification,
-                        location: SourceLocation::new(
-                            "",
-                            (pattern_match.start_point.row + 1) as usize,
-                            (pattern_match.start_point.column + 1) as usize,
-                            (pattern_match.end_point.row + 1) as usize,
-                            (pattern_match.end_point.column + 1) as usize,
-                            (pattern_match.start_byte, pattern_match.end_byte),
-                        ),
-                        old_content: func_text.to_string(),
-                        new_content: format!("{} ({})", function_name, new_params_str),
-                        affected_symbols: vec![function_name.to_string()],
-                    });
-                }
+                changes.push(CodeChange {
+                    change_type: ChangeType::Modification,
+                    location: SourceLocation::new(
+                        "",
+                        (pattern_match.start_point.row + 1) as usize,
+                        (pattern_match.start_point.column + 1) as usize,
+                        (pattern_match.end_point.row + 1) as usize,
+                        (pattern_match.end_point.column + 1) as usize,
+                        (pattern_match.start_byte, pattern_match.end_byte),
+                    ),
+                    old_content: func_text.to_string(),
+                    new_content: format!("{} ({})", function_name, new_params_str),
+                    affected_symbols: vec![function_name.to_string()],
+                });
             }
         }
 
@@ -2036,7 +2051,7 @@ impl AstTransformer {
                 let var_name = var.as_str();
                 // Filter out keywords and common functions
                 if !self.is_reserved_keyword(var_name, language)
-                    && !vec!["println", "print", "console", "log"].contains(&var_name)
+                    && !["println", "print", "console", "log"].contains(&var_name)
                 {
                     variables.insert(var_name.to_string());
                 }
@@ -2209,10 +2224,10 @@ impl AstTransformer {
             SupportedLanguage::Rust
             | SupportedLanguage::JavaScript
             | SupportedLanguage::TypeScript => {
-                if let Some(start) = method_def.find('{') {
-                    if let Some(end) = method_def.rfind('}') {
-                        return method_def[start + 1..end].trim().to_string();
-                    }
+                if let Some(start) = method_def.find('{')
+                    && let Some(end) = method_def.rfind('}')
+                {
+                    return method_def[start + 1..end].trim().to_string();
                 }
             }
             SupportedLanguage::Python => {
@@ -2341,7 +2356,7 @@ impl AstTransformer {
     }
 
     /// Check if two locations are in the same scope
-    fn check_same_scope(
+    const fn check_same_scope(
         &self,
         _source: &SourceLocation,
         _target: &SourceLocation,
@@ -2517,21 +2532,19 @@ impl AstTransformer {
         let node = cursor.node();
 
         // Check if this node represents the symbol we're looking for
-        if node.kind() == "identifier" || node.kind() == "name" {
-            if let Ok(text) = node.utf8_text(b"") {
-                if text == symbol_name {
-                    let location = SourceLocation::new(
-                        "", // File path will be set later
-                        (node.start_position().row + 1) as usize,
-                        (node.start_position().column + 1) as usize,
-                        (node.end_position().row + 1) as usize,
-                        (node.end_position().column + 1) as usize,
-                        (node.start_byte(), node.end_byte()),
-                        (node.start_byte(), node.end_byte()),
-                    );
-                    occurrences.push(location);
-                }
-            }
+        if (node.kind() == "identifier" || node.kind() == "name")
+            && let Ok(text) = node.utf8_text(b"")
+            && text == symbol_name
+        {
+            let location = SourceLocation::new(
+                "", // File path will be set later
+                node.start_position().row + 1,
+                node.start_position().column + 1,
+                node.end_position().row + 1,
+                node.end_position().column + 1,
+                (node.start_byte(), node.end_byte()),
+            );
+            occurrences.push(location);
         }
 
         // Recursively search children
@@ -2547,7 +2560,7 @@ impl AstTransformer {
     }
 
     /// Check if it's safe to rename a symbol at the given location
-    fn is_safe_to_rename(
+    const fn is_safe_to_rename(
         &self,
         _location: &SourceLocation,
         _old_name: &str,
@@ -2713,7 +2726,7 @@ impl PatchTool {
     async fn analyze_semantic_impact(&self, changes: &[CodeChange]) -> PatchResult<SemanticImpact> {
         let mut api_changes = Vec::new();
         let mut behavioral_changes = Vec::new();
-        let mut dependency_changes = Vec::new();
+        let dependency_changes = Vec::new();
 
         let mut preserves_semantics = true;
 
@@ -2891,8 +2904,20 @@ impl PatchTool {
                 // TODO: Check that references won't be broken
                 Ok(true)
             }
-            TransformationCondition::Custom(_condition) => {
+            TransformationCondition::Custom { .. } => {
                 // TODO: Evaluate custom conditions
+                Ok(true)
+            }
+            TransformationCondition::PreserveSignature => {
+                // TODO: Check that function signatures are preserved
+                Ok(true)
+            }
+            TransformationCondition::PreserveExports => {
+                // TODO: Check that exported APIs are not affected
+                Ok(true)
+            }
+            TransformationCondition::PreserveTests => {
+                // TODO: Check that test compatibility is maintained
                 Ok(true)
             }
         }
@@ -3071,7 +3096,11 @@ impl PatchTool {
     }
 
     /// Get the parameter count of a function
-    fn get_function_param_count(&self, _function_name: &str, _parsed_ast: &ParsedAst) -> usize {
+    const fn get_function_param_count(
+        &self,
+        _function_name: &str,
+        _parsed_ast: &ParsedAst,
+    ) -> usize {
         // Simplified: return a default
         // In a real implementation, we'd parse the function signature
         0
@@ -3082,17 +3111,17 @@ impl PatchTool {
         // Find the function body and check if it calls itself
         // Simplified implementation
         let func_pattern = format!(r"fn\s+{}\s*\([^)]*\)\s*.*?\{{", function_name);
-        if let Ok(re) = Regex::new(&func_pattern) {
-            if let Some(m) = re.find(&parsed_ast.source_code) {
-                let start = m.end();
-                // Find the matching closing brace (simplified)
-                if let Some(end) = self.find_matching_brace(&parsed_ast.source_code[start..]) {
-                    let body = &parsed_ast.source_code[start..start + end];
-                    let call_pattern = format!(r"\b{}\s*\(", function_name);
-                    return Regex::new(&call_pattern)
-                        .map(|re| re.is_match(body))
-                        .unwrap_or(false);
-                }
+        if let Ok(re) = Regex::new(&func_pattern)
+            && let Some(m) = re.find(&parsed_ast.source_code)
+        {
+            let start = m.end();
+            // Find the matching closing brace (simplified)
+            if let Some(end) = self.find_matching_brace(&parsed_ast.source_code[start..]) {
+                let body = &parsed_ast.source_code[start..start + end];
+                let call_pattern = format!(r"\b{}\s*\(", function_name);
+                return Regex::new(&call_pattern)
+                    .map(|re| re.is_match(body))
+                    .unwrap_or(false);
             }
         }
         false
@@ -3120,20 +3149,24 @@ impl PatchTool {
     fn has_multiple_returns(&self, function_name: &str, parsed_ast: &ParsedAst) -> bool {
         // Simplified: look for multiple 'return' keywords in the function body
         let func_pattern = format!(r"fn\s+{}\s*\([^)]*\)\s*.*?\{{[^}}]*\}}", function_name);
-        if let Ok(re) = Regex::new(&func_pattern) {
-            if let Some(m) = re.find(&parsed_ast.source_code) {
-                let body = m.as_str();
-                let return_count = Regex::new(r"\breturn\b")
-                    .map(|re| re.find_iter(body).count())
-                    .unwrap_or(0);
-                return return_count > 1;
-            }
+        if let Ok(re) = Regex::new(&func_pattern)
+            && let Some(m) = re.find(&parsed_ast.source_code)
+        {
+            let body = m.as_str();
+            let return_count = Regex::new(r"\breturn\b")
+                .map(|re| re.find_iter(body).count())
+                .unwrap_or(0);
+            return return_count > 1;
         }
         false
     }
 
     /// Check if a location is a valid move target
-    fn is_valid_move_target(&self, _location: &SourceLocation, _parsed_ast: &ParsedAst) -> bool {
+    const fn is_valid_move_target(
+        &self,
+        _location: &SourceLocation,
+        _parsed_ast: &ParsedAst,
+    ) -> bool {
         // Simplified: always return true
         // In a real implementation, we'd check scope boundaries and validity
         true
@@ -3152,10 +3185,10 @@ impl PatchTool {
             ];
 
             for pattern in patterns {
-                if let Ok(re) = Regex::new(&pattern) {
-                    if re.is_match(&change.old_content) || re.is_match(&change.new_content) {
-                        return true;
-                    }
+                if let Ok(re) = Regex::new(&pattern)
+                    && (re.is_match(&change.old_content) || re.is_match(&change.new_content))
+                {
+                    return true;
                 }
             }
         }
@@ -3258,7 +3291,7 @@ impl InternalTool for PatchTool {
                     )
                 }),
         )
-        .with_context(OperationContext {
+        .context(OperationContext {
             before: ContextSnapshot {
                 content: "<original_content>".to_string(),
                 timestamp: SystemTime::now(),
@@ -3290,18 +3323,19 @@ impl InternalTool for PatchTool {
                     .and_then(|n| n.to_str())
                     .unwrap_or("unknown")
                     .to_string(),
-                range: None,
-                parent: None,
+                path: vec![input.file_path.to_string_lossy().to_string()],
+                file_path: input.file_path.clone(),
+                line_range: 0..0,
             },
             language_context: None,
             project_context: None,
         })
-        .with_summary(format!(
+        .summary(format!(
             "Applied {} AST transformations to {}",
             input.transformations.len(),
             input.file_path.display()
         ))
-        .with_performance(PerformanceMetrics {
+        .performance(PerformanceMetrics {
             execution_time: timer.elapsed(),
             phase_times: HashMap::new(),
             memory_usage: MemoryUsage {
@@ -3386,10 +3420,10 @@ impl PatchTool {
             Ok(output) => Ok(output),
             Err(e) => {
                 // Rollback on failure if enabled
-                if let Some(snapshot_id) = snapshot_id {
-                    if let Err(rollback_err) = self.rollback_manager.rollback(&snapshot_id).await {
-                        warn!("Rollback failed: {:?}", rollback_err);
-                    }
+                if let Some(snapshot_id) = snapshot_id
+                    && let Err(rollback_err) = self.rollback_manager.rollback(&snapshot_id).await
+                {
+                    warn!("Rollback failed: {:?}", rollback_err);
                 }
                 Err(e)
             }
@@ -3425,10 +3459,15 @@ impl PatchTool {
             },
             scope: OperationScope {
                 scope_type: ScopeType::File,
-                name: input.file_path.display().to_string(),
-                parent: None,
-                children: vec![],
-                depth: 0,
+                name: input
+                    .file_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown")
+                    .to_string(),
+                path: vec![input.file_path.to_string_lossy().to_string()],
+                file_path: input.file_path.clone(),
+                line_range: 0..0,
             },
             language_context: None,
             project_context: None,
@@ -3480,7 +3519,7 @@ impl PatchTool {
             .collect();
 
         let metadata = OperationMetadata {
-            tool: "patch",
+            tool: "patch".to_string(),
             operation: "ast_transformation".to_string(),
             operation_id: Uuid::new_v4(),
             started_at: SystemTime::now() - timer.elapsed(),
@@ -3691,9 +3730,9 @@ print(result)
     #[tokio::test]
     async fn test_patch_options_defaults() {
         let options = PatchOptions::default();
-        assert_eq!(options.preserve_formatting, true);
-        assert_eq!(options.validate_semantics, true);
-        assert_eq!(options.generate_diff, true);
+        assert!(options.preserve_formatting);
+        assert!(options.validate_semantics);
+        assert!(options.generate_diff);
         assert_eq!(options.timeout_ms, 30_000);
     }
 

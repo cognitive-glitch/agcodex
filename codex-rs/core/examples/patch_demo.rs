@@ -3,6 +3,7 @@
 //! This example shows how to use the PatchTool for semantic code transformations
 //! with comprehensive before/after analysis and impact assessment.
 
+use agcodex_core::subagents::config::IntelligenceLevel;
 use agcodex_core::tools::PatchInput;
 use agcodex_core::tools::PatchOptions;
 use agcodex_core::tools::PatchTool;
@@ -10,8 +11,8 @@ use agcodex_core::tools::RiskLevel;
 use agcodex_core::tools::SemanticTransformation;
 use agcodex_core::tools::TransformationCondition;
 use agcodex_core::tools::TransformationType;
-use ast::AstNodeKind;
-use ast::CompressionLevel;
+use agcodex_core::tools::patch::AstNodeKind;
+use agcodex_core::tools::patch::CompressionLevel;
 use ast::SourceLocation;
 use std::fs;
 use std::path::PathBuf;
@@ -73,6 +74,9 @@ fn main() {
                 TransformationCondition::NodeKind(AstNodeKind::Function),
                 TransformationCondition::PreserveReferences,
             ],
+            confidence: 0.95,
+            risk_level: RiskLevel::Low,
+            preserve_context: true,
         },
         // Transform 2: Rename helper function for clarity
         SemanticTransformation {
@@ -95,6 +99,9 @@ fn main() {
                 TransformationCondition::NodeKind(AstNodeKind::Function),
                 TransformationCondition::InScope("global".to_string()),
             ],
+            confidence: 0.95,
+            risk_level: RiskLevel::Low,
+            preserve_context: true,
         },
     ];
 
@@ -103,8 +110,12 @@ fn main() {
         preserve_formatting: true,
         validate_semantics: true,
         generate_diff: true,
-        intelligence_level: CompressionLevel::Medium,
+        intelligence_level: IntelligenceLevel::Medium,
         timeout_ms: 30_000,
+        enable_rollback: true,
+        confidence_threshold: 0.8,
+        safety_checks: true,
+        analyze_dependencies: true,
     };
 
     // Create patch input
@@ -301,9 +312,7 @@ fn main() {
                     };
                     println!(
                         "• **{}** {} at {}",
-                        diff.difference_type,
-                        severity_emoji,
-                        diff.location.to_string()
+                        diff.difference_type, severity_emoji, diff.location
                     );
                     println!("  - {}", diff.description);
                     println!();

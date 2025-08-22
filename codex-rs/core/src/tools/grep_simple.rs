@@ -108,7 +108,7 @@ pub enum SupportedLanguage {
 }
 
 impl SupportedLanguage {
-    pub fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &str {
         match self {
             Self::Rust => "rust",
             Self::Python => "python",
@@ -235,11 +235,11 @@ impl SimpleGrepEngine {
             }
 
             // Check max results
-            if let Some(max) = query.max_results {
-                if all_matches.len() >= max {
-                    all_matches.truncate(max);
-                    break;
-                }
+            if let Some(max) = query.max_results
+                && all_matches.len() >= max
+            {
+                all_matches.truncate(max);
+                break;
             }
         }
 
@@ -266,7 +266,7 @@ impl SimpleGrepEngine {
                     let start = line_idx.saturating_sub(query.context_lines);
                     lines[start..line_idx]
                         .iter()
-                        .map(|s| s.to_string())
+                        .map(|s| (*s).to_string())
                         .collect()
                 } else {
                     Vec::new()
@@ -276,7 +276,7 @@ impl SimpleGrepEngine {
                     let end = std::cmp::min(line_idx + 1 + query.context_lines, lines.len());
                     lines[line_idx + 1..end]
                         .iter()
-                        .map(|s| s.to_string())
+                        .map(|s| (*s).to_string())
                         .collect()
                 } else {
                     Vec::new()
@@ -288,7 +288,7 @@ impl SimpleGrepEngine {
                     column: 1,
                     end_line: line_num,
                     end_column: line.len(),
-                    matched_text: line.to_string(),
+                    matched_text: (*line).to_string(),
                     context_before,
                     context_after,
                     confidence: 1.0,
@@ -323,10 +323,9 @@ impl SimpleGrepEngine {
                     .unwrap_or_default()
                     .to_string_lossy()
                     .starts_with('.')
+                && let Ok(matches) = self.search_directory(&path, pattern, query)
             {
-                if let Ok(matches) = self.search_directory(&path, pattern, query) {
-                    all_matches.extend(matches);
-                }
+                all_matches.extend(matches);
             }
         }
 
@@ -454,7 +453,7 @@ impl GrepTool {
             context,
             changes,
             metadata: OperationMetadata {
-                tool: "grep",
+                tool: "grep".to_string(),
                 operation: "search".to_string(),
                 operation_id: Uuid::new_v4(),
                 started_at: std::time::SystemTime::now() - duration,

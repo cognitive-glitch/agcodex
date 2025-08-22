@@ -10,7 +10,6 @@ use ratatui::layout::Alignment;
 use ratatui::layout::Constraint;
 use ratatui::layout::Direction;
 use ratatui::layout::Layout;
-use ratatui::layout::Margin;
 use ratatui::layout::Rect;
 use ratatui::style::Color;
 use ratatui::style::Modifier;
@@ -22,7 +21,6 @@ use ratatui::widgets::Block;
 use ratatui::widgets::BorderType;
 use ratatui::widgets::Borders;
 use ratatui::widgets::Clear;
-use ratatui::widgets::Gauge;
 use ratatui::widgets::List;
 use ratatui::widgets::ListItem;
 use ratatui::widgets::ListState;
@@ -93,17 +91,17 @@ impl AgentPanel {
     }
 
     /// Toggle panel visibility
-    pub fn toggle_visibility(&mut self) {
+    pub const fn toggle_visibility(&mut self) {
         self.visible = !self.visible;
     }
 
     /// Set panel visibility
-    pub fn set_visible(&mut self, visible: bool) {
+    pub const fn set_visible(&mut self, visible: bool) {
         self.visible = visible;
     }
 
     /// Check if panel is visible
-    pub fn is_visible(&self) -> bool {
+    pub const fn is_visible(&self) -> bool {
         self.visible
     }
 
@@ -223,7 +221,7 @@ impl AgentPanel {
     }
 
     /// Navigate up in the agent list
-    pub fn navigate_up(&mut self) {
+    pub const fn navigate_up(&mut self) {
         if self.selected_index > 0 {
             self.selected_index -= 1;
         }
@@ -248,7 +246,7 @@ impl AgentPanel {
     }
 
     /// Get the number of completed agents
-    pub fn completed_count(&self) -> usize {
+    pub const fn completed_count(&self) -> usize {
         self.completed_agents.len()
     }
 
@@ -346,7 +344,7 @@ impl AgentPanel {
         let mut list_state = ListState::default();
 
         // Add running agents
-        for (_, agent) in &self.running_agents {
+        for agent in self.running_agents.values() {
             items.push(self.format_agent_item(agent, true));
         }
 
@@ -367,7 +365,7 @@ impl AgentPanel {
     }
 
     /// Format a single agent item for the list
-    fn format_agent_item(&self, agent: &AgentExecution, is_running: bool) -> ListItem {
+    fn format_agent_item<'a>(&self, agent: &'a AgentExecution, is_running: bool) -> ListItem<'a> {
         let agent_name = &agent.execution.agent_name;
         let status_icon = match agent.execution.status {
             SubagentStatus::Running => "󰑮",

@@ -88,7 +88,7 @@ impl EmbeddingModelBridge {
     /// For now, this creates a disabled bridge since the main Config
     /// doesn't yet have an embeddings field. When embeddings are added
     /// to the main Config, this method will extract the embeddings config.
-    pub fn from_config(_config: &Config) -> Self {
+    pub const fn from_config(_config: &Config) -> Self {
         // TODO: When Config gets an embeddings field, use:
         // let embeddings_config = config.embeddings.clone();
         // Self::from_embeddings_config(embeddings_config)
@@ -98,7 +98,7 @@ impl EmbeddingModelBridge {
     }
 
     /// Create a disabled bridge (zero overhead)
-    pub fn disabled() -> Self {
+    pub const fn disabled() -> Self {
         Self::new(None)
     }
 

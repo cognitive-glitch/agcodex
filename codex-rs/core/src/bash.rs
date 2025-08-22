@@ -47,7 +47,7 @@ impl ConfidenceLevel {
         }
     }
 
-    pub fn as_score(&self) -> f32 {
+    pub const fn as_score(&self) -> f32 {
         match self {
             Self::Low => 0.25,
             Self::Medium => 0.55,
@@ -494,7 +494,7 @@ impl EnhancedBashParser {
         }
     }
 
-    fn threat_level_severity(&self, level: ThreatLevel) -> u8 {
+    const fn threat_level_severity(&self, level: ThreatLevel) -> u8 {
         match level {
             ThreatLevel::Safe => 0,
             ThreatLevel::Low => 1,
@@ -914,11 +914,10 @@ mod tests {
         let validator = CommandValidator::new();
 
         // Test that allowed commands are properly initialized
-        let echo_analysis =
-            validator.validate_command(&vec!["echo".to_string(), "test".to_string()]);
+        let echo_analysis = validator.validate_command(&["echo".to_string(), "test".to_string()]);
         assert!(echo_analysis.is_ok(), "Echo should be allowed");
 
-        let forbidden_analysis = validator.validate_command(&vec!["malicious_cmd".to_string()]);
+        let forbidden_analysis = validator.validate_command(&["malicious_cmd".to_string()]);
         assert!(
             forbidden_analysis.is_err(),
             "Unknown command should be forbidden"
@@ -945,7 +944,7 @@ mod tests {
         let sandbox = SandboxRules::new();
 
         // Test workspace restriction (might trigger on absolute paths)
-        let result = sandbox.apply_rules(&vec!["cat".to_string(), "/etc/passwd".to_string()]);
+        let result = sandbox.apply_rules(&["cat".to_string(), "/etc/passwd".to_string()]);
 
         match result {
             Ok(()) => {

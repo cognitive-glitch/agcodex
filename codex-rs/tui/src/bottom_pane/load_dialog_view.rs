@@ -9,6 +9,7 @@ use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::KeyCode;
 use ratatui::crossterm::event::KeyEvent;
 use ratatui::layout::Rect;
+use ratatui::widgets::WidgetRef;
 use std::any::Any;
 
 use super::BottomPane;
@@ -53,7 +54,7 @@ impl LoadDialogView {
 impl BottomPaneView<'_> for LoadDialogView {
     fn handle_key_event(&mut self, _pane: &mut BottomPane<'_>, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Escape => {
+            KeyCode::Esc => {
                 self.is_complete = true;
                 self.app_event_tx.send(AppEvent::CloseLoadDialog);
             }
@@ -106,7 +107,7 @@ impl BottomPaneView<'_> for LoadDialogView {
     }
 
     fn render(&self, area: Rect, buf: &mut Buffer) {
-        self.dialog.render_ref(area, buf);
+        (&self.dialog).render_ref(area, buf);
     }
 
     fn should_hide_when_task_is_done(&mut self) -> bool {

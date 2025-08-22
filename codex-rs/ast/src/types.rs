@@ -57,7 +57,7 @@ impl SourceLocation {
     }
 
     /// Format as file:line:column string
-    pub fn to_string(&self) -> String {
+    pub fn as_string(&self) -> String {
         format!(
             "{}:{}:{}",
             self.file_path, self.start_line, self.start_column
@@ -77,6 +77,16 @@ impl SourceLocation {
                 self.file_path, self.start_line, self.start_column, self.end_line, self.end_column
             )
         }
+    }
+}
+
+impl std::fmt::Display for SourceLocation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}:{}:{}",
+            self.file_path, self.start_line, self.start_column
+        )
     }
 }
 

@@ -1,6 +1,5 @@
 use agcodex_core::protocol::TokenUsage;
 use agcodex_core::subagents::InvocationParser;
-use agcodex_core::subagents::InvocationRequest;
 use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::KeyCode;
 use ratatui::crossterm::event::KeyEvent;

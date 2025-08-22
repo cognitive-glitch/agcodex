@@ -67,6 +67,7 @@ mod updates;
 use color_eyre::owo_colors::OwoColorize;
 
 pub use cli::Cli;
+pub use widgets::SessionBrowser;
 
 // (tests access modules directly within the crate)
 

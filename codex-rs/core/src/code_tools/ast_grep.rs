@@ -137,7 +137,7 @@ impl AstGrep {
     }
 
     /// Convert SupportLang to string for CLI usage
-    fn language_to_string(&self, lang: SupportLang) -> &'static str {
+    const fn language_to_string(&self, lang: SupportLang) -> &'static str {
         match lang {
             SupportLang::Rust => "rust",
             SupportLang::Python => "python",
@@ -186,7 +186,7 @@ impl AstGrep {
             }
 
             // Read file content
-            let content = std::fs::read_to_string(path).map_err(|e| ToolError::Io(e))?;
+            let content = std::fs::read_to_string(path).map_err(ToolError::Io)?;
 
             // Simple pattern matching for demonstration
             // In a real implementation, this would use ast-grep-core properly
@@ -203,7 +203,7 @@ impl AstGrep {
                         let context_before = if line_idx > 0 {
                             lines[line_idx.saturating_sub(3)..line_idx]
                                 .iter()
-                                .map(|s| s.to_string())
+                                .map(|s| (*s).to_string())
                                 .collect()
                         } else {
                             Vec::new()
@@ -212,7 +212,7 @@ impl AstGrep {
                         let context_after = if line_idx < lines.len() - 1 {
                             lines[line_idx + 1..std::cmp::min(line_idx + 4, lines.len())]
                                 .iter()
-                                .map(|s| s.to_string())
+                                .map(|s| (*s).to_string())
                                 .collect()
                         } else {
                             Vec::new()
@@ -224,7 +224,7 @@ impl AstGrep {
                             column: 1, // Simplified column detection
                             end_line: line_num,
                             end_column: line.len() as u32,
-                            matched_text: line.to_string(),
+                            matched_text: (*line).to_string(),
                             context_before,
                             context_after,
                             metavariables: std::collections::HashMap::new(),
@@ -246,7 +246,7 @@ impl AstGrep {
     }
 
     /// Search using YAML rule (placeholder implementation)
-    fn search_with_rule(
+    const fn search_with_rule(
         &self,
         _yaml_rule: &str,
         _paths: &[PathBuf],

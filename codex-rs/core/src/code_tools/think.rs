@@ -182,6 +182,12 @@ pub struct SequentialThinking {
     pub current_branch: Option<Uuid>,
 }
 
+impl Default for SequentialThinking {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SequentialThinking {
     pub fn new() -> Self {
         Self {
@@ -342,8 +348,14 @@ pub enum ShannonPhase {
     Complete,
 }
 
+impl Default for ShannonThinking {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ShannonThinking {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             problem_definition: None,
             constraints: Vec::new(),
@@ -356,7 +368,7 @@ impl ShannonThinking {
     }
 
     /// Advance to next phase if current phase is complete
-    pub fn advance_phase(&mut self) -> bool {
+    pub const fn advance_phase(&mut self) -> bool {
         self.current_phase = match self.current_phase {
             ShannonPhase::Definition if self.problem_definition.is_some() => {
                 ShannonPhase::Constraints
@@ -373,7 +385,7 @@ impl ShannonThinking {
     }
 
     /// Check if ready to advance to next phase
-    pub fn ready_to_advance(&self) -> bool {
+    pub const fn ready_to_advance(&self) -> bool {
         match self.current_phase {
             ShannonPhase::Definition => self.problem_definition.is_some(),
             ShannonPhase::Constraints => !self.constraints.is_empty(),
@@ -407,8 +419,14 @@ pub enum Perspective {
     Synthesis,
 }
 
+impl Default for ActorCriticThinking {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ActorCriticThinking {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             actor_thoughts: Vec::new(),
             critic_thoughts: Vec::new(),
@@ -429,7 +447,7 @@ impl ActorCriticThinking {
     }
 
     /// Switch active perspective
-    pub fn switch_perspective(&mut self) {
+    pub const fn switch_perspective(&mut self) {
         self.active_perspective = match self.active_perspective {
             Perspective::Actor => Perspective::Critic,
             Perspective::Critic => Perspective::Actor,
@@ -445,7 +463,7 @@ impl ActorCriticThinking {
     }
 
     /// Check if ready for synthesis
-    pub fn ready_for_synthesis(&self) -> bool {
+    pub const fn ready_for_synthesis(&self) -> bool {
         !self.actor_thoughts.is_empty() && !self.critic_thoughts.is_empty()
     }
 }
@@ -523,7 +541,7 @@ impl ThinkTool {
     }
 
     /// Auto-select strategy based on problem type
-    pub fn select_strategy(&self, problem_type: &ProblemType) -> &'static str {
+    pub const fn select_strategy(&self, problem_type: &ProblemType) -> &'static str {
         match problem_type {
             ProblemType::Sequential => "sequential",
             ProblemType::Systematic => "shannon",

@@ -8,20 +8,7 @@
 //! - Rich metadata and context-aware output
 //! - <100ms performance target for 10k files
 
-use super::output::CacheStats;
 use super::output::ComprehensiveToolOutput;
-use super::output::ContextLine;
-use super::output::ContextLineType;
-use super::output::ContextSnapshot;
-use super::output::CpuUsage;
-use super::output::IoStats;
-use super::output::MemoryUsage;
-use super::output::OperationContext;
-use super::output::OperationScope;
-use super::output::OutputBuilder;
-use super::output::PerformanceMetrics;
-use super::output::PerformanceTimer;
-use super::output::ScopeType;
 use ast::SourceLocation;
 use ignore::DirEntry;
 use ignore::Walk;
@@ -116,7 +103,7 @@ pub struct FileMatch {
 }
 
 /// File type classification
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FileType {
     /// Regular file
     File,
@@ -343,15 +330,15 @@ impl CompiledFilters {
         // Check size filters
         if let Some(size) = file.size {
             for filter in &self.size_filters {
-                if let Some(min) = filter.min_size {
-                    if size < min {
-                        return false;
-                    }
+                if let Some(min) = filter.min_size
+                    && size < min
+                {
+                    return false;
                 }
-                if let Some(max) = filter.max_size {
-                    if size > max {
-                        return false;
-                    }
+                if let Some(max) = filter.max_size
+                    && size > max
+                {
+                    return false;
                 }
             }
         }
@@ -359,31 +346,29 @@ impl CompiledFilters {
         // Check time filters
         if let Some(modified) = file.modified {
             for filter in &self.time_filters {
-                if let Some(after) = filter.modified_after {
-                    if modified < after {
-                        return false;
-                    }
+                if let Some(after) = filter.modified_after
+                    && modified < after
+                {
+                    return false;
                 }
-                if let Some(before) = filter.modified_before {
-                    if modified > before {
-                        return false;
-                    }
+                if let Some(before) = filter.modified_before
+                    && modified > before
+                {
+                    return false;
                 }
             }
         }
 
         // Check category filters
-        if !self.category_filters.is_empty() {
-            if !self.category_filters.contains(&file.content_category) {
-                return false;
-            }
+        if !self.category_filters.is_empty()
+            && !self.category_filters.contains(&file.content_category)
+        {
+            return false;
         }
 
         // Check type filters
-        if !self.type_filters.is_empty() {
-            if !self.type_filters.contains(&file.file_type) {
-                return false;
-            }
+        if !self.type_filters.is_empty() && !self.type_filters.contains(&file.file_type) {
+            return false;
         }
 
         true
@@ -399,7 +384,7 @@ impl Default for ContentClassifier {
                 "hpp", "cs", "php", "rb", "swift", "kt", "scala", "hs", "clj", "ex", "exs",
             ]
             .iter()
-            .map(|s| s.to_string()),
+            .map(|s| (*s).to_string()),
         );
 
         let mut config_extensions = HashSet::new();
@@ -408,14 +393,14 @@ impl Default for ContentClassifier {
                 "toml", "yaml", "yml", "json", "xml", "ini", "cfg", "conf", "config", "env",
             ]
             .iter()
-            .map(|s| s.to_string()),
+            .map(|s| (*s).to_string()),
         );
 
         let mut doc_extensions = HashSet::new();
         doc_extensions.extend(
             ["md", "txt", "rst", "adoc", "tex", "pdf", "doc", "docx"]
                 .iter()
-                .map(|s| s.to_string()),
+                .map(|s| (*s).to_string()),
         );
 
         let test_patterns = vec![
@@ -555,31 +540,31 @@ impl GlobTool {
     }
 
     /// Builder: Set whether to respect ignore files
-    pub fn with_respect_ignore(mut self, respect: bool) -> Self {
+    pub const fn with_respect_ignore(mut self, respect: bool) -> Self {
         self.respect_ignore = respect;
         self
     }
 
     /// Builder: Set maximum results limit
-    pub fn with_max_results(mut self, max_results: Option<usize>) -> Self {
+    pub const fn with_max_results(mut self, max_results: Option<usize>) -> Self {
         self.max_results = max_results;
         self
     }
 
     /// Builder: Set whether to follow symbolic links
-    pub fn with_follow_links(mut self, follow_links: bool) -> Self {
+    pub const fn with_follow_links(mut self, follow_links: bool) -> Self {
         self.follow_links = follow_links;
         self
     }
 
     /// Builder: Set whether to include hidden files
-    pub fn with_include_hidden(mut self, include_hidden: bool) -> Self {
+    pub const fn with_include_hidden(mut self, include_hidden: bool) -> Self {
         self.include_hidden = include_hidden;
         self
     }
 
     /// Builder: Set search timeout
-    pub fn with_timeout(mut self, timeout: Option<Duration>) -> Self {
+    pub const fn with_timeout(mut self, timeout: Option<Duration>) -> Self {
         self.timeout = timeout;
         self
     }
@@ -651,11 +636,12 @@ impl GlobTool {
         };
 
         let duration = timer.elapsed();
+        let matches_count = matches.len();
 
         // Generate comprehensive context
         let summary = format!(
             "Found {} files in {} ({}ms, {} examined, {} ignored)",
-            matches.len(),
+            matches_count,
             self.base_dir.display(),
             duration.as_millis(),
             stats.files_examined,
@@ -665,84 +651,89 @@ impl GlobTool {
         // Build rich output using the comprehensive output builder
         let location = SourceLocation::new(self.base_dir.to_string_lossy(), 0, 0, 0, 0, (0, 0));
 
-        let output = OutputBuilder::new(matches, "glob", "file_discovery".to_string(), location)
-            .context(OperationContext {
-                before: ContextSnapshot {
-                    content: String::new(),
-                    timestamp: SystemTime::now(),
-                    content_hash: String::new(),
-                    ast_summary: None,
-                    symbols: Vec::new(),
+        let output = OutputBuilder::new(
+            matches,
+            "glob",
+            "file_discovery".to_string(),
+            location.clone(),
+        )
+        .context(OperationContext {
+            before: ContextSnapshot {
+                content: String::new(),
+                timestamp: SystemTime::now(),
+                content_hash: String::new(),
+                ast_summary: None,
+                symbols: Vec::new(),
+            },
+            after: None,
+            surrounding: vec![
+                ContextLine {
+                    line_number: 0,
+                    content: format!("Search root: {}", self.base_dir.display()),
+                    line_type: ContextLineType::Separator,
+                    indentation: 0,
+                    modified: false,
                 },
-                after: None,
-                surrounding: vec![
-                    ContextLine {
-                        line_number: 0,
-                        content: format!("Search root: {}", self.base_dir.display()),
-                        line_type: ContextLineType::Separator,
-                        indentation: 0,
-                        modified: false,
-                    },
-                    ContextLine {
-                        line_number: 0,
-                        content: format!("Strategy: {:?}", strategy),
-                        line_type: ContextLineType::Separator,
-                        indentation: 0,
-                        modified: false,
-                    },
-                ],
-                location: location.clone(),
-                scope: OperationScope {
-                    scope_type: ScopeType::File,
-                    name: self
-                        .base_dir
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("unknown")
-                        .to_string(),
-                    path: vec![self.base_dir.to_string_lossy().to_string()],
-                    file_path: self.base_dir.clone(),
+                ContextLine {
+                    line_number: 0,
+                    content: format!("Strategy: {:?}", strategy),
+                    line_type: ContextLineType::Separator,
+                    indentation: 0,
+                    modified: false,
                 },
-                language_context: None,
-                project_context: None,
-            })
-            .performance(PerformanceMetrics {
-                execution_time: duration,
-                phase_times: HashMap::new(),
-                memory_usage: MemoryUsage {
-                    peak_bytes: (matches.len() * std::mem::size_of::<FileMatch>()) as u64,
-                    average_bytes: 0,
-                    allocations: 0,
-                    deallocations: 0,
-                    efficiency_score: 0.9,
-                },
-                cpu_usage: CpuUsage {
-                    cpu_time: duration,
-                    utilization_percent: 0.0,
-                    context_switches: 0,
-                },
-                io_stats: IoStats {
-                    bytes_read: 0,
-                    bytes_written: 0,
-                    read_ops: stats.files_examined as u64,
-                    write_ops: 0,
-                    io_wait_time: Duration::from_millis(0),
-                },
-                cache_stats: CacheStats {
-                    hit_rate: 0.0,
-                    hits: 0,
-                    misses: stats.files_examined as u64,
-                    cache_size: 0,
-                    efficiency_score: 0.0,
-                },
-            })
-            .summary(summary)
-            .build();
+            ],
+            location: location.clone(),
+            scope: OperationScope {
+                scope_type: ScopeType::File,
+                name: self
+                    .base_dir
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown")
+                    .to_string(),
+                path: vec![self.base_dir.to_string_lossy().to_string()],
+                file_path: self.base_dir.clone(),
+                line_range: 0..0,
+            },
+            language_context: None,
+            project_context: None,
+        })
+        .performance(PerformanceMetrics {
+            execution_time: duration,
+            phase_times: HashMap::new(),
+            memory_usage: MemoryUsage {
+                peak_bytes: (matches_count * std::mem::size_of::<FileMatch>()) as u64,
+                average_bytes: 0,
+                allocations: 0,
+                deallocations: 0,
+                efficiency_score: 0.9,
+            },
+            cpu_usage: CpuUsage {
+                cpu_time: duration,
+                utilization_percent: 0.0,
+                context_switches: 0,
+            },
+            io_stats: IoStats {
+                bytes_read: 0,
+                bytes_written: 0,
+                read_ops: stats.files_examined as u64,
+                write_ops: 0,
+                io_wait_time: Duration::from_millis(0),
+            },
+            cache_stats: CacheStats {
+                hit_rate: 0.0,
+                hits: 0,
+                misses: stats.files_examined as u64,
+                cache_size: 0,
+                efficiency_score: 0.0,
+            },
+        })
+        .summary(summary)
+        .build();
 
         info!(
             "Glob search completed: {} matches in {:?}",
-            matches.len(),
-            duration
+            matches_count, duration
         );
         Ok(output)
     }
@@ -844,11 +835,11 @@ impl GlobTool {
                     return WalkState::Quit;
                 }
 
-                if let Some(timeout) = timeout {
-                    if start_time.elapsed() > timeout {
-                        cancellation.store(true, Ordering::Relaxed);
-                        return WalkState::Quit;
-                    }
+                if let Some(timeout) = timeout
+                    && start_time.elapsed() > timeout
+                {
+                    cancellation.store(true, Ordering::Relaxed);
+                    return WalkState::Quit;
                 }
 
                 match entry_result {
@@ -858,7 +849,7 @@ impl GlobTool {
                         // Update statistics
                         {
                             let mut stats = stats.lock().unwrap();
-                            if entry.file_type().map_or(false, |ft| ft.is_dir()) {
+                            if entry.file_type().is_some_and(|ft| ft.is_dir()) {
                                 stats.directories_traversed += 1;
                                 return WalkState::Continue;
                             } else {
@@ -874,10 +865,10 @@ impl GlobTool {
                                 let mut matches = matches.lock().unwrap();
 
                                 // Check max results limit
-                                if let Some(max) = max_results {
-                                    if matches.len() >= max {
-                                        return WalkState::Quit;
-                                    }
+                                if let Some(max) = max_results
+                                    && matches.len() >= max
+                                {
+                                    return WalkState::Quit;
                                 }
 
                                 matches.push(file_match);
@@ -936,10 +927,10 @@ impl GlobTool {
                 });
             }
 
-            if let Some(timeout) = self.timeout {
-                if start_time.elapsed() > timeout {
-                    return Err(GlobError::SearchTimeout { timeout });
-                }
+            if let Some(timeout) = self.timeout
+                && start_time.elapsed() > timeout
+            {
+                return Err(GlobError::SearchTimeout { timeout });
             }
 
             match entry_result {
@@ -947,7 +938,7 @@ impl GlobTool {
                     let path = entry.path();
 
                     // Handle directories
-                    if entry.file_type().map_or(false, |ft| ft.is_dir()) {
+                    if entry.file_type().is_some_and(|ft| ft.is_dir()) {
                         stats.directories_traversed += 1;
                         continue;
                     }
@@ -955,10 +946,10 @@ impl GlobTool {
                     stats.files_examined += 1;
 
                     // Check max results limit
-                    if let Some(max) = self.max_results {
-                        if matches.len() >= max {
-                            break;
-                        }
+                    if let Some(max) = self.max_results
+                        && matches.len() >= max
+                    {
+                        break;
                     }
 
                     // Create and filter file match
@@ -1162,7 +1153,7 @@ impl Default for FileExtensionClassifier {
                 "bash", "zsh", "fish", "ps1", "bat", "cmd",
             ]
             .iter()
-            .map(|s| s.to_string()),
+            .map(|s| (*s).to_string()),
         );
 
         let mut config_extensions = HashSet::new();
@@ -1183,7 +1174,7 @@ impl Default for FileExtensionClassifier {
                 "dockerfile",
             ]
             .iter()
-            .map(|s| s.to_string()),
+            .map(|s| (*s).to_string()),
         );
 
         let mut doc_extensions = HashSet::new();
@@ -1191,7 +1182,7 @@ impl Default for FileExtensionClassifier {
         doc_extensions.extend(
             ["md", "txt", "rst", "adoc", "tex", "pdf", "doc", "docx"]
                 .iter()
-                .map(|s| s.to_string()),
+                .map(|s| (*s).to_string()),
         );
 
         // Test file patterns (regex for flexibility)

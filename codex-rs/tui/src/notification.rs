@@ -57,18 +57,18 @@ impl NotificationSystem {
             enabled_levels.insert(NotificationLevel::Info);
         }
 
+        let sound_enabled = config.terminal_bell;
+        let visual_enabled = config.visual_flash;
         Self {
             config,
             enabled_levels,
-            sound_enabled: config.terminal_bell,
-            visual_enabled: config.visual_flash,
+            sound_enabled,
+            visual_enabled,
         }
     }
 
     /// Update the notification configuration
     pub fn update_config(&mut self, config: TuiNotifications) {
-        self.config = config;
-
         // Rebuild enabled levels
         self.enabled_levels.clear();
         if config.agent_complete {
@@ -86,6 +86,7 @@ impl NotificationSystem {
 
         self.sound_enabled = config.terminal_bell;
         self.visual_enabled = config.visual_flash;
+        self.config = config;
     }
 
     /// Enable or disable specific notification levels
@@ -103,12 +104,12 @@ impl NotificationSystem {
     }
 
     /// Enable or disable sound notifications
-    pub fn set_sound_enabled(&mut self, enabled: bool) {
+    pub const fn set_sound_enabled(&mut self, enabled: bool) {
         self.sound_enabled = enabled;
     }
 
     /// Enable or disable visual notifications  
-    pub fn set_visual_enabled(&mut self, enabled: bool) {
+    pub const fn set_visual_enabled(&mut self, enabled: bool) {
         self.visual_enabled = enabled;
     }
 
@@ -274,7 +275,7 @@ impl NotificationSystem {
     }
 
     /// Get current configuration
-    pub fn config(&self) -> &TuiNotifications {
+    pub const fn config(&self) -> &TuiNotifications {
         &self.config
     }
 
@@ -283,9 +284,6 @@ impl NotificationSystem {
         !self.enabled_levels.is_empty() && (self.sound_enabled || self.visual_enabled)
     }
 }
-
-/// Backward compatibility alias
-pub type NotificationManager = NotificationSystem;
 
 #[cfg(test)]
 mod tests {
@@ -311,10 +309,13 @@ mod tests {
     fn test_disabled_notifications() {
         let config = TuiNotifications {
             terminal_bell: false,
+            visual_flash: false,
             agent_complete: false,
             agent_failed: false,
             error_occurred: false,
             user_input_needed: false,
+            warnings: false,
+            info_messages: false,
         };
         let system = NotificationSystem::new(config);
 
@@ -337,10 +338,13 @@ mod tests {
 
         let new_config = TuiNotifications {
             terminal_bell: false,
+            visual_flash: false,
             agent_complete: false,
             agent_failed: true,
             error_occurred: true,
             user_input_needed: false,
+            warnings: false,
+            info_messages: false,
         };
 
         system.update_config(new_config.clone());

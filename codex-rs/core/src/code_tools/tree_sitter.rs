@@ -71,7 +71,11 @@ impl QueryEngine {
 
         // Iterate over matches manually
         let mut query_matches = cursor.matches(query, ast.tree.root_node(), source);
-        while let Some(m) = query_matches.next() {
+        loop {
+            query_matches.advance();
+            let Some(m) = query_matches.get() else {
+                break;
+            };
             for capture in m.captures {
                 let node = capture.node;
                 let text = std::str::from_utf8(&source[node.byte_range()])

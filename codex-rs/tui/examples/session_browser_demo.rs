@@ -7,12 +7,12 @@ use agcodex_core::modes::OperatingMode;
 use agcodex_persistence::types::CheckpointMetadata;
 use agcodex_persistence::types::SessionIndex;
 use agcodex_persistence::types::SessionMetadata;
-use agcodex_tui::widgets::SessionBrowser;
+// SessionBrowser widget needs to be made public in the tui crate
+// For now, we'll skip this demo
+use agcodex_tui::SessionBrowser;
 use chrono::Utc;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
-use ratatui::buffer::Buffer;
-use ratatui::layout::Rect;
 use ratatui::widgets::Widget;
 use uuid::Uuid;
 
@@ -27,14 +27,8 @@ fn create_sample_session_metadata(
         created_at: Utc::now(),
         updated_at: Utc::now(),
         last_accessed: Utc::now(),
-        message_count: (10..50)
-            .into_iter()
-            .nth(rand::random::<usize>() % 40)
-            .unwrap_or(15),
-        turn_count: (5..25)
-            .into_iter()
-            .nth(rand::random::<usize>() % 20)
-            .unwrap_or(10),
+        message_count: 10 + (rand::random::<u32>() % 40) as usize,
+        turn_count: 5 + (rand::random::<u32>() % 20) as usize,
         current_mode: mode,
         model: "gpt-4".to_string(),
         tags: if favorite {
@@ -43,10 +37,7 @@ fn create_sample_session_metadata(
             vec!["experiment".to_string()]
         },
         is_favorite: favorite,
-        file_size: (1024..10240)
-            .into_iter()
-            .nth(rand::random::<usize>() % 9216)
-            .unwrap_or(2048) as u64,
+        file_size: 1024 + (rand::random::<u32>() % 9216) as u64,
         compression_ratio: 0.75 + (rand::random::<f32>() * 0.2),
         format_version: 1,
         checkpoints: if favorite {

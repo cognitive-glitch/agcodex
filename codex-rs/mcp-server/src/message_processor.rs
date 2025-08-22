@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::agcodex_message_processor::CodexMessageProcessor;
-use crate::agcodex_tool_config::CodexToolCallParam;
-use crate::agcodex_tool_config::CodexToolCallReplyParam;
-use crate::agcodex_tool_config::create_tool_for_codex_tool_call_param;
-use crate::agcodex_tool_config::create_tool_for_codex_tool_call_reply_param;
+use crate::codex_message_processor::CodexMessageProcessor;
+use crate::codex_tool_config::CodexToolCallParam;
+use crate::codex_tool_config::CodexToolCallReplyParam;
+use crate::codex_tool_config::create_tool_for_codex_tool_call_param;
+use crate::codex_tool_config::create_tool_for_codex_tool_call_reply_param;
 use crate::error_code::INVALID_REQUEST_ERROR_CODE;
 use crate::outgoing_message::OutgoingMessageSender;
 use agcodex_protocol::mcp_protocol::ClientRequest;
@@ -52,18 +52,18 @@ impl MessageProcessor {
     ) -> Self {
         let outgoing = Arc::new(outgoing);
         let conversation_manager = Arc::new(ConversationManager::default());
-        let agcodex_message_processor = CodexMessageProcessor::new(
+        let codex_message_processor = CodexMessageProcessor::new(
             conversation_manager.clone(),
             outgoing.clone(),
             codex_linux_sandbox_exe.clone(),
         );
         Self {
-            codex_message_processor: agcodex_message_processor,
+            codex_message_processor,
             outgoing,
             initialized: false,
             codex_linux_sandbox_exe,
             conversation_manager,
-            running_requests_id_to_agcodex_uuid: Arc::new(Mutex::new(HashMap::new())),
+            running_requests_id_to_codex_uuid: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -407,7 +407,7 @@ impl MessageProcessor {
         // block the synchronous message-processing loop.
         task::spawn(async move {
             // Run the Codex session and stream events back to the client.
-            crate::agcodex_tool_runner::run_codex_tool_session(
+            crate::codex_tool_runner::run_codex_tool_session(
                 id,
                 initial_prompt,
                 config,
@@ -513,7 +513,7 @@ impl MessageProcessor {
             let running_requests_id_to_codex_uuid = running_requests_id_to_codex_uuid.clone();
 
             async move {
-                crate::agcodex_tool_runner::run_codex_tool_session_reply(
+                crate::codex_tool_runner::run_codex_tool_session_reply(
                     codex,
                     outgoing,
                     request_id,

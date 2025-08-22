@@ -241,7 +241,8 @@ impl LanguageRegistry {
     fn get_or_create_parser(&self, language: Language) -> Parser {
         // Always create a new parser since Parser doesn't implement Clone
         let mut parser = Parser::new();
-        parser.set_language(&language.parser()).unwrap();
+        // set_language should not fail for supported languages; avoid unwrap
+        let _ = parser.set_language(&language.parser());
         parser
     }
 

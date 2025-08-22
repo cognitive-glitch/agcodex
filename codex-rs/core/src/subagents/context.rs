@@ -830,7 +830,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_context_snapshot() {
-        let mut context = AgentContext::new(OperatingMode::Plan, HashMap::new());
+        let context = AgentContext::new(OperatingMode::Plan, HashMap::new());
 
         let finding = ContextFinding {
             id: Uuid::new_v4(),

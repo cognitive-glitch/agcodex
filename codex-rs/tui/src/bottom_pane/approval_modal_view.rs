@@ -72,11 +72,15 @@ impl<'a> BottomPaneView<'a> for ApprovalModalView<'a> {
     }
 
     fn as_any(&self) -> &dyn Any {
-        self
+        // TODO: Fix lifetime issues - requires 'static but we have 'a
+        // This is a known limitation that needs architectural refactoring
+        unimplemented!("Cannot safely cast with lifetime parameter")
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
+        // TODO: Fix lifetime issues - requires 'static but we have 'a
+        // This is a known limitation that needs architectural refactoring
+        unimplemented!("Cannot safely cast with lifetime parameter")
     }
 }
 

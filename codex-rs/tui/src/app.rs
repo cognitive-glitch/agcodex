@@ -5,7 +5,7 @@ use crate::chatwidget::ChatWidget;
 use crate::file_search::FileSearchManager;
 use crate::get_git_diff::get_git_diff;
 use crate::get_login_status;
-use crate::notification::NotificationManager;
+use crate::notification::NotificationSystem;
 use crate::onboarding::onboarding_screen::KeyboardHandler;
 use crate::onboarding::onboarding_screen::OnboardingScreen;
 use crate::onboarding::onboarding_screen::OnboardingScreenArgs;
@@ -51,7 +51,6 @@ use std::time::Duration;
 use std::time::Instant;
 use tokio::sync::Mutex;
 use tokio::sync::RwLock;
-use tokio::sync::mpsc::UnboundedReceiver;
 use uuid::Uuid;
 
 /// Time window for debouncing redraw requests.
@@ -232,16 +231,16 @@ impl App<'_> {
                     // needs to acquire the event lock, and so will fail if it
                     // can't acquire it within 2 sec. Resizing the terminal
                     // crashes the app if the cursor position can't be read.
-                    if let Ok(true) = crossterm::event::poll(Duration::from_millis(100)) {
-                        if let Ok(event) = crossterm::event::read() {
+                    if let Ok(true) = ratatui::crossterm::event::poll(Duration::from_millis(100)) {
+                        if let Ok(event) = ratatui::crossterm::event::read() {
                             match event {
-                                crossterm::event::Event::Key(key_event) => {
+                                ratatui::crossterm::event::Event::Key(key_event) => {
                                     app_event_tx.send(AppEvent::KeyEvent(key_event));
                                 }
-                                crossterm::event::Event::Resize(_, _) => {
+                                ratatui::crossterm::event::Event::Resize(_, _) => {
                                     app_event_tx.send(AppEvent::RequestRedraw);
                                 }
-                                crossterm::event::Event::Paste(pasted) => {
+                                ratatui::crossterm::event::Event::Paste(pasted) => {
                                     // Many terminals convert newlines to \r when pasting (e.g., iTerm2),
                                     // but tui-textarea expects \n. Normalize CR to LF.
                                     // [tui-textarea]: https://github.com/rhysd/tui-textarea/blob/4d18622eeac13b309e0ff6a55a46ac6706da68cf/src/textarea.rs#L782-L783
@@ -457,7 +456,7 @@ impl App<'_> {
                     match key_event {
                         KeyEvent {
                             code: KeyCode::Char('c'),
-                            modifiers: crossterm::event::KeyModifiers::CONTROL,
+                            modifiers: ratatui::crossterm::event::KeyModifiers::CONTROL,
                             kind: KeyEventKind::Press,
                             ..
                         } => match &mut self.app_state {
@@ -478,7 +477,7 @@ impl App<'_> {
                         }
                         KeyEvent {
                             code: KeyCode::Char('s'),
-                            modifiers: crossterm::event::KeyModifiers::CONTROL,
+                            modifiers: ratatui::crossterm::event::KeyModifiers::CONTROL,
                             kind: KeyEventKind::Press,
                             ..
                         } => {
@@ -487,7 +486,7 @@ impl App<'_> {
                         }
                         KeyEvent {
                             code: KeyCode::Char('o'),
-                            modifiers: crossterm::event::KeyModifiers::CONTROL,
+                            modifiers: ratatui::crossterm::event::KeyModifiers::CONTROL,
                             kind: KeyEventKind::Press,
                             ..
                         } => {
@@ -496,7 +495,7 @@ impl App<'_> {
                         }
                         KeyEvent {
                             code: KeyCode::Char('j'),
-                            modifiers: crossterm::event::KeyModifiers::CONTROL,
+                            modifiers: ratatui::crossterm::event::KeyModifiers::CONTROL,
                             kind: KeyEventKind::Press,
                             ..
                         } => {
@@ -505,7 +504,7 @@ impl App<'_> {
                         }
                         KeyEvent {
                             code: KeyCode::Char('a'),
-                            modifiers: crossterm::event::KeyModifiers::CONTROL,
+                            modifiers: ratatui::crossterm::event::KeyModifiers::CONTROL,
                             kind: KeyEventKind::Press,
                             ..
                         } => {
@@ -514,7 +513,7 @@ impl App<'_> {
                         }
                         KeyEvent {
                             code: KeyCode::Char('z'),
-                            modifiers: crossterm::event::KeyModifiers::CONTROL,
+                            modifiers: ratatui::crossterm::event::KeyModifiers::CONTROL,
                             kind: KeyEventKind::Press,
                             ..
                         } => {
@@ -526,7 +525,7 @@ impl App<'_> {
                         }
                         KeyEvent {
                             code: KeyCode::Char('d'),
-                            modifiers: crossterm::event::KeyModifiers::CONTROL,
+                            modifiers: ratatui::crossterm::event::KeyModifiers::CONTROL,
                             kind: KeyEventKind::Press,
                             ..
                         } => {
@@ -820,9 +819,7 @@ impl App<'_> {
                                 tracing::info!("Session '{}' saved with ID: {}", name, session_id);
 
                                 // Notify success
-                                if let Err(e) = app_event_tx.try_send(AppEvent::CloseSaveDialog) {
-                                    tracing::warn!("Failed to send CloseSaveDialog event: {}", e);
-                                }
+                                app_event_tx.send(AppEvent::CloseSaveDialog);
                             }
                             Err(e) => {
                                 tracing::error!("Failed to save session '{}': {}", name, e);
@@ -1116,7 +1113,7 @@ impl App<'_> {
                     self.agent_panel.complete_agent(agent_id, execution.clone());
 
                     // Ring terminal bell for agent completion with enhanced feedback
-                    let agent_name = execution.agent_id().to_string();
+                    let agent_name = execution.agent_name.clone();
                     if let Err(e) = self
                         .notification_system
                         .agent_completed_with_message(&agent_name)
@@ -1160,10 +1157,10 @@ impl App<'_> {
                     }
                 }
                 AppEvent::AgentPanelCancel => {
-                    if self.agent_panel.is_visible() {
-                        if let Some(agent_id) = self.agent_panel.selected_agent_id() {
-                            self.app_event_tx.send(AppEvent::CancelAgent(agent_id));
-                        }
+                    if self.agent_panel.is_visible()
+                        && let Some(agent_id) = self.agent_panel.selected_agent_id()
+                    {
+                        self.app_event_tx.send(AppEvent::CancelAgent(agent_id));
                     }
                 }
                 AppEvent::AgentOutputChunk { agent_id, chunk } => {
@@ -1202,7 +1199,7 @@ impl App<'_> {
     }
 
     /// Get the current operating mode
-    fn current_mode(&self) -> OperatingMode {
+    pub(crate) const fn current_mode(&self) -> OperatingMode {
         self.mode_manager.current_mode()
     }
 
@@ -1213,7 +1210,6 @@ impl App<'_> {
         invocation_request: agcodex_core::subagents::InvocationRequest,
     ) {
         use agcodex_core::subagents::ExecutionPlan;
-        use agcodex_core::subagents::SubagentExecution;
 
         tracing::info!(
             "Starting enhanced agent execution: {:?}",
@@ -1246,6 +1242,17 @@ impl App<'_> {
                     self.spawn_enhanced_agent(invocation, invocation_request.context.clone());
                 }
             }
+            ExecutionPlan::Conditional(conditional) => {
+                // For now, just execute all agents unconditionally
+                // TODO: Implement proper conditional evaluation
+                tracing::debug!(
+                    "Conditional execution: executing {} agents",
+                    conditional.agents.len()
+                );
+                for invocation in conditional.agents {
+                    self.spawn_enhanced_agent(invocation, invocation_request.context.clone());
+                }
+            }
             ExecutionPlan::Mixed(steps) => {
                 // Handle mixed execution with proper coordination
                 let mut step_delay = 0u64;
@@ -1262,6 +1269,19 @@ impl App<'_> {
                         }
                         agcodex_core::subagents::ExecutionStep::Parallel(invocations) => {
                             for invocation in invocations {
+                                let delay = std::time::Duration::from_millis(step_delay * 200);
+                                self.spawn_enhanced_agent_with_delay(
+                                    invocation,
+                                    invocation_request.context.clone(),
+                                    delay,
+                                );
+                            }
+                            step_delay += 1;
+                        }
+                        agcodex_core::subagents::ExecutionStep::Conditional(conditional) => {
+                            // For now, just execute all agents unconditionally
+                            // TODO: Implement proper conditional evaluation
+                            for invocation in conditional.agents {
                                 let delay = std::time::Duration::from_millis(step_delay * 200);
                                 self.spawn_enhanced_agent_with_delay(
                                     invocation,
@@ -1541,11 +1561,6 @@ impl App<'_> {
         tracing::debug!("Agent {} cancelled via enhanced simulation", agent_id);
     }
 
-    /// Get the current operating mode
-    pub(crate) const fn current_mode(&self) -> OperatingMode {
-        self.mode_manager.current_mode()
-    }
-
     /// Clone necessary components for auto-save task
     fn clone_for_autosave(&self) -> AutoSaveApp {
         AutoSaveApp {
@@ -1563,7 +1578,7 @@ impl App<'_> {
     }
 
     /// Get current notification configuration
-    pub(crate) fn notification_config(&self) -> &TuiNotifications {
+    pub(crate) const fn notification_config(&self) -> &TuiNotifications {
         self.notification_system.config()
     }
 
@@ -1889,22 +1904,20 @@ impl App<'_> {
 
     fn dispatch_codex_event(&mut self, event: Event) {
         // Enhanced notification handling for error events with specific messages
-        if let agcodex_core::protocol::EventMsg::Error(error_msg) = &event.msg {
-            if let Err(e) = self
+        if let agcodex_core::protocol::EventMsg::Error(error_msg) = &event.msg
+            && let Err(e) = self
                 .notification_system
                 .error_occurred_with_message(&error_msg.message)
-            {
-                tracing::warn!("Failed to ring terminal bell for error event: {}", e);
-            }
+        {
+            tracing::warn!("Failed to ring terminal bell for error event: {}", e);
         }
         // Also ring for turn aborted events
-        if let agcodex_core::protocol::EventMsg::TurnAborted(_) = &event.msg {
-            if let Err(e) = self
+        if let agcodex_core::protocol::EventMsg::TurnAborted(_) = &event.msg
+            && let Err(e) = self
                 .notification_system
                 .error_occurred_with_message("Turn aborted")
-            {
-                tracing::warn!("Failed to ring terminal bell for turn aborted: {}", e);
-            }
+        {
+            tracing::warn!("Failed to ring terminal bell for turn aborted: {}", e);
         }
         // Ring for approval requests (user input needed) with context
         match &event.msg {

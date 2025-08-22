@@ -3,13 +3,12 @@
 //! This file demonstrates various use cases for the TreeTool with different
 //! programming languages and operations.
 
-use agcodex_core::tools::IntelligenceLevel;
+use agcodex_core::subagents::config::IntelligenceLevel;
 use agcodex_core::tools::InternalTool;
 use agcodex_core::tools::SupportedLanguage;
 use agcodex_core::tools::TreeInput;
 use agcodex_core::tools::TreeOutput;
 use agcodex_core::tools::TreeTool;
-use std::path::PathBuf;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

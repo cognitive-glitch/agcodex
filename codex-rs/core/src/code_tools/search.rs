@@ -29,6 +29,7 @@ use tantivy::schema::STORED;
 use tantivy::schema::STRING;
 use tantivy::schema::Schema;
 use tantivy::schema::TEXT;
+use tantivy::schema::Value;
 use tokio::process::Command;
 
 /// Multi-layer search engine with automatic strategy selection
@@ -223,7 +224,7 @@ pub struct Metadata {
 }
 
 /// Search layer that produced the results
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SearchLayer {
     SymbolIndex,
     Tantivy,
@@ -233,7 +234,7 @@ pub enum SearchLayer {
 }
 
 /// Search strategy employed
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SearchStrategy {
     FastSymbolLookup,
     FullTextIndex,
@@ -559,7 +560,7 @@ impl MultiLayerSearchEngine {
         let output = tokio::time::timeout(self.config.timeout, cmd.output())
             .await
             .map_err(|_| ToolError::InvalidQuery("Search timeout".to_string()))?
-            .map_err(|e| ToolError::Io(e))?;
+            .map_err(ToolError::Io)?;
 
         if !output.status.success() {
             return Err(ToolError::InvalidQuery(format!(
@@ -576,28 +577,31 @@ impl MultiLayerSearchEngine {
         let mut all_matches = Vec::new();
 
         // Try each layer and combine results
-        if self.config.enable_symbol_index {
-            if let Ok(matches) = self.search_symbol_index(query).await {
-                all_matches.extend(matches);
-            }
+        if self.config.enable_symbol_index
+            && let Ok(matches) = self.search_symbol_index(query).await
+        {
+            all_matches.extend(matches);
         }
 
-        if self.config.enable_tantivy && all_matches.len() < query.limit.unwrap_or(50) {
-            if let Ok(matches) = self.search_tantivy(query).await {
-                all_matches.extend(matches);
-            }
+        if self.config.enable_tantivy
+            && all_matches.len() < query.limit.unwrap_or(50)
+            && let Ok(matches) = self.search_tantivy(query).await
+        {
+            all_matches.extend(matches);
         }
 
-        if self.config.enable_ast_cache && all_matches.len() < query.limit.unwrap_or(50) {
-            if let Ok(matches) = self.search_ast_cache(query).await {
-                all_matches.extend(matches);
-            }
+        if self.config.enable_ast_cache
+            && all_matches.len() < query.limit.unwrap_or(50)
+            && let Ok(matches) = self.search_ast_cache(query).await
+        {
+            all_matches.extend(matches);
         }
 
-        if self.config.enable_ripgrep_fallback && all_matches.len() < query.limit.unwrap_or(50) {
-            if let Ok(matches) = self.search_ripgrep(query).await {
-                all_matches.extend(matches);
-            }
+        if self.config.enable_ripgrep_fallback
+            && all_matches.len() < query.limit.unwrap_or(50)
+            && let Ok(matches) = self.search_ripgrep(query).await
+        {
+            all_matches.extend(matches);
         }
 
         // Deduplicate and sort by score
@@ -718,12 +722,12 @@ impl MultiLayerSearchEngine {
 
         // Language filters (would need to be determined from file extension)
         // This is a simplified check
-        if !query.language_filters.is_empty() {
-            if let Some(ext) = symbol.location.file.extension() {
-                let ext_str = ext.to_string_lossy().to_lowercase();
-                if !query.language_filters.contains(&ext_str) {
-                    return false;
-                }
+        if !query.language_filters.is_empty()
+            && let Some(ext) = symbol.location.file.extension()
+        {
+            let ext_str = ext.to_string_lossy().to_lowercase();
+            if !query.language_filters.contains(&ext_str) {
+                return false;
             }
         }
 
@@ -783,25 +787,22 @@ impl MultiLayerSearchEngine {
         let mut matches = Vec::new();
 
         for line in output_str.lines() {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
-                if json["type"] == "match" {
-                    if let Some(data) = json["data"].as_object() {
-                        let file =
-                            PathBuf::from(data["path"]["text"].as_str().unwrap_or("").to_string());
-                        let line_num = data["line_number"].as_u64().unwrap_or(0) as usize;
-                        let column =
-                            data["submatches"][0]["start"].as_u64().unwrap_or(0) as usize + 1; // ripgrep uses 0-based indexing
-                        let content = data["lines"]["text"].as_str().unwrap_or("").to_string();
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(line)
+                && json["type"] == "match"
+                && let Some(data) = json["data"].as_object()
+            {
+                let file = PathBuf::from(data["path"]["text"].as_str().unwrap_or("").to_string());
+                let line_num = data["line_number"].as_u64().unwrap_or(0) as usize;
+                let column = data["submatches"][0]["start"].as_u64().unwrap_or(0) as usize + 1; // ripgrep uses 0-based indexing
+                let content = data["lines"]["text"].as_str().unwrap_or("").to_string();
 
-                        matches.push(Match {
-                            file,
-                            line: line_num,
-                            column,
-                            content,
-                            score: 0.8, // Good match from full-text search
-                        });
-                    }
-                }
+                matches.push(Match {
+                    file,
+                    line: line_num,
+                    column,
+                    content,
+                    score: 0.8, // Good match from full-text search
+                });
             }
         }
 
@@ -927,7 +928,7 @@ impl MultiLayerSearchEngine {
     pub fn add_symbol(&self, symbol: Symbol) {
         self.symbol_index
             .entry(symbol.name.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(symbol);
     }
 
@@ -1036,13 +1037,13 @@ impl TantivySearchEngine {
 
         let mut matches = Vec::new();
         for (_score, doc_address) in top_docs {
-            let retrieved_doc: tantivy::Document = searcher
+            let retrieved_doc: tantivy::TantivyDocument = searcher
                 .doc(doc_address)
                 .map_err(|e| ToolError::InvalidQuery(format!("Doc retrieval error: {}", e)))?;
 
             let path = retrieved_doc
                 .get_first(schema.path)
-                .and_then(|f| f.as_text())
+                .and_then(|f| f.as_str())
                 .unwrap_or("")
                 .to_string();
 
@@ -1053,7 +1054,7 @@ impl TantivySearchEngine {
 
             let content = retrieved_doc
                 .get_first(schema.content)
-                .and_then(|f| f.as_text())
+                .and_then(|f| f.as_str())
                 .unwrap_or("")
                 .to_string();
 
@@ -1131,7 +1132,7 @@ impl CodeTool for MultiLayerSearchEngine {
 // Helper trait implementations
 
 impl QueryType {
-    fn as_str(&self) -> &'static str {
+    const fn as_str(&self) -> &'static str {
         match self {
             QueryType::Symbol => "symbol",
             QueryType::FullText => "fulltext",
@@ -1144,7 +1145,7 @@ impl QueryType {
 }
 
 impl SymbolKind {
-    fn as_str(&self) -> &'static str {
+    const fn as_str(&self) -> &'static str {
         match self {
             SymbolKind::Function => "function",
             SymbolKind::Method => "method",
@@ -1212,22 +1213,22 @@ impl SearchQuery {
         self
     }
 
-    pub fn with_context_lines(mut self, lines: usize) -> Self {
+    pub const fn with_context_lines(mut self, lines: usize) -> Self {
         self.context_lines = lines;
         self
     }
 
-    pub fn with_limit(mut self, limit: usize) -> Self {
+    pub const fn with_limit(mut self, limit: usize) -> Self {
         self.limit = Some(limit);
         self
     }
 
-    pub fn fuzzy(mut self) -> Self {
+    pub const fn fuzzy(mut self) -> Self {
         self.fuzzy = true;
         self
     }
 
-    pub fn case_insensitive(mut self) -> Self {
+    pub const fn case_insensitive(mut self) -> Self {
         self.case_sensitive = false;
         self
     }
@@ -1246,7 +1247,7 @@ impl SearchQuery {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
+
     use tokio::test;
 
     #[test]
@@ -1358,8 +1359,8 @@ mod tests {
         let _result3 = engine.search(query).await.unwrap();
     }
 
-    #[test]
-    fn test_similarity_calculation() {
+    #[tokio::test]
+    async fn test_similarity_calculation() {
         let config = SearchConfig::default();
         let engine = MultiLayerSearchEngine::new(config).unwrap();
 
@@ -1373,8 +1374,8 @@ mod tests {
         assert!(similarity < 0.3);
     }
 
-    #[test]
-    fn test_query_builder() {
+    #[tokio::test]
+    async fn test_query_builder() {
         let query = SearchQuery::symbol("test_function")
             .with_file_filters(vec!["*.rs".to_string()])
             .with_language_filters(vec!["rust".to_string()])

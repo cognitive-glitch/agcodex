@@ -34,12 +34,13 @@ use thiserror::Error;
 use tokio::fs;
 use tracing::debug;
 use tracing::info;
-use tracing::warn;
+// use tracing::warn; // unused
 use tree_sitter::Language;
 use tree_sitter::Node;
 use tree_sitter::Parser;
 use tree_sitter::Query;
 use tree_sitter::QueryCursor;
+use tree_sitter::StreamingIterator;
 use tree_sitter::Tree;
 
 // Import all 27 tree-sitter language parsers
@@ -169,7 +170,7 @@ pub enum SupportedLanguage {
 
 impl SupportedLanguage {
     /// Get file extensions for this language
-    pub fn extensions(&self) -> &'static [&'static str] {
+    pub const fn extensions(&self) -> &'static [&'static str] {
         match self {
             // Core systems languages
             SupportedLanguage::Rust => &["rs"],
@@ -225,54 +226,61 @@ impl SupportedLanguage {
     pub fn grammar(&self) -> Language {
         match self {
             // Core systems languages
-            SupportedLanguage::Rust => tree_sitter_rust::LANGUAGE,
-            SupportedLanguage::Python => tree_sitter_python::LANGUAGE,
-            SupportedLanguage::JavaScript => tree_sitter_javascript::LANGUAGE,
-            SupportedLanguage::TypeScript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT,
-            SupportedLanguage::Go => tree_sitter_go::LANGUAGE,
-            SupportedLanguage::Java => tree_sitter_java::LANGUAGE,
-            SupportedLanguage::C => tree_sitter_c::LANGUAGE,
-            SupportedLanguage::Cpp => tree_sitter_cpp::LANGUAGE,
-            SupportedLanguage::CSharp => tree_sitter_c_sharp::LANGUAGE,
-            SupportedLanguage::Bash => tree_sitter_bash::LANGUAGE,
+            SupportedLanguage::Rust => tree_sitter_rust::LANGUAGE.into(),
+            SupportedLanguage::Python => tree_sitter_python::LANGUAGE.into(),
+            SupportedLanguage::JavaScript => tree_sitter_javascript::LANGUAGE.into(),
+            SupportedLanguage::TypeScript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
+            SupportedLanguage::Go => tree_sitter_go::LANGUAGE.into(),
+            SupportedLanguage::Java => tree_sitter_java::LANGUAGE.into(),
+            SupportedLanguage::C => tree_sitter_c::LANGUAGE.into(),
+            SupportedLanguage::Cpp => tree_sitter_cpp::LANGUAGE.into(),
+            SupportedLanguage::CSharp => tree_sitter_c_sharp::LANGUAGE.into(),
+            SupportedLanguage::Bash => tree_sitter_bash::LANGUAGE.into(),
 
             // Web languages
-            SupportedLanguage::Html => tree_sitter_html::LANGUAGE,
-            SupportedLanguage::Css => tree_sitter_css::LANGUAGE,
-            SupportedLanguage::Json => tree_sitter_json::LANGUAGE,
-            SupportedLanguage::Yaml => tree_sitter_yaml::LANGUAGE,
-            SupportedLanguage::Toml => tree_sitter_toml::language(),
+            SupportedLanguage::Html => tree_sitter_html::LANGUAGE.into(),
+            SupportedLanguage::Css => tree_sitter_css::LANGUAGE.into(),
+            SupportedLanguage::Json => tree_sitter_json::LANGUAGE.into(),
+            SupportedLanguage::Yaml => tree_sitter_yaml::LANGUAGE.into(),
+            // TODO: Fix version compatibility issue with tree_sitter_toml
+            SupportedLanguage::Toml => todo!("TOML parser has version compatibility issues"),
 
             // Scripting languages
-            SupportedLanguage::Ruby => tree_sitter_ruby::LANGUAGE,
+            SupportedLanguage::Ruby => tree_sitter_ruby::LANGUAGE.into(),
             // TODO: Fix API compatibility for PHP
             SupportedLanguage::Php => todo!("PHP tree-sitter API compatibility"),
-            SupportedLanguage::Lua => tree_sitter_lua::LANGUAGE,
+            SupportedLanguage::Lua => tree_sitter_lua::LANGUAGE.into(),
 
             // Functional languages
-            SupportedLanguage::Haskell => tree_sitter_haskell::LANGUAGE,
-            SupportedLanguage::Elixir => tree_sitter_elixir::LANGUAGE,
-            SupportedLanguage::Scala => tree_sitter_scala::LANGUAGE,
+            SupportedLanguage::Haskell => tree_sitter_haskell::LANGUAGE.into(),
+            SupportedLanguage::Elixir => tree_sitter_elixir::LANGUAGE.into(),
+            SupportedLanguage::Scala => tree_sitter_scala::LANGUAGE.into(),
             // TODO: Fix API compatibility for OCaml
             SupportedLanguage::Ocaml => todo!("OCaml tree-sitter API compatibility"),
-            SupportedLanguage::Clojure => tree_sitter_clojure::LANGUAGE,
+            SupportedLanguage::Clojure => tree_sitter_clojure::LANGUAGE.into(),
 
             // Systems languages
-            SupportedLanguage::Zig => tree_sitter_zig::LANGUAGE,
-            SupportedLanguage::Swift => tree_sitter_swift::LANGUAGE,
-            SupportedLanguage::Kotlin => tree_sitter_kotlin_ng::LANGUAGE,
-            SupportedLanguage::ObjectiveC => tree_sitter_objc::LANGUAGE,
+            SupportedLanguage::Zig => tree_sitter_zig::LANGUAGE.into(),
+            SupportedLanguage::Swift => tree_sitter_swift::LANGUAGE.into(),
+            SupportedLanguage::Kotlin => tree_sitter_kotlin_ng::LANGUAGE.into(),
+            SupportedLanguage::ObjectiveC => tree_sitter_objc::LANGUAGE.into(),
 
             // Config/Build languages
-            SupportedLanguage::Dockerfile => tree_sitter_dockerfile::language(),
-            SupportedLanguage::Hcl => tree_sitter_hcl::LANGUAGE,
-            SupportedLanguage::Nix => tree_sitter_nix::LANGUAGE,
-            SupportedLanguage::Make => tree_sitter_make::LANGUAGE,
+            // TODO: Fix version compatibility issue with tree_sitter_dockerfile
+            SupportedLanguage::Dockerfile => {
+                todo!("Dockerfile parser has version compatibility issues")
+            }
+            SupportedLanguage::Hcl => tree_sitter_hcl::LANGUAGE.into(),
+            SupportedLanguage::Nix => tree_sitter_nix::LANGUAGE.into(),
+            SupportedLanguage::Make => tree_sitter_make::LANGUAGE.into(),
 
             // Documentation languages
-            SupportedLanguage::Markdown => tree_sitter_markdown::language(),
-            SupportedLanguage::Latex => tree_sitter_latex::LANGUAGE,
-            SupportedLanguage::Rst => tree_sitter_rst::LANGUAGE,
+            // TODO: Fix version compatibility issue with tree_sitter_markdown
+            SupportedLanguage::Markdown => {
+                todo!("Markdown parser has version compatibility issues")
+            }
+            SupportedLanguage::Latex => tree_sitter_latex::LANGUAGE.into(),
+            SupportedLanguage::Rst => tree_sitter_rst::LANGUAGE.into(),
         }
     }
 
@@ -281,16 +289,14 @@ impl SupportedLanguage {
         let ext = ext.to_lowercase();
 
         // Check all 27 supported languages
-        for &lang in Self::all_languages() {
-            if lang.extensions().contains(&ext.as_str()) {
-                return Some(lang);
-            }
-        }
-        None
+        Self::all_languages()
+            .iter()
+            .find(|&&lang| lang.extensions().contains(&ext.as_str()))
+            .copied()
     }
 
     /// Get all supported languages (27 total)
-    pub fn all_languages() -> &'static [Self] {
+    pub const fn all_languages() -> &'static [Self] {
         &[
             // Core systems languages
             SupportedLanguage::Rust,
@@ -337,7 +343,7 @@ impl SupportedLanguage {
     }
 
     /// Get name as string
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             // Core systems languages
             SupportedLanguage::Rust => "rust",
@@ -418,7 +424,7 @@ impl ParsedAst {
         errors
     }
 
-    fn collect_error_nodes(&self, node: Node, errors: &mut Vec<Node>) {
+    fn collect_error_nodes<'a>(&self, node: Node<'a>, errors: &mut Vec<Node<'a>>) {
         if node.is_error() || node.is_missing() {
             errors.push(node);
         }
@@ -627,7 +633,7 @@ impl ThreadSafeParser {
     fn new(language: SupportedLanguage) -> TreeResult<Self> {
         let mut parser = Parser::new();
         parser
-            .set_language(language.grammar())
+            .set_language(&language.grammar())
             .map_err(|_| TreeError::ParseFailed {
                 reason: format!("Failed to initialize {} parser", language.as_str()),
             })?;
@@ -1110,13 +1116,19 @@ impl TreeTool {
         let mut cursor = QueryCursor::new();
         let mut results = Vec::new();
 
-        // Iterate over matches directly
-        let matches = cursor.matches(
+        // Iterate over matches manually - QueryMatches doesn't implement Iterator
+        let mut matches_iter = cursor.matches(
             &query,
             parsed_ast.root_node(),
             parsed_ast.source_code.as_bytes(),
         );
-        for query_match in matches {
+
+        // Process matches directly from the streaming iterator
+        loop {
+            matches_iter.advance();
+            let Some(query_match) = matches_iter.get() else {
+                break;
+            };
             let start_byte = query_match
                 .captures
                 .iter()
@@ -1147,7 +1159,7 @@ impl TreeTool {
                 .iter()
                 .map(|capture| {
                     let node = capture.node;
-                    let capture_name = query.capture_names()[capture.index as usize].clone();
+                    let capture_name = query.capture_names()[capture.index as usize].to_string();
                     let text = node
                         .utf8_text(parsed_ast.source_code.as_bytes())
                         .unwrap_or("<invalid utf8>")
@@ -1369,7 +1381,7 @@ impl TreeTool {
         let cache_key = format!("{}:{}", language.as_str(), pattern);
 
         // Compile the query - we can't cache Query objects as they don't implement Clone
-        let query = Query::new(language.grammar(), pattern).map_err(|e| {
+        let query = Query::new(&language.grammar(), pattern).map_err(|e| {
             TreeError::QueryCompilationFailed {
                 query: pattern.to_string(),
                 reason: e.to_string(),
@@ -1404,44 +1416,44 @@ impl TreeTool {
     }
 
     /// Extract symbols for Rust code
-    fn extract_rust_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
+    const fn extract_rust_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
         // This would be implemented with Rust-specific query patterns
         // For now, return a basic implementation
         Ok(vec![])
     }
 
     /// Extract symbols for Python code
-    fn extract_python_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
+    const fn extract_python_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
         // Python-specific symbol extraction
         Ok(vec![])
     }
 
     /// Extract symbols for JavaScript/TypeScript code
-    fn extract_js_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
+    const fn extract_js_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
         // JavaScript/TypeScript-specific symbol extraction
         Ok(vec![])
     }
 
     /// Extract symbols for Go code
-    fn extract_go_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
+    const fn extract_go_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
         // Go-specific symbol extraction
         Ok(vec![])
     }
 
     /// Extract symbols for Java code
-    fn extract_java_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
+    const fn extract_java_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
         // Java-specific symbol extraction
         Ok(vec![])
     }
 
     /// Extract symbols for C/C++ code
-    fn extract_c_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
+    const fn extract_c_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
         // C/C++-specific symbol extraction
         Ok(vec![])
     }
 
     /// Extract symbols for Bash code
-    fn extract_bash_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
+    const fn extract_bash_symbols(&self, _ast: &ParsedAst) -> TreeResult<Vec<Symbol>> {
         // Bash-specific symbol extraction
         Ok(vec![])
     }
@@ -1640,9 +1652,8 @@ impl InternalTool for TreeTool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio_test;
 
-    #[tokio_test::test]
+    #[tokio::test]
     async fn test_rust_parsing() {
         let tool = TreeTool::new(IntelligenceLevel::Medium).unwrap();
         let rust_code = r#"
@@ -1662,7 +1673,7 @@ mod tests {
         assert!(ast.node_count > 0);
     }
 
-    #[tokio_test::test]
+    #[tokio::test]
     async fn test_language_detection() {
         let tool = TreeTool::new(IntelligenceLevel::Light).unwrap();
 
@@ -1680,7 +1691,7 @@ mod tests {
         );
     }
 
-    #[tokio_test::test]
+    #[tokio::test]
     async fn test_query_functionality() {
         let tool = TreeTool::new(IntelligenceLevel::Medium).unwrap();
         let rust_code = r#"
@@ -1708,7 +1719,7 @@ mod tests {
         assert_eq!(matches.len(), 2); // Should find main and helper functions
     }
 
-    #[tokio_test::test]
+    #[tokio::test]
     async fn test_cache_functionality() {
         let tool = TreeTool::new(IntelligenceLevel::Light).unwrap();
         let code = "fn test() {}".to_string();

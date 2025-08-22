@@ -29,8 +29,8 @@ use crate::message_processor::MessageProcessor;
 use crate::outgoing_message::OutgoingMessage;
 use crate::outgoing_message::OutgoingMessageSender;
 
-pub use crate::agcodex_tool_config::CodexToolCallParam;
-pub use crate::agcodex_tool_config::CodexToolCallReplyParam;
+pub use crate::codex_tool_config::CodexToolCallParam;
+pub use crate::codex_tool_config::CodexToolCallReplyParam;
 pub use crate::exec_approval::ExecApprovalElicitRequestParams;
 pub use crate::exec_approval::ExecApprovalResponse;
 pub use crate::patch_approval::PatchApprovalElicitRequestParams;

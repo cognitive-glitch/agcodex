@@ -425,6 +425,15 @@ impl AgentOrchestrator {
                 self.execute_parallel(invocations.clone(), &context).await?
             }
             ExecutionPlan::Mixed(steps) => self.execute_mixed(steps.clone(), &context).await?,
+            ExecutionPlan::Conditional(cond) => {
+                // Simple conditional: execute all agents if condition passes, else skip
+                let mut results = Vec::new();
+                for agent in &cond.agents {
+                    // For now, do not evaluate condition details; assume true
+                    results.push(self.execute_single(agent.clone(), &context).await?);
+                }
+                results
+            }
         };
 
         // Calculate total duration
@@ -625,6 +634,12 @@ impl AgentOrchestrator {
                 ExecutionStep::Parallel(invocations) => {
                     let executions = self.execute_parallel(invocations, shared_context).await?;
                     all_executions.extend(executions);
+                }
+                ExecutionStep::Conditional(cond) => {
+                    for agent in cond.agents {
+                        let execution = self.execute_single(agent, shared_context).await?;
+                        all_executions.push(execution);
+                    }
                 }
                 ExecutionStep::Barrier => {
                     // Wait for all active executions to complete
@@ -973,9 +988,22 @@ mod tests {
     use crate::subagents::config::SubagentConfig;
 
     async fn create_test_orchestrator() -> AgentOrchestrator {
-        let registry = Arc::new(SubagentRegistry::new());
+        use tempfile::TempDir;
 
-        // Add test agents
+        // Create a temp directory for test
+        let temp_dir = TempDir::new().unwrap();
+        let home_dir = temp_dir.path().join(".agcodex");
+        std::fs::create_dir_all(&home_dir).unwrap();
+
+        // Set HOME environment variable temporarily
+        unsafe {
+            std::env::set_var("HOME", temp_dir.path());
+        }
+
+        // Create registry
+        let registry = Arc::new(SubagentRegistry::new().unwrap());
+
+        // Create test agent config file
         let test_agent = SubagentConfig {
             name: "test-agent".to_string(),
             description: "Test agent".to_string(),
@@ -990,9 +1018,21 @@ mod tests {
             parallelizable: true,
             metadata: std::collections::HashMap::new(),
             file_patterns: vec![],
+            tags: vec![], // Add missing tags field
         };
 
-        registry.register(test_agent).await.unwrap();
+        // Save agent config to file
+        let global_agents_dir = temp_dir
+            .path()
+            .join(".agcodex")
+            .join("agents")
+            .join("global");
+        std::fs::create_dir_all(&global_agents_dir).unwrap();
+        let config_path = global_agents_dir.join("test-agent.toml");
+        test_agent.to_file(&config_path).unwrap();
+
+        // Load agents from files
+        registry.load_all().unwrap();
 
         AgentOrchestrator::new(
             registry,

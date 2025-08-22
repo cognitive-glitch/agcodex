@@ -143,7 +143,7 @@ impl ModeManager {
     }
 
     /// Check if a file operation is allowed in the current mode
-    pub fn can_write_file(&self, file_size: Option<usize>) -> bool {
+    pub const fn can_write_file(&self, file_size: Option<usize>) -> bool {
         if !self.restrictions.allow_file_write {
             return false;
         }

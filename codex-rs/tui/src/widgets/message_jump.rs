@@ -118,7 +118,7 @@ impl RoleFilter {
         }
     }
 
-    pub fn display_name(&self) -> &'static str {
+    pub const fn display_name(&self) -> &'static str {
         match self {
             RoleFilter::All => "All",
             RoleFilter::User => "User",
@@ -129,7 +129,7 @@ impl RoleFilter {
         }
     }
 
-    pub fn cycle_next(&self) -> Self {
+    pub const fn cycle_next(&self) -> Self {
         match self {
             RoleFilter::All => RoleFilter::User,
             RoleFilter::User => RoleFilter::Assistant,
@@ -202,7 +202,7 @@ impl MessageJump {
     }
 
     /// Check if the popup is currently visible
-    pub fn is_visible(&self) -> bool {
+    pub const fn is_visible(&self) -> bool {
         self.visible
     }
 
@@ -224,7 +224,7 @@ impl MessageJump {
     }
 
     /// Get the current role filter
-    pub fn role_filter(&self) -> RoleFilter {
+    pub const fn role_filter(&self) -> RoleFilter {
         self.role_filter
     }
 

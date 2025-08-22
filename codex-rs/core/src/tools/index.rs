@@ -50,11 +50,8 @@ use tracing::debug;
 use tracing::error;
 use tracing::info;
 use tracing::instrument;
-use uuid::Uuid;
 use walkdir::WalkDir;
 
-use tantivy::DocAddress;
-use tantivy::DocId;
 use tantivy::Index;
 use tantivy::IndexReader;
 use tantivy::IndexWriter;
@@ -64,12 +61,7 @@ use tantivy::TantivyError;
 use tantivy::Term;
 use tantivy::collector::TopDocs;
 use tantivy::doc;
-use tantivy::query::BooleanQuery;
-use tantivy::query::FuzzyTermQuery;
-use tantivy::query::Occur;
-use tantivy::query::PhraseQuery;
 use tantivy::query::QueryParser;
-use tantivy::query::TermQuery;
 use tantivy::schema::*;
 
 /// Errors specific to the indexing tool
@@ -94,7 +86,10 @@ pub enum IndexError {
     DocumentNotFound { path: PathBuf },
 
     #[error("query parsing error: {query}: {source}")]
-    QueryParsing { query: String, source: String },
+    QueryParsing {
+        query: String,
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
 
     #[error("schema error: {0}")]
     Schema(String),
@@ -110,6 +105,13 @@ pub enum IndexError {
 
     #[error("statistics calculation failed: {0}")]
     StatsFailed(String),
+}
+
+/// Conversion from walkdir::Error to IndexError
+impl From<walkdir::Error> for IndexError {
+    fn from(err: walkdir::Error) -> Self {
+        IndexError::Io(std::io::Error::other(err.to_string()))
+    }
 }
 
 /// Result type for index operations
@@ -717,11 +719,13 @@ impl IndexTool {
         info!("Optimizing index");
 
         let mut writer_guard = self.writer.lock().unwrap();
+
+        // Take ownership of the writer temporarily
         let writer = writer_guard
-            .as_mut()
+            .take()
             .ok_or_else(|| IndexError::NotInitialized("Writer not initialized".to_string()))?;
 
-        // Wait for merges to complete
+        // Wait for merges to complete (consumes writer)
         writer
             .wait_merging_threads()
             .map_err(|e| IndexError::OptimizationFailed(format!("Merge wait failed: {}", e)))?;
@@ -780,22 +784,28 @@ impl IndexTool {
 
     /// Internal stats method without output wrapper
     async fn stats_internal(&self) -> IndexResult<IndexStats> {
-        let reader_guard = self.reader.read().unwrap();
-        let reader = reader_guard
-            .as_ref()
-            .ok_or_else(|| IndexError::NotInitialized("Reader not initialized".to_string()))?;
+        let (document_count, segment_count, searcher) = {
+            let reader_guard = self.reader.read().unwrap();
+            let reader = reader_guard
+                .as_ref()
+                .ok_or_else(|| IndexError::NotInitialized("Reader not initialized".to_string()))?;
 
-        let searcher = reader.searcher();
-        let segment_readers = searcher.segment_readers();
+            let searcher = reader.searcher();
+            let segment_readers = searcher.segment_readers();
 
-        let document_count = segment_readers
-            .iter()
-            .map(|reader| reader.num_docs() as u64)
-            .sum::<u64>();
+            let document_count = segment_readers
+                .iter()
+                .map(|reader| reader.num_docs() as u64)
+                .sum::<u64>();
+
+            (document_count, segment_readers.len(), searcher)
+        }; // Drop reader_guard here
 
         // Calculate index size on disk
-        let config = self.config.read().unwrap();
-        let size_bytes = self.calculate_index_size(&config.index_path)?;
+        let size_bytes = {
+            let config = self.config.read().unwrap();
+            self.calculate_index_size(&config.index_path)?
+        }; // Drop config guard here
 
         // Collect language and symbol statistics
         let (language_stats, symbol_stats, avg_document_size) =
@@ -805,7 +815,7 @@ impl IndexTool {
             document_count,
             term_count: 0, // TODO: Calculate if needed
             size_bytes,
-            segment_count: segment_readers.len(),
+            segment_count,
             last_updated: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
@@ -840,10 +850,10 @@ impl IndexTool {
         // Convert to results
         let mut results = Vec::new();
         for (score, doc_address) in top_docs {
-            if let Some(min_score) = input.query.min_score {
-                if score < min_score {
-                    continue;
-                }
+            if let Some(min_score) = input.query.min_score
+                && score < min_score
+            {
+                continue;
             }
 
             let doc = searcher.doc(doc_address)?;
@@ -922,11 +932,11 @@ impl IndexTool {
             }
 
             // Check file size
-            if let Ok(metadata) = entry.metadata() {
-                if metadata.len() > max_size as u64 {
-                    debug!("Skipping large file: {:?} ({} bytes)", path, metadata.len());
-                    continue;
-                }
+            if let Ok(metadata) = entry.metadata()
+                && metadata.len() > max_size as u64
+            {
+                debug!("Skipping large file: {:?} ({} bytes)", path, metadata.len());
+                continue;
             }
 
             files.push(path.to_path_buf());
@@ -1078,8 +1088,8 @@ impl IndexTool {
         Ok(vec![])
     }
 
-    fn create_document(&self, doc: IndexedDocument) -> IndexResult<tantivy::Document> {
-        let mut tantivy_doc = tantivy::Document::new();
+    fn create_document(&self, doc: IndexedDocument) -> IndexResult<tantivy::TantivyDocument> {
+        let mut tantivy_doc = tantivy::TantivyDocument::default();
 
         // Add basic fields
         tantivy_doc.add_text(self.fields.path, &doc.path);
@@ -1105,13 +1115,13 @@ impl IndexTool {
             .collect();
 
         if !symbol_names.is_empty() {
-            tantivy_doc.add_text(self.fields.symbol_names, &symbol_names.join(" "));
+            tantivy_doc.add_text(self.fields.symbol_names, symbol_names.join(" "));
         }
         if !symbol_types.is_empty() {
-            tantivy_doc.add_text(self.fields.symbol_types, &symbol_types.join(" "));
+            tantivy_doc.add_text(self.fields.symbol_types, symbol_types.join(" "));
         }
         if !symbol_docs.is_empty() {
-            tantivy_doc.add_text(self.fields.symbol_docs, &symbol_docs.join(" "));
+            tantivy_doc.add_text(self.fields.symbol_docs, symbol_docs.join(" "));
         }
 
         Ok(tantivy_doc)
@@ -1126,7 +1136,7 @@ impl IndexTool {
             .as_ref()
             .ok_or_else(|| IndexError::NotInitialized("Index not initialized".to_string()))?;
 
-        let mut query_parser = QueryParser::for_index(
+        let query_parser = QueryParser::for_index(
             index,
             vec![
                 self.fields.content,
@@ -1139,7 +1149,7 @@ impl IndexTool {
         let query = query_parser.parse_query(&search_query.query).map_err(|e| {
             IndexError::QueryParsing {
                 query: search_query.query.clone(),
-                source: e.to_string(),
+                source: Box::new(e),
             }
         })?;
 
@@ -1150,25 +1160,25 @@ impl IndexTool {
 
     async fn doc_to_search_result(
         &self,
-        doc: tantivy::Document,
+        doc: tantivy::TantivyDocument,
         score: f32,
     ) -> IndexResult<SearchResult> {
         // Extract document fields
         let path = doc
             .get_first(self.fields.path)
-            .and_then(|v| v.as_text())
+            .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
         let content = doc
             .get_first(self.fields.content)
-            .and_then(|v| v.as_text())
+            .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
         let language = doc
             .get_first(self.fields.language)
-            .and_then(|v| v.as_text())
+            .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
@@ -1184,14 +1194,14 @@ impl IndexTool {
 
         let hash = doc
             .get_first(self.fields.hash)
-            .and_then(|v| v.as_text())
+            .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
         // Deserialize symbols
         let symbols_json = doc
             .get_first(self.fields.symbols)
-            .and_then(|v| v.as_text())
+            .and_then(|v| v.as_str())
             .unwrap_or("[]");
         let symbols: Vec<Symbol> = serde_json::from_str(symbols_json).unwrap_or_default();
 
@@ -1239,6 +1249,7 @@ impl IndexTool {
 
 // Implementation of InternalTool trait for different operations
 
+#[async_trait::async_trait]
 impl InternalTool for IndexTool {
     type Input = BuildInput;
     type Output = ComprehensiveToolOutput<IndexStats>;
@@ -1261,7 +1272,7 @@ impl InternalTool for IndexTool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
+
     use tempfile::TempDir;
 
     #[tokio::test]
@@ -1291,8 +1302,8 @@ mod tests {
             force_rebuild: false,
         };
 
-        let stats = tool.build(input).await.unwrap();
-        assert_eq!(stats.document_count, 0);
+        let output = tool.build(input).await.unwrap();
+        assert_eq!(output.result.document_count, 0);
     }
 
     #[tokio::test]

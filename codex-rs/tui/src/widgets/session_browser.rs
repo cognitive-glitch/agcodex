@@ -24,17 +24,12 @@ use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::Block;
 use ratatui::widgets::Borders;
-use ratatui::widgets::Cell;
 use ratatui::widgets::Clear;
 use ratatui::widgets::List;
 use ratatui::widgets::ListItem;
-use ratatui::widgets::ListState;
 use ratatui::widgets::Paragraph;
-use ratatui::widgets::Row;
-use ratatui::widgets::Table;
 use ratatui::widgets::Widget;
 use ratatui::widgets::WidgetRef;
-use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::bottom_pane::scroll_state::ScrollState;
@@ -136,7 +131,7 @@ pub enum SessionAction {
 }
 
 impl SessionAction {
-    fn display_name(&self) -> &'static str {
+    const fn display_name(&self) -> &'static str {
         match self {
             SessionAction::Open => "Open Session",
             SessionAction::Delete => "Delete Session",
@@ -154,7 +149,7 @@ impl SessionAction {
         }
     }
 
-    fn shortcut(&self) -> Option<&'static str> {
+    const fn shortcut(&self) -> Option<&'static str> {
         match self {
             SessionAction::Open => Some("Enter"),
             SessionAction::Delete => Some("Del"),
@@ -236,7 +231,7 @@ impl SessionBrowser {
     }
 
     /// Move focus to next panel
-    pub fn focus_next_panel(&mut self) {
+    pub const fn focus_next_panel(&mut self) {
         self.focused_panel = match self.focused_panel {
             FocusedPanel::SessionList => FocusedPanel::Preview,
             FocusedPanel::Preview => FocusedPanel::Actions,
@@ -246,7 +241,7 @@ impl SessionBrowser {
     }
 
     /// Move focus to previous panel
-    pub fn focus_previous_panel(&mut self) {
+    pub const fn focus_previous_panel(&mut self) {
         self.focused_panel = match self.focused_panel {
             FocusedPanel::SessionList => FocusedPanel::Search,
             FocusedPanel::Search => FocusedPanel::Actions,
@@ -288,7 +283,7 @@ impl SessionBrowser {
     }
 
     /// Get currently selected session ID
-    pub fn selected_session_id(&self) -> Option<Uuid> {
+    pub const fn selected_session_id(&self) -> Option<Uuid> {
         self.selected_session
     }
 
@@ -320,7 +315,7 @@ impl SessionBrowser {
     }
 
     /// Toggle export options
-    pub fn toggle_export_options(&mut self) {
+    pub const fn toggle_export_options(&mut self) {
         self.show_export_options = !self.show_export_options;
     }
 
@@ -360,7 +355,7 @@ impl SessionBrowser {
                 self.session_index
                     .sessions
                     .get(&id)
-                    .map_or(false, |metadata| metadata.current_mode == mode)
+                    .is_some_and(|metadata| metadata.current_mode == mode)
             });
         }
 
@@ -369,7 +364,7 @@ impl SessionBrowser {
                 self.session_index
                     .sessions
                     .get(&id)
-                    .map_or(false, |metadata| {
+                    .is_some_and(|metadata| {
                         metadata.last_accessed >= start && metadata.last_accessed <= end
                     })
             });
@@ -405,25 +400,25 @@ impl SessionBrowser {
             .and_then(|idx| self.filtered_sessions.get(idx).copied());
 
         // Update actions based on selected session
-        if let Some(session_id) = self.selected_session {
-            if let Some(metadata) = self.session_index.sessions.get(&session_id) {
-                self.actions = vec![
-                    SessionAction::Open,
-                    SessionAction::Export,
-                    SessionAction::Duplicate,
-                    SessionAction::Rename,
-                    if metadata.is_favorite {
-                        SessionAction::RemoveFromFavorites
-                    } else {
-                        SessionAction::AddToFavorites
-                    },
-                    SessionAction::Delete,
-                    SessionAction::Archive,
-                ];
+        if let Some(session_id) = self.selected_session
+            && let Some(metadata) = self.session_index.sessions.get(&session_id)
+        {
+            self.actions = vec![
+                SessionAction::Open,
+                SessionAction::Export,
+                SessionAction::Duplicate,
+                SessionAction::Rename,
+                if metadata.is_favorite {
+                    SessionAction::RemoveFromFavorites
+                } else {
+                    SessionAction::AddToFavorites
+                },
+                SessionAction::Delete,
+                SessionAction::Archive,
+            ];
 
-                if !metadata.checkpoints.is_empty() {
-                    self.actions.push(SessionAction::RestoreFromCheckpoint);
-                }
+            if !metadata.checkpoints.is_empty() {
+                self.actions.push(SessionAction::RestoreFromCheckpoint);
             }
         }
 
@@ -467,7 +462,7 @@ impl SessionBrowser {
     }
 
     /// Get display string for operating mode
-    fn mode_display(mode: OperatingMode) -> (&'static str, Color) {
+    const fn mode_display(mode: OperatingMode) -> (&'static str, Color) {
         match mode {
             OperatingMode::Plan => ("📋 Plan", Color::Blue),
             OperatingMode::Build => ("🔨 Build", Color::Green),

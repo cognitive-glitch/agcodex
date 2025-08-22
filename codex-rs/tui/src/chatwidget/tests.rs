@@ -137,6 +137,8 @@ fn make_chatwidget_manual() -> (
         last_token_usage: TokenUsage::default(),
         stream: StreamController::new(cfg),
         last_stream_kind: None,
+        message_jump: crate::widgets::message_jump::MessageJump::default(),
+        save_dialog_state: None,
         running_commands: HashMap::new(),
         pending_exec_completions: Vec::new(),
         task_complete_pending: false,

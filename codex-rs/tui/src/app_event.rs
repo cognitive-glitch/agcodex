@@ -1,7 +1,6 @@
 use agcodex_core::protocol::Event;
 use agcodex_core::subagents::InvocationRequest;
 use agcodex_core::subagents::SubagentExecution;
-use agcodex_core::subagents::SubagentStatus;
 use agcodex_file_search::FileMatch;
 use agcodex_persistence::types::SessionMetadata;
 use ratatui::crossterm::event::KeyEvent;

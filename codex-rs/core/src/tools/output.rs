@@ -11,7 +11,7 @@
 //! - **LLM-optimized**: Structured data with human-readable summaries
 //! - **Serializable**: Full serde support for persistence and transmission
 
-use ast::AstNode;
+// use ast::AstNode; // unused
 use ast::Language;
 use ast::SourceLocation;
 use serde::Deserialize;
@@ -622,7 +622,7 @@ pub struct DependencyInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OperationMetadata {
     /// Tool that performed the operation
-    pub tool: &'static str,
+    pub tool: String,
 
     /// Specific operation performed
     pub operation: String,
@@ -941,7 +941,7 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
 // Helper methods for building outputs
 impl<T> ComprehensiveToolOutput<T> {
     /// Create a new ComprehensiveToolOutput with minimal required fields
-    pub fn new(result: T, tool: &'static str, operation: String, location: SourceLocation) -> Self {
+    pub fn new(result: T, tool: &str, operation: String, location: SourceLocation) -> Self {
         let operation_id = Uuid::new_v4();
         let now = SystemTime::now();
 
@@ -950,7 +950,7 @@ impl<T> ComprehensiveToolOutput<T> {
             context: OperationContext::minimal(location),
             changes: Vec::new(),
             metadata: OperationMetadata {
-                tool,
+                tool: tool.to_string(),
                 operation,
                 operation_id,
                 started_at: now,
@@ -992,7 +992,7 @@ impl<T> ComprehensiveToolOutput<T> {
     }
 
     /// Set the confidence level
-    pub fn with_confidence(mut self, confidence: f32) -> Self {
+    pub const fn with_confidence(mut self, confidence: f32) -> Self {
         self.metadata.confidence = confidence.clamp(0.0, 1.0);
         self
     }
@@ -1139,8 +1139,8 @@ impl Change {
             },
             old: None,
             new: Some(content),
-            line_range: location.line..location.line + 1,
-            char_range: location.column..location.column + 1,
+            line_range: location.start_line..location.start_line + 1,
+            char_range: location.start_column..location.start_column + 1,
             location,
             semantic_impact: ComprehensiveSemanticImpact::minimal(),
             affected_symbols: Vec::new(),
@@ -1164,8 +1164,8 @@ impl Change {
             },
             old: Some(old_content),
             new: Some(new_content),
-            line_range: location.line..location.line + 1,
-            char_range: location.column..location.column + 1,
+            line_range: location.start_line..location.start_line + 1,
+            char_range: location.start_column..location.start_column + 1,
             location,
             semantic_impact: ComprehensiveSemanticImpact::minimal(),
             affected_symbols: Vec::new(),
@@ -1184,8 +1184,8 @@ impl Change {
             },
             old: Some(content),
             new: None,
-            line_range: location.line..location.line + 1,
-            char_range: location.column..location.column + 1,
+            line_range: location.start_line..location.start_line + 1,
+            char_range: location.start_column..location.start_column + 1,
             location,
             semantic_impact: ComprehensiveSemanticImpact::minimal(),
             affected_symbols: Vec::new(),
@@ -1212,7 +1212,7 @@ impl ComprehensiveSemanticImpact {
 
 impl ApiCompatibility {
     /// Create compatible API compatibility
-    pub fn compatible() -> Self {
+    pub const fn compatible() -> Self {
         Self {
             backward_compatible: true,
             version_impact: VersionImpact::Patch,
@@ -1237,7 +1237,7 @@ impl ComprehensivePerformanceImpact {
 
 impl MemoryImpact {
     /// Create neutral memory impact
-    pub fn neutral() -> Self {
+    pub const fn neutral() -> Self {
         Self {
             estimated_bytes_delta: None,
             allocation_changes: Vec::new(),
@@ -1248,7 +1248,7 @@ impl MemoryImpact {
 
 impl SecurityImpact {
     /// Create no security impact
-    pub fn none() -> Self {
+    pub const fn none() -> Self {
         Self {
             level: SecurityLevel::None,
             vulnerabilities: Vec::new(),
@@ -1260,7 +1260,7 @@ impl SecurityImpact {
 
 impl TestImpact {
     /// Create minimal test impact
-    pub fn minimal() -> Self {
+    pub const fn minimal() -> Self {
         Self {
             affected_tests: Vec::new(),
             required_tests: Vec::new(),
@@ -1272,7 +1272,7 @@ impl TestImpact {
 
 impl CoverageImpact {
     /// Create neutral coverage impact
-    pub fn neutral() -> Self {
+    pub const fn neutral() -> Self {
         Self {
             coverage_delta: None,
             uncovered_lines: Vec::new(),
@@ -1283,7 +1283,7 @@ impl CoverageImpact {
 
 impl Diagnostic {
     /// Create an info diagnostic
-    pub fn info(message: String) -> Self {
+    pub const fn info(message: String) -> Self {
         Self {
             level: DiagnosticLevel::Info,
             message,
@@ -1295,7 +1295,7 @@ impl Diagnostic {
     }
 
     /// Create a warning diagnostic
-    pub fn warning(message: String) -> Self {
+    pub const fn warning(message: String) -> Self {
         Self {
             level: DiagnosticLevel::Warning,
             message,
@@ -1307,7 +1307,7 @@ impl Diagnostic {
     }
 
     /// Create an error diagnostic
-    pub fn error(message: String) -> Self {
+    pub const fn error(message: String) -> Self {
         Self {
             level: DiagnosticLevel::Error,
             message,
@@ -1342,7 +1342,7 @@ impl Diagnostic {
 /// Builder for constructing ComprehensiveToolOutput instances
 pub struct OutputBuilder<T> {
     result: T,
-    tool: &'static str,
+    tool: String,
     operation: String,
     location: SourceLocation,
     changes: Vec<Change>,
@@ -1355,10 +1355,10 @@ pub struct OutputBuilder<T> {
 
 impl<T> OutputBuilder<T> {
     /// Create a new output builder
-    pub fn new(result: T, tool: &'static str, operation: String, location: SourceLocation) -> Self {
+    pub fn new(result: T, tool: &str, operation: String, location: SourceLocation) -> Self {
         Self {
             result,
-            tool,
+            tool: tool.to_string(),
             operation,
             location,
             changes: Vec::new(),
@@ -1407,7 +1407,7 @@ impl<T> OutputBuilder<T> {
     }
 
     /// Set the confidence level
-    pub fn confidence(mut self, confidence: f32) -> Self {
+    pub const fn confidence(mut self, confidence: f32) -> Self {
         self.confidence = confidence.clamp(0.0, 1.0);
         self
     }
@@ -1491,7 +1491,7 @@ pub struct ChangeBuilder {
 
 impl ChangeBuilder {
     /// Create a new change builder
-    pub fn new(location: SourceLocation) -> Self {
+    pub const fn new(location: SourceLocation) -> Self {
         Self {
             location,
             old: None,
@@ -1522,7 +1522,7 @@ impl ChangeBuilder {
     }
 
     /// Set the confidence
-    pub fn confidence(mut self, confidence: f32) -> Self {
+    pub const fn confidence(mut self, confidence: f32) -> Self {
         self.confidence = confidence.clamp(0.0, 1.0);
         self
     }
@@ -1552,12 +1552,12 @@ impl ChangeBuilder {
             },
             old: self.old,
             new: self.new,
-            line_range: self.location.line..self.location.line + 1,
-            char_range: self.location.column..self.location.column + 1,
+            line_range: self.location.start_line..self.location.start_line + 1,
+            char_range: self.location.start_column..self.location.start_column + 1,
             location: self.location,
             semantic_impact: self
                 .impact
-                .unwrap_or_else(|| ComprehensiveSemanticImpact::minimal()),
+                .unwrap_or_else(ComprehensiveSemanticImpact::minimal),
             affected_symbols: self.affected_symbols,
             confidence: self.confidence,
             description,
@@ -1577,12 +1577,12 @@ impl ChangeBuilder {
             },
             old: self.old,
             new: self.new,
-            line_range: self.location.line..self.location.line + 1,
-            char_range: self.location.column..self.location.column + 1,
+            line_range: self.location.start_line..self.location.start_line + 1,
+            char_range: self.location.start_column..self.location.start_column + 1,
             location: self.location,
             semantic_impact: self
                 .impact
-                .unwrap_or_else(|| ComprehensiveSemanticImpact::minimal()),
+                .unwrap_or_else(ComprehensiveSemanticImpact::minimal),
             affected_symbols: self.affected_symbols,
             confidence: self.confidence,
             description,
@@ -1602,12 +1602,12 @@ impl ChangeBuilder {
             },
             old: self.old,
             new: self.new,
-            line_range: self.location.line..self.location.line + 1,
-            char_range: self.location.column..self.location.column + 1,
+            line_range: self.location.start_line..self.location.start_line + 1,
+            char_range: self.location.start_column..self.location.start_column + 1,
             location: self.location,
             semantic_impact: self
                 .impact
-                .unwrap_or_else(|| ComprehensiveSemanticImpact::minimal()),
+                .unwrap_or_else(ComprehensiveSemanticImpact::minimal),
             affected_symbols: self.affected_symbols,
             confidence: self.confidence,
             description,
@@ -1624,7 +1624,7 @@ pub fn simple_success<T>(
     operation: String,
     summary: String,
 ) -> ComprehensiveToolOutput<T> {
-    let location = SourceLocation::new("unknown".into(), 0, 0);
+    let location = SourceLocation::new("unknown", 0, 0, 0, 0, (0, 0));
     OutputBuilder::new(result, tool, operation, location)
         .summary(summary)
         .build()
@@ -1637,7 +1637,7 @@ pub fn simple_error<T>(
     operation: String,
     error_message: String,
 ) -> ComprehensiveToolOutput<T> {
-    let location = SourceLocation::new("unknown".into(), 0, 0);
+    let location = SourceLocation::new("unknown", 0, 0, 0, 0, (0, 0));
     OutputBuilder::new(result, tool, operation, location)
         .error(error_message)
         .confidence(0.0)
@@ -1656,7 +1656,7 @@ pub fn single_file_modification<T>(
     new_content: String,
     reason: String,
 ) -> ComprehensiveToolOutput<T> {
-    let location = SourceLocation::new(file_path.into(), line, column);
+    let location = SourceLocation::new(file_path, line, column, line, column, (0, 0));
     let change = ChangeBuilder::new(location.clone())
         .old_content(old_content)
         .new_content(new_content)
@@ -1681,7 +1681,7 @@ pub fn multi_file_changes<T>(
     let location = if let Some(first_change) = changes.first() {
         first_change.location.clone()
     } else {
-        SourceLocation::new("unknown".into(), 0, 0)
+        SourceLocation::new("unknown", 0, 0, 0, 0, (0, 0))
     };
 
     let summary = if changes.is_empty() {
@@ -1726,10 +1726,9 @@ impl PerformanceTimer {
     pub fn end_current_phase(&mut self) {
         if let (Some(phase_name), Some(start_time)) =
             (self.current_phase.take(), self.current_phase_start.take())
+            && let Ok(duration) = start_time.elapsed()
         {
-            if let Ok(duration) = start_time.elapsed() {
-                self.phase_times.insert(phase_name, duration);
-            }
+            self.phase_times.insert(phase_name, duration);
         }
     }
 

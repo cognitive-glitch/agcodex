@@ -201,7 +201,7 @@ impl MetaTask {
     }
 
     /// Check if the meta task is ready for execution
-    pub fn is_ready(&self) -> bool {
+    pub const fn is_ready(&self) -> bool {
         matches!(self.status, TaskStatus::Ready) && !self.sub_tasks.is_empty()
     }
 
@@ -373,10 +373,8 @@ impl DependencyGraph {
         let mut rec_stack = HashSet::new();
 
         for node in self.edges.keys() {
-            if !visited.contains(node) {
-                if self.has_cycle_dfs(*node, &mut visited, &mut rec_stack) {
-                    return true;
-                }
+            if !visited.contains(node) && self.has_cycle_dfs(*node, &mut visited, &mut rec_stack) {
+                return true;
             }
         }
         false
@@ -498,7 +496,7 @@ impl TaskGroup {
     }
 
     /// Check if this group can run in parallel
-    pub fn is_parallel(&self) -> bool {
+    pub const fn is_parallel(&self) -> bool {
         matches!(self, TaskGroup::Parallel(_))
     }
 
@@ -1642,7 +1640,7 @@ impl PlanTool {
     }
 
     /// Get the status of all active meta tasks
-    pub fn get_active_tasks(&self) -> Vec<MetaTask> {
+    pub const fn get_active_tasks(&self) -> Vec<MetaTask> {
         // This would be implemented with persistent storage
         // For now, return empty list
         Vec::new()
@@ -1821,7 +1819,7 @@ mod tests {
 
     #[test]
     fn test_agent_type_assignment() {
-        let mut sub_planner = SubTaskPlanner::new();
+        let sub_planner = SubTaskPlanner::new();
         let meta_id = Uuid::new_v4();
 
         let mut tasks = vec![

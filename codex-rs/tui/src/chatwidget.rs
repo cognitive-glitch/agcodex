@@ -972,7 +972,7 @@ impl ChatWidget<'_> {
     }
 
     /// Get conversation history as ResponseItems for message jump
-    fn get_conversation_history(&self) -> Vec<agcodex_core::models::ResponseItem> {
+    const fn get_conversation_history(&self) -> Vec<agcodex_core::models::ResponseItem> {
         // TODO: Extract conversation history from the stream controller or other source
         // For now, return empty vector as placeholder
         Vec::new()

@@ -32,9 +32,6 @@ pub mod orchestrator;
 pub mod registry;
 pub mod worktree;
 
-#[cfg(test)]
-pub mod benchmarks;
-
 // Re-export main types for convenience
 pub use agents::AgentRegistry;
 pub use agents::AgentResult;

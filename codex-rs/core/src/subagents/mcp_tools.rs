@@ -750,7 +750,7 @@ mod tests {
         provider.register_standard_tools().await.unwrap();
         let tools = provider.get_tools().await;
 
-        assert!(tools.len() > 0);
+        assert!(!tools.is_empty());
         assert!(tools.iter().any(|t| t.name == "agent_code_reviewer"));
         assert!(tools.iter().any(|t| t.name == "agent_chain"));
     }

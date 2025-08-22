@@ -584,6 +584,9 @@ impl InvocationParser {
                 chain.agents.iter().map(|a| &a.agent_name).collect()
             }
             ExecutionPlan::Parallel(_) => return Ok(()), // No cycles in parallel
+            ExecutionPlan::Conditional(cond) => {
+                cond.agents.iter().map(|inv| &inv.agent_name).collect()
+            }
             ExecutionPlan::Mixed(steps) => {
                 // Flatten all agent names
                 steps

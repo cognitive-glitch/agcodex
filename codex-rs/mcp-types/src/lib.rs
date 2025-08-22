@@ -5,6 +5,7 @@
 // ```shell
 // ./generate_mcp_types.py
 // ```
+#![allow(clippy::fallible_impl_from)]
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;

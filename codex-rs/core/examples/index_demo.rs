@@ -13,12 +13,12 @@ use agcodex_core::tools::SearchInput;
 use agcodex_core::tools::SearchQuery;
 use agcodex_core::tools::UpdateInput;
 use std::fs;
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::init();
+    // Initialize logging (optional - add tracing_subscriber as dev-dependency if needed)
+    // tracing_subscriber::fmt::init();
 
     // Create a temporary directory with some sample code files
     let temp_dir = TempDir::new()?;
@@ -152,10 +152,10 @@ emitter.on('data', data => console.log('Received:', data));
     let stats = index_tool.build(build_input).await?;
     println!("✅ Index built successfully!");
     println!("📊 Statistics:");
-    println!("   - Documents: {}", stats.document_count);
-    println!("   - Size: {} bytes", stats.size_bytes);
-    println!("   - Segments: {}", stats.segment_count);
-    println!("   - Languages: {:?}", stats.language_stats);
+    println!("   - Documents: {}", stats.result.document_count);
+    println!("   - Size: {} bytes", stats.result.size_bytes);
+    println!("   - Segments: {}", stats.result.segment_count);
+    println!("   - Languages: {:?}", stats.result.language_stats);
 
     // Demonstrate search functionality
     println!("\n🔍 Searching for 'function'...");
@@ -176,9 +176,9 @@ emitter.on('data', data => console.log('Received:', data));
     };
 
     let results = index_tool.search(search_input).await?;
-    println!("Found {} results:", results.len());
+    println!("Found {} results:", results.result.len());
 
-    for (i, result) in results.iter().enumerate().take(3) {
+    for (i, result) in results.result.iter().enumerate().take(3) {
         println!(
             "{}. {} (score: {:.2})",
             i + 1,
@@ -211,9 +211,9 @@ emitter.on('data', data => console.log('Received:', data));
     };
 
     let python_results = index_tool.search(python_search_input).await?;
-    println!("Found {} Python results:", python_results.len());
+    println!("Found {} Python results:", python_results.result.len());
 
-    for result in python_results {
+    for result in python_results.result {
         println!("- {} (score: {:.2})", result.document.path, result.score);
     }
 
@@ -266,8 +266,8 @@ pub mod demo {
     let updated_stats = index_tool.update(update_input).await?;
     println!("✅ Index updated!");
     println!("📊 New statistics:");
-    println!("   - Documents: {}", updated_stats.document_count);
-    println!("   - Size: {} bytes", updated_stats.size_bytes);
+    println!("   - Documents: {}", updated_stats.result.document_count);
+    println!("   - Size: {} bytes", updated_stats.result.size_bytes);
 
     // Search for the new content
     println!("\n🔍 Searching for 'HashMap'...");
@@ -290,10 +290,10 @@ pub mod demo {
     let hashmap_results = index_tool.search(hashmap_search_input).await?;
     println!(
         "Found {} results containing 'HashMap':",
-        hashmap_results.len()
+        hashmap_results.result.len()
     );
 
-    for result in hashmap_results {
+    for result in hashmap_results.result {
         println!("- {} (score: {:.2})", result.document.path, result.score);
     }
 
@@ -305,17 +305,20 @@ pub mod demo {
     // Final statistics
     let final_stats = index_tool.stats().await?;
     println!("\n📈 Final Index Statistics:");
-    println!("   - Total documents: {}", final_stats.document_count);
-    println!("   - Total size: {} bytes", final_stats.size_bytes);
-    println!("   - Segments: {}", final_stats.segment_count);
+    println!(
+        "   - Total documents: {}",
+        final_stats.result.document_count
+    );
+    println!("   - Total size: {} bytes", final_stats.result.size_bytes);
+    println!("   - Segments: {}", final_stats.result.segment_count);
     println!(
         "   - Average document size: {:.2} bytes",
-        final_stats.avg_document_size
+        final_stats.result.avg_document_size
     );
 
-    if !final_stats.language_stats.is_empty() {
+    if !final_stats.result.language_stats.is_empty() {
         println!("   - Language distribution:");
-        for (lang, count) in &final_stats.language_stats {
+        for (lang, count) in &final_stats.result.language_stats {
             println!("     • {}: {} files", lang, count);
         }
     }

@@ -149,7 +149,7 @@ impl SaveDialogState {
         }
     }
 
-    fn move_to_save_button(&mut self) {
+    const fn move_to_save_button(&mut self) {
         self.focused_field = 2; // Save button
     }
 
@@ -254,7 +254,7 @@ impl SaveDialogState {
     }
 
     /// Set saving state
-    pub fn set_saving(&mut self, saving: bool) {
+    pub const fn set_saving(&mut self, saving: bool) {
         self.saving = saving;
     }
 
@@ -284,7 +284,7 @@ pub struct SaveDialog<'a> {
 }
 
 impl<'a> SaveDialog<'a> {
-    pub fn new(state: &'a SaveDialogState) -> Self {
+    pub const fn new(state: &'a SaveDialogState) -> Self {
         Self { state }
     }
 
@@ -334,9 +334,10 @@ impl<'a> SaveDialog<'a> {
         // Render cursor if focused
         if focused && !text.is_empty() {
             let cursor_x = inner.x + (cursor_pos.min(text.len()) as u16);
-            if cursor_x < inner.right() {
-                buf.cell_mut((cursor_x, inner.y))
-                    .set_style(Style::default().bg(Color::White).fg(Color::Black));
+            if cursor_x < inner.right()
+                && let Some(cell) = buf.cell_mut((cursor_x, inner.y))
+            {
+                cell.set_style(Style::default().bg(Color::White).fg(Color::Black));
             }
         }
     }

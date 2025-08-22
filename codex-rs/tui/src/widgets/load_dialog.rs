@@ -93,8 +93,14 @@ pub struct LoadDialog {
     error_message: Option<String>,
 }
 
+impl Default for LoadDialog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LoadDialog {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             search_query: String::new(),
             all_sessions: Vec::new(),
@@ -206,7 +212,7 @@ impl LoadDialog {
     }
 
     /// Whether the dialog is still loading
-    pub fn is_loading(&self) -> bool {
+    pub const fn is_loading(&self) -> bool {
         self.loading
     }
 }

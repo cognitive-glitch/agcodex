@@ -326,6 +326,30 @@ pub async fn demonstrate_goal_types() -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
+/// Example of how to integrate with the AGCodex TUI
+pub fn tui_integration_example() {
+    println!("🖥️  TUI Integration Example");
+    println!("===========================");
+    println!("In the AGCodex TUI, users would interact with the planning tool like this:");
+    println!();
+    println!("1. User types: 'Plan: Add user registration system'");
+    println!("2. TUI calls PlanTool::create_meta() in the background");
+    println!("3. TUI displays meta-task with complexity and confidence estimates");
+    println!("4. User confirms or modifies the plan");
+    println!("5. TUI calls PlanTool::decompose() to break down into sub-tasks");
+    println!("6. TUI shows parallelization opportunities and time estimates");
+    println!("7. User triggers execution via Shift+Enter");
+    println!("8. TUI calls PlanTool::execute_plan() and starts agent orchestration");
+    println!("9. Progress bars show parallel task execution in real-time");
+    println!("10. User can cancel, pause, or branch the plan at any time");
+    println!();
+    println!("The planning tool integrates seamlessly with:");
+    println!("- Mode switching (Plan/Build/Review modes affect complexity estimation)");
+    println!("- Session persistence (plans are saved to ~/.agcodex/history)");
+    println!("- Agent orchestration (automatic worktree management)");
+    println!("- AST-based context analysis (smart language/framework detection)");
+}
+
 #[cfg(test)]
 mod integration_tests {
     use super::*;
@@ -362,28 +386,4 @@ mod integration_tests {
             assert!(meta_task.context.complexity_level <= 10);
         }
     }
-}
-
-/// Example of how to integrate with the AGCodex TUI
-pub fn tui_integration_example() {
-    println!("🖥️  TUI Integration Example");
-    println!("===========================");
-    println!("In the AGCodex TUI, users would interact with the planning tool like this:");
-    println!();
-    println!("1. User types: 'Plan: Add user registration system'");
-    println!("2. TUI calls PlanTool::create_meta() in the background");
-    println!("3. TUI displays meta-task with complexity and confidence estimates");
-    println!("4. User confirms or modifies the plan");
-    println!("5. TUI calls PlanTool::decompose() to break down into sub-tasks");
-    println!("6. TUI shows parallelization opportunities and time estimates");
-    println!("7. User triggers execution via Shift+Enter");
-    println!("8. TUI calls PlanTool::execute_plan() and starts agent orchestration");
-    println!("9. Progress bars show parallel task execution in real-time");
-    println!("10. User can cancel, pause, or branch the plan at any time");
-    println!();
-    println!("The planning tool integrates seamlessly with:");
-    println!("- Mode switching (Plan/Build/Review modes affect complexity estimation)");
-    println!("- Session persistence (plans are saved to ~/.agcodex/history)");
-    println!("- Agent orchestration (automatic worktree management)");
-    println!("- AST-based context analysis (smart language/framework detection)");
 }

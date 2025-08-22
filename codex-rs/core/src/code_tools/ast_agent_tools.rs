@@ -601,7 +601,7 @@ impl ASTAgentTools {
         file: &PathBuf,
         language: &str,
     ) -> Result<Vec<FunctionInfo>, ToolError> {
-        let content = std::fs::read_to_string(file).map_err(|e| ToolError::Io(e))?;
+        let content = std::fs::read_to_string(file).map_err(ToolError::Io)?;
 
         // Create semantic index if not cached
         let semantic_index = self.create_semantic_index(file, &content, language)?;
@@ -611,7 +611,7 @@ impl ASTAgentTools {
 
     /// Extract classes from a file using AST parsing
     fn extract_classes(&self, file: &PathBuf, language: &str) -> Result<Vec<ClassInfo>, ToolError> {
-        let content = std::fs::read_to_string(file).map_err(|e| ToolError::Io(e))?;
+        let content = std::fs::read_to_string(file).map_err(ToolError::Io)?;
 
         let semantic_index = self.create_semantic_index(file, &content, language)?;
 
@@ -671,7 +671,7 @@ impl ASTAgentTools {
     }
 
     /// Find all call sites of a function
-    fn find_call_sites(
+    const fn find_call_sites(
         &self,
         _function_name: &str,
         _directory: &PathBuf,
@@ -721,7 +721,7 @@ impl ASTAgentTools {
     }
 
     /// Detect duplicate code blocks
-    fn detect_duplication(
+    const fn detect_duplication(
         &self,
         _directory: &PathBuf,
         _min_lines: usize,
@@ -741,7 +741,7 @@ impl ASTAgentTools {
 
     /// Analyze file dependencies
     fn analyze_dependencies(&self, file: &PathBuf) -> Result<Vec<Dependency>, ToolError> {
-        let content = std::fs::read_to_string(file).map_err(|e| ToolError::Io(e))?;
+        let content = std::fs::read_to_string(file).map_err(ToolError::Io)?;
 
         let mut dependencies = Vec::new();
 
@@ -790,7 +790,7 @@ impl ASTAgentTools {
         file: &PathBuf,
         language: &str,
     ) -> Result<ValidationReport, ToolError> {
-        let content = std::fs::read_to_string(file).map_err(|e| ToolError::Io(e))?;
+        let content = std::fs::read_to_string(file).map_err(ToolError::Io)?;
 
         // Use LanguageRegistry for parsing and validation
         let registry = LanguageRegistry::new();
@@ -831,7 +831,7 @@ impl ASTAgentTools {
 
     /// Format code according to language conventions
     fn format_code(&self, file: &PathBuf, _language: &str) -> Result<String, ToolError> {
-        let content = std::fs::read_to_string(file).map_err(|e| ToolError::Io(e))?;
+        let content = std::fs::read_to_string(file).map_err(ToolError::Io)?;
 
         // Stub implementation - just return the original content
         Ok(content)
@@ -839,14 +839,14 @@ impl ASTAgentTools {
 
     /// Optimize import statements
     fn optimize_imports(&self, file: &PathBuf, _language: &str) -> Result<String, ToolError> {
-        let content = std::fs::read_to_string(file).map_err(|e| ToolError::Io(e))?;
+        let content = std::fs::read_to_string(file).map_err(ToolError::Io)?;
 
         // Stub implementation - would analyze and reorganize imports
         Ok(content)
     }
 
     /// Perform security analysis
-    fn security_scan(&self, _directory: &PathBuf) -> Result<SecurityReport, ToolError> {
+    const fn security_scan(&self, _directory: &PathBuf) -> Result<SecurityReport, ToolError> {
         // Stub implementation
         Ok(SecurityReport {
             vulnerabilities: Vec::new(),
@@ -856,7 +856,7 @@ impl ASTAgentTools {
     }
 
     /// Perform performance analysis
-    fn performance_scan(&self, _directory: &PathBuf) -> Result<PerformanceReport, ToolError> {
+    const fn performance_scan(&self, _directory: &PathBuf) -> Result<PerformanceReport, ToolError> {
         // Stub implementation
         Ok(PerformanceReport {
             issues: Vec::new(),
@@ -929,7 +929,7 @@ impl ASTAgentTools {
     // New methods for agent operations
 
     /// Detect duplication based on similarity threshold
-    fn detect_duplication_by_threshold(
+    const fn detect_duplication_by_threshold(
         &self,
         threshold: f32,
     ) -> Result<Vec<DuplicationGroup>, ToolError> {
@@ -959,7 +959,7 @@ impl ASTAgentTools {
     }
 
     /// Detect patterns in code (anti-patterns, design patterns, etc.)
-    fn detect_patterns(&self, pattern: &PatternType) -> Result<Vec<PatternMatch>, ToolError> {
+    const fn detect_patterns(&self, pattern: &PatternType) -> Result<Vec<PatternMatch>, ToolError> {
         // Stub implementation - would use pattern matching on AST
         match pattern {
             PatternType::AntiPattern(name) => {
@@ -978,7 +978,7 @@ impl ASTAgentTools {
     }
 
     /// Find dead code within specified scope
-    fn find_dead_code(
+    const fn find_dead_code(
         &self,
         scope: &crate::code_tools::search::SearchScope,
     ) -> Result<Vec<DeadCodeItem>, ToolError> {
@@ -987,7 +987,10 @@ impl ASTAgentTools {
     }
 
     /// Calculate complexity for a specific function
-    fn calculate_function_complexity(&self, function: &str) -> Result<ComplexityInfo, ToolError> {
+    const fn calculate_function_complexity(
+        &self,
+        function: &str,
+    ) -> Result<ComplexityInfo, ToolError> {
         // Stub implementation - would analyze AST for cyclomatic complexity
         Ok(ComplexityInfo {
             cyclomatic_complexity: 1,
@@ -1005,7 +1008,7 @@ impl ASTAgentTools {
     }
 
     /// Suggest improvements based on focus area
-    fn suggest_improvements(
+    const fn suggest_improvements(
         &self,
         file: &PathBuf,
         focus: &ImprovementFocus,

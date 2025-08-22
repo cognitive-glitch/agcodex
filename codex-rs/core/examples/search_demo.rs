@@ -5,11 +5,9 @@
 
 use agcodex_core::code_tools::search::Location;
 use agcodex_core::code_tools::search::MultiLayerSearchEngine;
-use agcodex_core::code_tools::search::QueryType;
 use agcodex_core::code_tools::search::Scope;
 use agcodex_core::code_tools::search::SearchConfig;
 use agcodex_core::code_tools::search::SearchQuery;
-use agcodex_core::code_tools::search::SearchScope;
 use agcodex_core::code_tools::search::Symbol;
 use agcodex_core::code_tools::search::SymbolKind;
 use agcodex_core::code_tools::search::Visibility;

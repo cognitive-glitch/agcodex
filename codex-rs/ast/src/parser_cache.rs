@@ -20,7 +20,9 @@ impl ParserCache {
     /// Create a new parser cache with maximum size in bytes
     pub fn new(max_size_bytes: usize) -> Self {
         // Default to 100 entries, will evict based on size
-        let cap = NonZeroUsize::new(100).unwrap();
+        // Use a sensible default capacity; NonZeroUsize::new only fails for 0
+        let cap =
+            NonZeroUsize::new(100).unwrap_or_else(|| unsafe { NonZeroUsize::new_unchecked(1) });
         Self {
             cache: LruCache::new(cap),
             max_size_bytes,
@@ -90,7 +92,8 @@ impl ParserCache {
 impl Clone for ParserCache {
     fn clone(&self) -> Self {
         // Create a new cache with same capacity
-        let cap = NonZeroUsize::new(100).unwrap();
+        let cap =
+            NonZeroUsize::new(100).unwrap_or_else(|| unsafe { NonZeroUsize::new_unchecked(1) });
         let mut new_cache = LruCache::new(cap);
 
         // Clone all entries (they're Arc'd so cheap)
