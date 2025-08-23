@@ -126,7 +126,7 @@ ast-grep = { workspace = true }
 ast-grep-core = { workspace = true }
 ast-grep-language = { workspace = true }
 ast-grep-config = { workspace = true }
-
+pretty_assertions = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 landlock = { workspace = true }
