@@ -739,13 +739,28 @@ impl CancellationToken {
 
     /// Wait for cancellation
     pub async fn cancelled(&self) {
+        // Early check for already cancelled
         if self.is_cancelled() {
             return;
         }
 
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.inner.waiters.write().await.push(tx);
+        
+        // Add waiter while holding the lock
+        {
+            let mut waiters = self.inner.waiters.write().await;
+            
+            // Double-check cancellation state after acquiring the lock
+            // This prevents the race condition where cancellation happens
+            // between the first check and adding the waiter
+            if self.is_cancelled() {
+                return;
+            }
+            
+            waiters.push(tx);
+        }
 
+        // Now wait for cancellation signal
         let _ = rx.await;
     }
 

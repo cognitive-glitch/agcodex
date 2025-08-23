@@ -228,6 +228,7 @@ pub struct CompiledFilters {
 /// Compiled glob pattern for efficient matching
 #[derive(Debug, Clone)]
 struct CompiledGlobPattern {
+    pattern: String,
     matcher: WildMatch,
     negate: bool,
 }
@@ -274,6 +275,7 @@ impl CompiledFilters {
         for pattern in &chain.glob_patterns {
             let matcher = WildMatch::new(&pattern.pattern);
             glob_matchers.push(CompiledGlobPattern {
+                pattern: pattern.pattern.clone(),
                 matcher,
                 negate: pattern.negate,
             });
@@ -299,11 +301,23 @@ impl CompiledFilters {
     pub fn matches(&self, file: &FileMatch) -> bool {
         // Check glob patterns
         if !self.glob_matchers.is_empty() {
-            let path_str = file.path.to_string_lossy();
+            // For simple patterns without path separators, match against filename only
+            // For patterns with path separators, match against the relative path
             let mut matched = false;
 
             for pattern in &self.glob_matchers {
-                let is_match = pattern.matcher.matches(&path_str);
+                let is_match = if pattern.pattern.contains('/') || pattern.pattern.contains("**") {
+                    // Match against relative path for complex patterns
+                    pattern.matcher.matches(&file.relative_path.to_string_lossy())
+                } else {
+                    // Match against filename only for simple patterns (e.g., "*.rs")
+                    if let Some(file_name) = file.path.file_name() {
+                        pattern.matcher.matches(&file_name.to_string_lossy())
+                    } else {
+                        false
+                    }
+                };
+                
                 if pattern.negate {
                     if is_match {
                         return false;
@@ -318,10 +332,10 @@ impl CompiledFilters {
             }
         }
 
-        // Check exclude patterns
-        let path_str = file.path.to_string_lossy();
+        // Check exclude patterns - match against relative path
+        let relative_path_str = file.relative_path.to_string_lossy();
         for exclude in &self.exclude_matchers {
-            if exclude.matches(&path_str) {
+            if exclude.matches(&relative_path_str) {
                 return false;
             }
         }
@@ -995,7 +1009,8 @@ impl GlobTool {
             .git_ignore(self.respect_ignore)
             .git_global(self.respect_ignore)
             .git_exclude(self.respect_ignore)
-            .parents(self.respect_ignore);
+            .parents(self.respect_ignore)
+            .require_git(false);  // Don't require git for ignore files to work
 
         // Add custom ignore patterns
         for ignore_pattern in &self.custom_ignores {
@@ -1271,6 +1286,14 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path();
 
+        // Initialize as a git repository so .gitignore works properly
+        // If git is not available, we'll also create a .ignore file as fallback
+        let git_init = std::process::Command::new("git")
+            .arg("init")
+            .current_dir(path)
+            .output()
+            .is_ok();
+
         // Create test files
         fs::write(path.join("main.rs"), "fn main() {}").unwrap();
         fs::write(path.join("lib.js"), "console.log('hello')").unwrap();
@@ -1282,9 +1305,19 @@ mod tests {
         fs::create_dir(path.join("src")).unwrap();
         fs::write(path.join("src").join("lib.rs"), "pub mod lib;").unwrap();
 
-        // Create .gitignore
-        fs::write(path.join(".gitignore"), "target/\n*.tmp").unwrap();
+        // Create .gitignore with proper line endings
+        fs::write(path.join(".gitignore"), "target/\n*.tmp\n").unwrap();
+        
+        // Also create .ignore file for non-git environments
+        // The ignore crate respects .ignore files even without git
+        if !git_init {
+            fs::write(path.join(".ignore"), "target/\n*.tmp\n").unwrap();
+        }
+        
+        // Create ignored file and directory
         fs::write(path.join("ignored.tmp"), "temporary").unwrap();
+        fs::create_dir(path.join("target")).unwrap();
+        fs::write(path.join("target").join("debug.txt"), "debug info").unwrap();
 
         temp_dir
     }
@@ -1368,7 +1401,8 @@ mod tests {
         let ignored_file = temp_dir.path().join("ignored.tmp");
         assert!(ignored_file.exists(), "ignored.tmp should exist");
 
-        let glob_tool = GlobTool::new(temp_dir.path().to_path_buf());
+        let glob_tool = GlobTool::new(temp_dir.path().to_path_buf())
+            .with_respect_ignore(true);  // Explicitly enable .gitignore respect
         let result = glob_tool.glob("*.tmp").unwrap();
 
         // Should not find ignored.tmp due to .gitignore

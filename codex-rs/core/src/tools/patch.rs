@@ -340,11 +340,17 @@ impl PatchTool {
     async fn analyze_extracted_code(
         &self,
         _code: &str,
-        _file_path: &Path,
+        file_path: &Path,
     ) -> PatchResult<(Vec<String>, String)> {
         // Simplified parameter detection - would use tree-sitter in practice
         let params = Vec::new(); // Extract from tree-sitter analysis
-        let return_type = "void".to_string(); // Detect from tree-sitter
+        
+        // Detect return type based on file extension for now
+        let return_type = if file_path.extension().and_then(|e| e.to_str()) == Some("rs") {
+            "()".to_string()  // Rust uses () for void
+        } else {
+            "void".to_string() // Other languages use void
+        };
 
         Ok((params, return_type))
     }
@@ -356,16 +362,28 @@ impl PatchTool {
         return_type: &str,
         body: &str,
     ) -> String {
-        format!(
-            "fn {}({}) -> {} {{\n{}\n}}",
-            name,
-            params.join(", "),
-            return_type,
-            body.lines()
-                .map(|l| format!("    {}", l))
-                .collect::<Vec<_>>()
-                .join("\n")
-        )
+        // Don't add return type annotation if it's unit type in Rust
+        if return_type == "()" && params.is_empty() {
+            format!(
+                "fn {}() {{\n{}\n}}",
+                name,
+                body.lines()
+                    .map(|l| format!("    {}", l))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )
+        } else {
+            format!(
+                "fn {}({}) -> {} {{\n{}\n}}",
+                name,
+                params.join(", "),
+                return_type,
+                body.lines()
+                    .map(|l| format!("    {}", l))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )
+        }
     }
 
     fn generate_function_call(&self, name: &str, params: &[String]) -> String {
@@ -399,8 +417,15 @@ impl PatchTool {
 
         for &line_idx in locations {
             if let Some(line) = lines.get_mut(line_idx) {
-                // Simple replacement - would need language-specific logic
-                *line = line.replace("old_import", new_import);
+                // For now, just replace the whole import path portion
+                // This is a simplified implementation
+                if line.contains("import") {
+                    // Keep the import structure, just replace the path
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if parts.len() >= 2 {
+                        *line = format!("{} {}", parts[0], new_import);
+                    }
+                }
             }
         }
 

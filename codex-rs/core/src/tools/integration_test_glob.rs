@@ -17,6 +17,14 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
 
+        // Initialize as a git repository so .gitignore works properly
+        // If git is not available, we'll also create a .ignore file as fallback
+        let git_init = std::process::Command::new("git")
+            .arg("init")
+            .current_dir(root)
+            .output()
+            .is_ok();
+
         // Create source files
         fs::create_dir(root.join("src")).unwrap();
         fs::write(root.join("src").join("main.rs"), "fn main() {}").unwrap();
@@ -38,10 +46,16 @@ mod tests {
         // Create documentation
         fs::write(root.join("README.md"), "# Test Project").unwrap();
 
-        // Create gitignore
+        // Create gitignore with proper line endings
         fs::write(root.join(".gitignore"), "target/\n*.tmp\n").unwrap();
+        
+        // Also create .ignore file for non-git environments
+        // The ignore crate respects .ignore files even without git
+        if !git_init {
+            fs::write(root.join(".ignore"), "target/\n*.tmp\n").unwrap();
+        }
 
-        // Create ignored files
+        // Create ignored files and directories
         fs::create_dir(root.join("target")).unwrap();
         fs::write(root.join("target").join("debug.txt"), "debug info").unwrap();
         fs::write(root.join("ignored.tmp"), "temporary").unwrap();
@@ -116,23 +130,31 @@ mod tests {
     #[test]
     fn test_gitignore_support() {
         let workspace = create_test_workspace();
-        let glob_tool = GlobTool::new(workspace.path().to_path_buf());
+        let glob_tool = GlobTool::new(workspace.path().to_path_buf())
+            .with_respect_ignore(true);  // Explicitly enable .gitignore respect
 
-        let result = glob_tool.glob("*").unwrap();
+        // Test with recursive pattern to find all files
+        let result = glob_tool.glob("**/*").unwrap();
 
         // Should not find ignored files
         assert!(
             !result
                 .result
                 .iter()
-                .any(|f| f.relative_path.to_string_lossy().contains("target"))
+                .any(|f| f.relative_path.to_string_lossy().contains("target")),
+            "Should not find files in target directory"
         );
         assert!(
             !result
                 .result
                 .iter()
-                .any(|f| f.path.file_name().unwrap() == "ignored.tmp")
+                .any(|f| f.path.file_name().unwrap() == "ignored.tmp"),
+            "Should not find ignored.tmp file"
         );
+        
+        // Test with simple pattern for .tmp files
+        let tmp_result = glob_tool.glob("*.tmp").unwrap();
+        assert_eq!(tmp_result.result.len(), 0, "Should not find any .tmp files due to .gitignore");
     }
 
     #[test]
