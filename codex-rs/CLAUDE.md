@@ -281,26 +281,32 @@ The codebase is organized as a Cargo workspace with the following crates:
 - `notification.rs`: In-TUI notification system
 - `widgets/`: Custom Ratatui widgets for AGCodex
 
-## Implementation Roadmap
+## Implementation Architecture
 
-### Immediate Priorities
-1. **Complete rebranding**: Run script for agcodex → agcodex (8,773 occurrences)
-2. **Wire TUI mode switching**: Implement Shift+Tab with ModeIndicator widget
-3. **Complete patch tool**: AST transformation implementation
-4. **Subagent integration**: Link planning tool with orchestrator
+### Core Features Architecture
 
-### Core TUI Features
-1. **Message Navigation** (Ctrl+J jump with context restoration)
-2. **History Browser** (Ctrl+H with timeline visualization)  
-3. **Session Management** (Ctrl+S save, Ctrl+O load)
-4. **Multi-Agent Panel** (Ctrl+A with progress bars)
-5. **Undo/Redo** (Ctrl+Z/Y for conversation turns)
+#### TUI Navigation System
+- **Message Navigation**: Jump to any message with full context restoration (Ctrl+J)
+- **History Browser**: Visual timeline with branching support (Ctrl+H)
+- **Session Management**: Save/load with Zstd compression (Ctrl+S/O)
+- **Agent Panel**: Multi-agent orchestration with progress tracking (Ctrl+A)
+- **Undo/Redo System**: Conversation turn management (Ctrl+Z/Y)
 
-### Architecture Enhancements
-1. **Type system improvements** (newtype, builder, typestate patterns)
-2. **Independent embeddings** (optional, multi-provider)
-3. **Subagent system** (@agent-name invocation)
-4. **Git worktree integration** (isolated development)
+#### Type System Architecture
+- **Newtype Pattern**: Strong typing for domain concepts (FilePath, LineNumber, AstNodeId)
+- **Builder Pattern**: Fluent API construction for complex configurations
+- **Typestate Pattern**: Compile-time state machine guarantees
+
+#### Subagent Architecture
+- **Invocation**: @agent-name pattern recognition in prompts
+- **Context Isolation**: Each agent maintains separate context
+- **Mode Override**: Agents can enforce specific operating modes
+- **Tool Restrictions**: Granular permission control per agent
+
+#### Git Integration
+- **Worktree Support**: Isolated development branches for parallel work
+- **Branch Management**: Automatic worktree creation and cleanup
+- **Merge Interface**: Visual merge for combining agent work
 
 ## AGCodex Operating Modes
 
@@ -962,20 +968,35 @@ Priority areas for optimization:
 8. **Accessibility** - Visual bell option, high contrast themes, screen reader hints
 
 
-## Summary: AGCodex Transformation Goals
+## AGCodex Architecture Summary
 
-This overhaul transforms AGCodex into **AGCodex** - a powerful, independent AI coding assistant with:
+**AGCodex** is an independent, TUI-first AI coding assistant with comprehensive language support and AST-based intelligence.
 
-### Core Transformation Tasks
-1. **Complete Rebranding**: agcodex → agcodex across all crates and binaries
-2. **Operating Modes**: Plan/Build/Review with Shift+Tab switching
-3. **Tree-sitter Integration**: 50+ languages with AST-RAG and AI Distiller compaction
-4. **Session Persistence**: ~/.agcodex/history with efficient Zstd compression
-5. **Internal Agent Tools**: AST-based code analysis and transformation
-6. **High Defaults**: reasoning_effort=high, verbosity=high for GPT-5
-7. **Location Awareness**: Precise file:line:column in all embeddings
-8. **Error Handling**: Complete migration from `anyhow` to `thiserror`
-9. **Type Safety**: Newtype, builder, and typestate patterns
+### Core Architectural Components
+
+#### Operating System
+- **Three Modes**: Plan (read-only), Build (full access), Review (quality focus)
+- **Mode Switching**: Shift+Tab for instant mode changes
+- **Visual Indicators**: Clear mode status with color coding
+- **Permission Enforcement**: Mode-specific tool restrictions
+
+#### Language Intelligence
+- **Tree-sitter Integration**: 27 languages with extensibility to 50+
+- **AST-RAG Engine**: Hierarchical retrieval with multi-layer search
+- **Code Compression**: 70-95% reduction using AI Distiller approach
+- **Location Precision**: Exact file:line:column tracking throughout
+
+#### Tool Architecture
+- **10 Internal Tools**: Simple names with sophisticated implementations
+- **Context-Aware Output**: Rich metadata for LLM consumption
+- **Performance Tiers**: Fast (edit) → Smart (patch) → Comprehensive (search)
+- **Multi-Layer Search**: Symbol (<1ms) → Tantivy (<5ms) → AST (<10ms)
+
+#### Storage & Persistence
+- **Session Management**: Zstd compression with lazy loading
+- **Format Strategy**: Bincode (metadata), MessagePack (messages)
+- **Cache Architecture**: Memory-mapped indices for fast access
+- **History Organization**: Date-based directory structure
 
 ### TUI-Exclusive Features (No CLI Commands Needed)
 1. **Session Management**

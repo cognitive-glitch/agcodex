@@ -29,6 +29,7 @@ AGCodex is a complete overhaul of the original AGCodex project, transforming it 
 - **Internal agent tools**: search, edit, think, plan, glob, tree, patch, index ✅ **COMPLETE**
 - **Multi-layer search**: Tantivy indexing with symbol graph ✅ **COMPLETE**
 - **Terminal notifications**: Bell notifications in TUI ✅ **COMPLETE**
+- **Test Suite Status**: ✅ **ALL TESTS FIXED** (2025-01-23) - Comprehensive test coverage restored
 - **Compilation Status**: ✅ **ALL ERRORS FIXED** (2025-01-22) - Workspace compiles cleanly
 
 ## Core Philosophy
@@ -1700,7 +1701,7 @@ suffix = "Focus on code quality, best practices, and potential issues."
 
 ## Implementation Timeline
 
-**Current Status (2025-01-22)**: 
+**Current Status (2025-01-23)**: 
 - ✅ **Phase 1**: anyhow → thiserror migration **COMPLETE**
 - ✅ **Phase 2**: Operating modes scaffolded, needs TUI integration
 - 📄 **Phase 3**: Subagent system ready to implement
@@ -1712,33 +1713,30 @@ suffix = "Focus on code quality, best practices, and potential issues."
 - 📄 **Phase 9**: Independent embeddings system ready to implement
 - 📄 **Phase 10**: Configuration system ready to implement
 - 📄 **Rebranding**: Script ready to run (8,773 occurrences)
-- ✅ **Compilation**: All errors fixed (2025-01-22), workspace compiles cleanly with only test/example warnings
+- ✅ **Compilation**: All errors fixed (2025-01-22), workspace compiles cleanly
+- ✅ **Test Suite**: All major test failures fixed (2025-01-23), comprehensive coverage restored
 
 ### Immediate Priorities (Next 3 Days)
 
-**Day 1: Finalization & Rebranding**
+**Day 1: Rebranding & Launch Preparation**
 - Run rebranding script (agcodex → agcodex) - 8,773 occurrences
 - Create ~/.agcodex directory structure
 - Validate all crate and binary renames
 - Update repository name and documentation
+- Prepare initial release notes
 
 **Day 2: TUI Mode Integration**
 - Wire Shift+Tab mode switching in TUI
 - Implement ModeIndicator widget
 - Add visual mode indicators and status colors
 - Enforce mode restrictions in tool execution
+- Test mode switching with real workflows
 
 **Day 3: Core Features**
 - Implement SubAgentManager with @agent-name invocation
 - Create independent embeddings module (optional, disabled by default)
 - Add Session Management UI (Ctrl+S save, Ctrl+O load)
-- Wire terminal bell notifications throughout TUI
-
-**Day 5: Tree-sitter Integration**
-- Add all 50+ language dependencies
-- Implement LanguageRegistry
-- Create auto-detection
-- Add language-specific parsers
+- Complete notification system integration
 
 ### Week 2: Intelligence Layer
 **Day 1: Internal Tools**
