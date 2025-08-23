@@ -176,147 +176,31 @@ The codebase is organized as a Cargo workspace with the following crates:
 - `notification.rs`: In-TUI notification system
 - `widgets/`: Custom Ratatui widgets for AGCodex
 
-## Implementation Architecture
+## Key Implementation Details
 
-### Core Features Architecture
+### Type System Patterns
+- **Newtype**: Strong typing for domain concepts
+- **Builder**: Fluent API construction
+- **Typestate**: Compile-time state machines
 
-#### TUI Navigation System
-- **Message Navigation**: Jump to any message with full context restoration (Ctrl+J)
-- **History Browser**: Visual timeline with branching support (Ctrl+H)
-- **Session Management**: Save/load with Zstd compression (Ctrl+S/O)
-- **Agent Panel**: Multi-agent orchestration with progress tracking (Ctrl+A)
-- **Undo/Redo System**: Conversation turn management (Ctrl+Z/Y)
+## Operating Modes (core/src/modes.rs)
 
-#### Type System Architecture
-- **Newtype Pattern**: Strong typing for domain concepts (FilePath, LineNumber, AstNodeId)
-- **Builder Pattern**: Fluent API construction for complex configurations
-- **Typestate Pattern**: Compile-time state machine guarantees
+- **📋 PLAN**: Read-only analysis mode (no writes/execution)
+- **🔨 BUILD**: Full access mode (default)
+- **🔍 REVIEW**: Quality focus mode (limited edits <10KB)
+- **Switching**: Shift+Tab cycles between modes
+- **Enforcement**: ModeManager validates operations against restrictions
 
-#### Subagent Architecture
-- **Invocation**: @agent-name pattern recognition in prompts
-- **Context Isolation**: Each agent maintains separate context
-- **Mode Override**: Agents can enforce specific operating modes
-- **Tool Restrictions**: Granular permission control per agent
+## Subagent System
 
-#### Git Integration
-- **Worktree Support**: Isolated development branches for parallel work
-- **Branch Management**: Automatic worktree creation and cleanup
-- **Merge Interface**: Visual merge for combining agent work
+### Invocation
+- Use `@agent-name` pattern in prompts
+- Available: code-reviewer, refactorer, debugger, test-writer, performance, security, docs, architect
 
-## AGCodex Operating Modes
-
-### Plan Mode (Read-Only)
-```rust
-// Activated by: Shift+Tab or --mode plan
-pub struct PlanMode {
-    capabilities: vec![
-        Capability::ReadFiles,
-        Capability::SearchCode,
-        Capability::AnalyzeAST,
-        Capability::GenerateDiagrams,
-        Capability::ProposePlans,
-    ],
-    restrictions: vec![
-        Restriction::NoFileWrites,
-        Restriction::NoExecutions,
-        Restriction::NoExternalAPIs,
-    ],
-    visual_indicator: "📋 PLAN",
-    status_color: Color::Blue,
-}
-```
-
-### Build Mode (Full Access)
-```rust
-// Activated by: Shift+Tab or --mode build (default)
-pub struct BuildMode {
-    capabilities: vec![
-        Capability::All,  // Full access to all operations
-    ],
-    visual_indicator: "🔨 BUILD",
-    status_color: Color::Green,
-}
-```
-
-### Review Mode (Quality Focus)
-```rust
-// Activated by: Shift+Tab or --mode review
-pub struct ReviewMode {
-    capabilities: vec![
-        Capability::ReadFiles,
-        Capability::RunTests,
-        Capability::Lint,
-        Capability::SecurityScan,
-        Capability::GenerateReports,
-    ],
-    restrictions: vec![
-        Restriction::NoDestructiveOps,
-    ],
-    visual_indicator: "🔍 REVIEW",
-    status_color: Color::Yellow,
-}
-```
-
-### Mode Manager Implementation
-ModeManager tracks current mode, history, and enforces restrictions:
-- **Plan Mode**: Read-only access, no file writes or command execution
-- **Build Mode**: Full access to all operations
-- **Review Mode**: Quality-focused with limited edit capabilities (<10KB)
-- Each mode provides specific prompts and capability restrictions
-
-## AGCodex Subagent System
-
-### Overview
-AGCodex features a sophisticated subagent system that enables specialized AI assistants for task-specific workflows. Each subagent operates with its own context, custom prompts, and tool permissions.
-
-### Invoking Subagents
-```
-@agent-code-reviewer - Proactive code quality analysis
-@agent-refactorer - Systematic code restructuring
-@agent-debugger - Deep debugging and root cause analysis
-@agent-test-writer - Comprehensive test generation
-@agent-performance - Performance optimization specialist
-@agent-security - Security vulnerability analysis
-@agent-docs - Documentation generation
-@agent-architect - System design and architecture
-```
-
-### Subagent Configuration
-```yaml
-# ~/.agcodex/agents/code-reviewer.yaml
-name: code-reviewer
-description: Proactively reviews code for quality, security, and maintainability
-mode_override: review  # Forces Review mode when active
-tools:
-  - Read
-  - AST-Search
-  - AST-Search
-  - Tree-sitter-analyze
-intelligence: hard  # Maximum AST analysis
-prompt: |
-  You are a senior code reviewer with AST-based analysis.
-  Focus on:
-  - Syntactic correctness via tree-sitter validation
-  - Security vulnerabilities (OWASP Top 10)
-  - Performance bottlenecks (O(n²) or worse)
-  - Memory leaks and resource management
-  - Error handling completeness
-```
-
-### Subagent Storage
-```
-~/.agcodex/
-├── agents/              # User-level subagents
-│   ├── global/         # Available everywhere
-│   └── templates/      # Reusable templates
-└── .agcodex/
-    └── agents/         # Project-specific subagents
-```
-
-### Advanced Subagent Features
-- **Mode-Aware**: Subagents can override operating mode and intelligence level
-- **Chaining**: Sequential (→) or parallel (+) execution
-- **Context Inheritance**: AST indices, embeddings, and session history preserved
+### Configuration
+- Location: `~/.agcodex/agents/` (user) or `.agcodex/agents/` (project)
+- YAML format with name, tools, mode_override, and custom prompt
+- Features: Mode override, tool restrictions, context isolation
 
 ## Design Requirements
 
@@ -361,376 +245,55 @@ prompt: |
 - Custom notification hooks
 - Multiple notification levels (Info, Warning, Error, TaskComplete)
 
-## Internal Tools Architecture (NEW - 2025-01-21)
+## Internal Tools (10 Tools with Simple Names)
 
-### Overview
-AGCodex features a comprehensive suite of 10 internal tools designed with simple names but sophisticated implementations. All tools provide context-aware outputs optimized for LLM consumption.
+### Philosophy
+- Simple external names, sophisticated internal implementations
+- All tools provide context-aware outputs for LLM consumption
 
-### Tool Naming Philosophy
-- **External**: Simple, verb-based names (search, edit, think)
-- **Internal**: Complex multi-layer engines hidden behind simple interfaces
-- **Invocation**: Direct and intuitive - `search("query")` not `HybridSearchEngine.execute()`
+### Tools
+1. **search** - Multi-layer engine (Symbol <1ms, Tantivy <5ms, AST <10ms)
+2. **edit** - Basic patch-based editing (<1ms)
+3. **think** - Reasoning strategies (Sequential, Shannon, Actor-Critic)
+4. **plan** - Double-planning with parallelization analysis
+5. **glob** - File discovery respecting .gitignore
+6. **tree** - Tree-sitter parser for 27 languages
+7. **grep** - AST pattern matching with YAML rules
+8. **bash** - Safe command execution with validation
+9. **index** - Tantivy indexing (integrated in search)
+10. **patch** - AST transformations (planned)
 
-### Core Tools Implementation
+### Tool Output Structure
+All tools return context-aware outputs with:
+- Core result with before/after states
+- Surrounding context and scope information
+- Change tracking with semantic impact
+- Performance metrics and strategy rationale
 
-#### 1. **search** - Multi-Layer Search Engine
-```rust
-// core/src/tools/search.rs
-pub struct SearchTool {
-    symbol_index: Arc<DashMap<String, Vec<Symbol>>>,  // Layer 1: <1ms
-    tantivy_index: Option<TantivySearchEngine>,       // Layer 2: <5ms
-    ast_cache: Arc<DashMap<PathBuf, CachedAst>>,     // Layer 3: <10ms
-    query_cache: Arc<DashMap<String, CachedResult>>, // LRU cache
-}
-```
-- **Performance**: Symbol lookup <1ms, full-text <5ms, AST <10ms
-- **Features**: Auto-strategy selection, find references, go-to-definition
-- **Context**: Returns surrounding code, call sites, and usage patterns
 
-#### 2. **edit** - Basic Patch-Based Editor
-```rust
-// core/src/tools/edit.rs
-pub struct EditTool {
-    patcher: TextPatcher,
-    context_lines: usize, // Default: 5
-}
-```
-- **Performance**: <1ms for text replacement
-- **Features**: Line-based editing, ambiguity detection, scope awareness
-- **Context**: Before/after states, surrounding lines, semantic impact
 
-#### 3. **think** - Internal Reasoning Engine
-```rust
-// core/src/tools/think.rs
-pub struct ThinkTool {
-    sequential: SequentialThinking,   // Iterative refinement
-    shannon: ShannonThinking,         // Problem decomposition
-    critic: ActorCriticThinking,      // Dual perspective
-}
-```
-- **Strategies**: Auto-selects based on problem complexity
-- **Features**: Revision support, confidence scoring, uncertainty handling
-- **Output**: Step-by-step reasoning with decision rationale
 
-#### 4. **plan** - Double-Planning Strategy
-```rust
-// core/src/tools/plan.rs
-pub struct PlanTool {
-    meta_planner: MetaTaskPlanner,    // High-level decomposition
-    sub_planner: SubTaskPlanner,      // Detailed task breakdown
-}
-```
-- **Features**: Dependency graphs, parallelization analysis, agent assignment
-- **Output**: Executable task lists with priority and dependencies
+## AST-RAG Architecture
 
-#### 5. **glob** - File Discovery
-```rust
-// core/src/tools/glob.rs (currently fd_find.rs)
-pub struct GlobTool {
-    walker: WalkBuilder,  // ignore crate for .gitignore respect
-}
-```
-- **Performance**: Parallel walking, <100ms for 10k files
-- **Features**: Glob patterns, extension filtering, hidden file control
+### Intelligence Modes
+- **Light**: 70% compression, on-demand indexing, 256 chunk size
+- **Medium** (default): 85% compression, background indexing, 512 chunk size
+- **Hard**: 95% compression, aggressive indexing, includes call graph & data flow
 
-#### 6. **tree** - Tree-sitter Parser
-```rust
-// core/src/tools/tree.rs
-pub struct TreeTool {
-    registry: LanguageRegistry,
-    parsers: HashMap<Language, Parser>,
-}
-```
-- **Languages**: 27 supported with auto-detection
-- **Features**: Query library, diff capability, error recovery
+## Embeddings (Optional)
 
-#### 7. **grep** - AST Pattern Matching
-```rust
-// core/src/tools/grep.rs
-pub struct GrepTool {
-    ast_grep: AstGrepEngine,
-    pattern_cache: Arc<DashMap<String, CompiledPattern>>,
-}
-```
-- **Features**: YAML rules, semantic patterns, multi-file search
+- **Disabled by default** with zero overhead
+- **Multi-provider**: OpenAI, Gemini, Voyage AI
+- **Independent auth**: Separate API keys from chat models
+- **Config**: `~/.agcodex/config.toml` under `[embeddings]`
+- **When disabled**: AST search works perfectly without embeddings
 
-#### 8. **bash** - Safe Command Parser
-```rust
-// core/src/bash.rs
-pub struct BashTool {
-    parser: TreeSitterBash,
-    validator: CommandValidator,
-    sandbox_rules: SandboxRules,
-    rewriter: CommandRewriter,
-}
-```
-- **Security**: Command validation, sandbox enforcement, injection prevention
-- **Features**: Command rewriting, environment isolation, audit logging
+## Session Persistence
 
-#### 9. **index** - Tantivy Indexer
-```rust
-// Integrated into search tool
-pub struct IndexTool {
-    tantivy: TantivyEngine,
-    schema: CodeSchema,  // path, content, symbols, language fields
-}
-```
-- **Features**: Incremental indexing, hot reloading, compression
+- **Location**: `~/.agcodex/history` with Zstd compression
+- **Formats**: Bincode (metadata), MessagePack (messages)
+- **Fast loading** via memory-mapped metadata
 
-#### 10. **patch** - AST Transformations (Planned)
-```rust
-// core/src/tools/patch.rs
-pub struct PatchTool {
-    transformer: AstTransformer,
-    preserves: CodeStructurePreserver,
-}
-```
-- **Features**: Semantic-aware edits, structure preservation, rollback support
-
-### Context-Aware Output Structure
-
-All tools return a unified output structure designed for LLM consumption:
-
-```rust
-pub struct ToolOutput<T> {
-    // Core result
-    result: T,
-    
-    // Rich context
-    context: Context {
-        before_state: Option<String>,      // State before operation
-        after_state: Option<String>,       // State after operation
-        surrounding_lines: Vec<String>,    // ±5 lines of context
-        scope: ScopeInfo,                  // Function/class/module scope
-        related_symbols: Vec<Symbol>,      // Related definitions
-    },
-    
-    // Change tracking
-    changes: Vec<Change> {
-        location: SourceLocation,          // file:line:column
-        change_type: ChangeType,           // Add/Remove/Modify
-        semantic_impact: Impact,           // Breaking/Compatible/Cosmetic
-        confidence: f32,                   // 0.0-1.0 confidence
-    },
-    
-    // Metadata
-    metadata: Metadata {
-        tool: String,                      // Tool that generated output
-        operation: String,                 // Specific operation performed
-        duration_ms: u64,                  // Performance metric
-        strategy_used: Option<String>,     // Strategy selection rationale
-    },
-    
-    // LLM-friendly summary
-    summary: String,                       // One-line description for agents
-}
-```
-
-### Performance Targets Achieved
-
-| Tool | Operation | Target | Achieved |
-|------|-----------|--------|---------|
-| search | Symbol lookup | <1ms | ✅ 0.8ms |
-| search | Full-text | <5ms | ✅ 3.2ms |
-| search | AST query | <10ms | ✅ 7.5ms |
-| edit | Text replace | <1ms | ✅ 0.4ms |
-| think | Reasoning step | <100ms | ✅ 85ms |
-| plan | Generate plan | <500ms | ✅ 420ms |
-| glob | 10k files | <100ms | ✅ 75ms |
-| tree | Parse file | <10ms | ✅ 8ms |
-| bash | Validate | <1ms | ✅ 0.6ms |
-
-### Terminal Bell Notifications
-
-Notifications are integrated directly into the TUI, not as a separate tool:
-
-```rust
-// tui/src/notification.rs
-pub enum NotificationLevel {
-    Info,       // Status updates
-    Success,    // Task completion (triggers bell)
-    Warning,    // Non-critical issues
-    Error,      // Failures
-}
-
-impl Notification {
-    pub fn notify(&self) {
-        if self.level == Success {
-            print!("\x07");  // Terminal bell
-        }
-        // Update status bar
-        // Show visual indicator
-    }
-}
-```
-
-### Double-Planning Strategy
-
-The plan tool implements sophisticated task decomposition:
-
-```rust
-// Meta-planning (high-level)
-MetaTask {
-    goal: "Refactor authentication system",
-    constraints: ["maintain API compatibility", "zero downtime"],
-    priority: High,
-}
-
-// Sub-task decomposition
-SubTasks [
-    Task { id: 1, name: "Analyze current auth", deps: [], parallel: true },
-    Task { id: 2, name: "Design new structure", deps: [1], parallel: false },
-    Task { id: 3, name: "Write tests", deps: [2], parallel: true },
-    Task { id: 4, name: "Implement changes", deps: [2], parallel: true },
-    Task { id: 5, name: "Migrate data", deps: [4], parallel: false },
-]
-
-// Parallelization analysis
-ParallelGroups [
-    Group1: [Task1],        // Can run immediately
-    Group2: [Task2],        // After Group1
-    Group3: [Task3, Task4], // Can run in parallel after Group2
-    Group4: [Task5],        // After Group3
-]
-```
-
-## AST-RAG Implementation Details
-
-### Indexing Pipeline
-- **ASTIndexer**: Parallel parsing for 27 languages (extensible to 50+)
-- **Hierarchical Chunking**: File → Class → Function → Block
-- **Location-aware Embeddings**: Precise file:line:column metadata
-- **Vector Storage**: LanceDB with symbol graph relationships (when embeddings enabled)
-- **Target**: 90%+ compression ratio with AI Distiller compaction
-
-### Intelligence Modes Configuration
-
-#### Light Mode (Fast, Minimal Resources)
-```toml
-[intelligence.light]
-chunk_size = 256
-max_chunks = 1000
-cache_size_mb = 100
-indexing = "on_demand"
-compression_level = "basic"  # 70% compression
-# Embedding models (if enabled):
-# OpenAI: text-embedding-3-small (256 dims)
-# Gemini: gemini-embedding-001 (256 dims)
-# Voyage: voyage-3.5-lite
-```
-
-#### Medium Mode (Balanced, Default)
-```toml
-[intelligence.medium]
-chunk_size = 512
-max_chunks = 10000
-cache_size_mb = 500
-indexing = "background"
-compression_level = "standard"  # 85% compression
-include_ast = true
-# Embedding models (if enabled):
-# OpenAI: text-embedding-3-small (1536 dims)
-# Gemini: gemini-embedding-001 (768 dims)
-# Voyage: voyage-3.5
-```
-
-#### Hard Mode (Maximum Intelligence)
-```toml
-[intelligence.hard]
-chunk_size = 1024
-max_chunks = 100000
-cache_size_mb = 2000
-indexing = "aggressive"
-compression_level = "maximum"  # 95% compression
-include_ast = true
-include_call_graph = true
-include_data_flow = true
-# Embedding models (if enabled):
-# OpenAI: text-embedding-3-large (3072 dims)
-# Gemini: gemini-embedding-exp-03-07 (1536 dims)
-# Voyage: voyage-3-large
-```
-
-## Embeddings System (Optional, Independent)
-
-### Core Design
-- **Complete Separation**: 100% independent from chat/LLM models
-- **Disabled by Default**: Opt-in feature with zero overhead when disabled
-- **Multi-Provider Support**: OpenAI, Gemini, and Voyage AI
-- **Independent Authentication**: Separate API keys from chat models
-
-### Configuration
-```toml
-# ~/.agcodex/config.toml
-
-# Embeddings disabled by default (zero overhead)
-[embeddings]
-enabled = false  # Set to true to enable
-provider = "auto"  # auto, openai, gemini, voyage
-
-[embeddings.openai]
-model = "text-embedding-3-small"
-dimensions = 1536
-# API key from OPENAI_EMBEDDING_KEY env var
-
-[embeddings.gemini]
-model = "gemini-embedding-001"
-dimensions = 768
-# API key from GEMINI_API_KEY env var
-
-[embeddings.voyage]
-model = "voyage-3.5"
-input_type = "document"
-# API key from VOYAGE_API_KEY env var
-```
-
-### Environment Variables
-- `OPENAI_EMBEDDING_KEY` - Separate from `OPENAI_API_KEY` for chat
-- `GEMINI_API_KEY` - Used for Gemini embeddings
-- `VOYAGE_API_KEY` - Voyage AI embeddings only
-
-### Separate Authentication File
-```json
-// ~/.agcodex/embeddings_auth.json
-{
-  "openai_embedding_key": "sk-...",
-  "gemini_embedding_key": "...",
-  "voyage_embedding_key": "..."
-}
-```
-
-### When Embeddings Are Disabled
-- AST-based search works perfectly
-- Tree-sitter semantic analysis fully functional
-- Symbol search and definition finding unaffected
-- Zero performance or memory overhead
-
-## Session Persistence Implementation
-
-### Storage Architecture
-- **Formats**: Bincode (metadata), MessagePack (messages), Zstd (compression)
-- **Location**: ~/.agcodex/history
-- **Fast Loading**: Memory-mapped metadata with lazy message loading
-- **Version Header**: Magic bytes "AGCX" for format detection
-
-## Testing Strategy
-
-### Unit Testing
-- Each tool has dedicated test module
-- Mock AST structures for parser testing
-- Performance benchmarks for each operation
-
-### Integration Testing  
-- Tool combination tests (search → edit → patch)
-- Mode switching with permission enforcement
-- Session persistence round-trips
-
-### Performance Testing
-```bash
-cargo bench --bench context_engine
-cargo bench --bench ast_indexer  
-cargo bench --bench session_persistence
-```
 
 ## Performance Targets
 
@@ -831,142 +394,21 @@ Priority areas for optimization:
 6. Session checkpointing (async background saves)
 7. Worktree operations (batch git operations)
 
-## TUI Interface Implementation
 
-### Key Features
-- **Session Management**: Save/load (Ctrl+S/O), undo/redo (Ctrl+Z/Y), jump to message (Ctrl+J)
-- **Agent Panel**: Spawn agents (Ctrl+Shift+A), progress bars, worktree management
-- **History Browser**: Visual timeline with branches, context preview, mouse support
-- **Notifications**: Terminal bell, visual bell, status bar notifications
-- **Enhanced Layout**: Toggleable panels, status bar, quick actions menu (Ctrl+Space)
-
-### Configuration Overview (~/.agcodex/config.toml)
-
-**Key Settings**:
-- `reasoning_effort = "high"` and `verbosity = "high"` (ALWAYS)
-- Intelligence modes: light/medium/hard for AST processing
-- Embeddings: Disabled by default, optional multi-provider support
-- Session auto-save with Zstd compression
-- Mode switching via Shift+Tab (Plan/Build/Review)
-- Internal agent tools enabled (ast_search, ast_transform, ast_analyze)
-- TUI with enhanced layout, notifications, and customizable keybindings
-
-## TUI-First Architecture Principles
-
-1. **All features accessible via TUI** - No feature should require dropping to CLI
-2. **Keyboard-first, mouse-optional** - Everything reachable via keybindings
-3. **Progressive disclosure** - Advanced features in panels/modals, not cluttering main view
-4. **Visual feedback** - Progress bars for agents, status indicators for sessions
-5. **Context preservation** - Navigation never loses user context
-6. **Non-blocking operations** - Long operations run in background with progress indication
-7. **Responsive design** - Adapts to terminal size, degrades gracefully
-8. **Accessibility** - Visual bell option, high contrast themes, screen reader hints
+## TUI Principles
+- All features accessible via keyboard shortcuts
+- Progressive disclosure with panels/modals
+- Visual feedback for long operations
+- Context preservation during navigation
 
 
-## AGCodex Architecture Summary
 
-**AGCodex** is an independent, TUI-first AI coding assistant with comprehensive language support and AST-based intelligence.
 
-### Core Architectural Components
-
-#### Operating System
-- **Three Modes**: Plan (read-only), Build (full access), Review (quality focus)
-- **Mode Switching**: Shift+Tab for instant mode changes
-- **Visual Indicators**: Clear mode status with color coding
-- **Permission Enforcement**: Mode-specific tool restrictions
-
-#### Language Intelligence
-- **Tree-sitter Integration**: 27 languages with extensibility to 50+
-- **AST-RAG Engine**: Hierarchical retrieval with multi-layer search
-- **Code Compression**: 70-95% reduction using AI Distiller approach
-- **Location Precision**: Exact file:line:column tracking throughout
-
-#### Tool Architecture
-- **10 Internal Tools**: Simple names with sophisticated implementations
-- **Context-Aware Output**: Rich metadata for LLM consumption
-- **Performance Tiers**: Fast (edit) → Smart (patch) → Comprehensive (search)
-- **Multi-Layer Search**: Symbol (<1ms) → Tantivy (<5ms) → AST (<10ms)
-
-#### Storage & Persistence
-- **Session Management**: Zstd compression with lazy loading
-- **Format Strategy**: Bincode (metadata), MessagePack (messages)
-- **Cache Architecture**: Memory-mapped indices for fast access
-- **History Organization**: Date-based directory structure
-
-### TUI-Exclusive Features (No CLI Commands Needed)
-1. **Session Management**
-   - Save/load sessions via `Ctrl+S` / `Ctrl+O`
-   - Auto-checkpointing every 5 minutes
-   - Visual checkpoint indicators in status bar
-
-2. **Message Navigation & History**
-   - **Jump to any previous message** with `Ctrl+J` (restores full context)
-   - Undo/redo turns with `Ctrl+Z` / `Ctrl+Y`
-   - Visual history browser with `Ctrl+H`
-   - Timeline navigation with `Alt+↑` / `Alt+↓`
-   - Branch conversations from any point with `Ctrl+B`
-
-3. **Multi-Agent Orchestration**
-   - Spawn agents via `Ctrl+Shift+A` (opens spawn dialog)
-   - Agent panel with `Ctrl+A` showing progress bars
-   - Git worktree agents for parallel development
-   - Visual merge interface for combining agent work
-
-4. **Notifications**
-   - Terminal bell on task completion (`\x07`)
-   - Visual bell for accessibility
-   - In-TUI notification bar (bottom-right)
-   - Desktop notifications via system integration
-
-5. **Context Management**
-   - Smart context retrieval with AST compaction
-   - Real-time embeddings for similar code
-   - Context preview in jump/history modes
-
-### Key TUI Implementation Files
-- `tui/src/app.rs` - Main application loop
-- `tui/src/session_ui.rs` - Session management UI
-- `tui/src/agent_ui.rs` - Agent orchestration UI
-- `tui/src/history_browser.rs` - History navigation UI
-- `tui/src/widgets/message_jump.rs` - Jump to message widget
-- `tui/src/notifications.rs` - Notification system
-
-## Risk Mitigation
-
-1. **Backward Compatibility**: Maintain API compatibility during migration
-2. **Feature Flags**: Gradual rollout with `--experimental` flags
-3. **Incremental Migration**: Phase-by-phase implementation
-4. **Performance Monitoring**: Continuous benchmarking against targets
-5. **Rollback Strategy**: Git tags at each milestone
-6. **Testing Coverage**: Minimum 80% for all new code
-
-## Key Innovations
-
-1. **Simple Three-Mode System**: Plan/Build/Review with Shift+Tab
-2. **27 Language Support** (extensible to 50+): Tree-sitter with auto-detection
-3. **AST-RAG Architecture**: Hierarchical retrieval with 90%+ compression
-4. **Location-Aware Everything**: Precise file:line:column in all operations
-5. **Internal Tools Suite**: 10 tools with context-aware outputs for LLMs
-   - Simple names: search, edit, think, plan, glob, tree, grep, bash, index, patch
-   - Rich context: before/after states, surrounding code, semantic impact
-   - Performance: All tools meet sub-10ms targets for common operations
-6. **Multi-Layer Search**: Symbol (<1ms) → Tantivy (<5ms) → AST (<10ms) → Ripgrep
-7. **Double-Planning Strategy**: Meta-task → sub-task decomposition with parallelization
-8. **Efficient Persistence**: Zstd compression with lazy loading
-9. **Subagent System**: `@agent-name` invocation with isolated contexts
-10. **GPT-5 Optimized**: XML-structured prompts, high defaults
-
-### AGCodex Design Philosophy
-- **Simple modes, powerful features**: Plan/Build/Review cover all use cases
-- **TUI is primary**: All features accessible through TUI with Shift+Tab mode switching
-- **Language-universal**: 27 languages ready, extensible to 50+
-- **Simple tool names**: search/edit/think not HybridSearchEngine/ASTTransformer
-- **Context-aware outputs**: Every tool provides rich LLM-friendly context
-- **Right tool for the job**: edit for speed (<1ms), patch for semantics
-- **No redundancy**: Each tool has a clear, unique purpose
-- **Precision over guessing**: Exact location metadata for all operations
-- **Fast over perfect**: 90%+ compression, caching, approximation when sensible
-- **Visual feedback**: Mode indicators, progress bars, status colors, terminal bells
-- **GPT-5 optimized**: Structured prompts, high reasoning/verbosity defaults
-- **Independent project**: No migration from AGCodex, fresh ~/.agcodex structure
-- **Context preservation**: Never lose user's place when navigating
+## Key Design Principles
+- **Three modes**: Plan/Build/Review with Shift+Tab switching
+- **27 language support** via tree-sitter (extensible to 50+)
+- **AST-RAG architecture** with 70-95% compression
+- **Simple tool names** hiding sophisticated implementations
+- **TUI-first** with all features accessible via keyboard
+- **Context preservation** throughout navigation
+- **GPT-5 optimized** with high reasoning/verbosity defaults
