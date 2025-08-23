@@ -2,6 +2,12 @@
 edition.workspace = true
 name = "agcodex-file-search"
 version = { workspace = true }
+description = "Enhanced file search with tree-sitter AST and fd-find integration"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-file-search"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 license = { workspace = true }
 
 [[bin]]

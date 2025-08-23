@@ -2,6 +2,12 @@
 edition.workspace = true
 name = "agcodex-apply-patch"
 version = { workspace = true }
+description = "AST-aware patch application with precise location tracking"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-apply-patch"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 license = { workspace = true }
 
 [lib]

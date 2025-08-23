@@ -1,6 +1,12 @@
 [package]
 name = "agcodex-execpolicy"
 version = { workspace = true }
+description = "Sandboxing and execution policy enforcement"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-execpolicy"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 license = { workspace = true }
 edition.workspace = true
 

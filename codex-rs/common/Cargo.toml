@@ -2,6 +2,12 @@
 edition.workspace = true
 name = "agcodex-common"
 version = { workspace = true }
+description = "Shared utilities and types for AGCodex crates"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-common"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 license = { workspace = true }
 
 [lints]
@@ -9,8 +15,8 @@ workspace = true
 
 [dependencies]
 clap = { workspace = true, features = ["derive", "wrap_help"], optional = true }
-agcodex-core = { path = "../core" }
-agcodex-protocol = { path = "../protocol" }
+agcodex-core = { path = "../core", version = "0.1.0" }
+agcodex-protocol = { path = "../protocol", version = "0.1.0" }
 serde = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }
 

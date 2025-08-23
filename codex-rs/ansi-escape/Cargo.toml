@@ -2,6 +2,12 @@
 edition.workspace = true
 name = "agcodex-ansi-escape"
 version = { workspace = true }
+description = "ANSI escape sequence handling and rendering for AGCodex"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-ansi-escape"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 license = { workspace = true }
 
 [lib]

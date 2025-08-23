@@ -2,6 +2,12 @@
 edition.workspace = true
 name = "agcodex-linux-sandbox"
 version = { workspace = true }
+description = "Linux-specific sandboxing using Landlock and seccomp"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-linux-sandbox"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 license = { workspace = true }
 
 [[bin]]
@@ -17,8 +23,8 @@ workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 clap = { workspace = true, features = ["derive"] }
-agcodex-common = { path = "../common", features = ["cli"] }
-agcodex-core = { path = "../core" }
+agcodex-common = { path = "../common", version = "0.1.0", features = ["cli"] }
+agcodex-core = { path = "../core", version = "0.1.0" }
 landlock = { workspace = true }
 libc = { workspace = true }
 seccompiler = { workspace = true }

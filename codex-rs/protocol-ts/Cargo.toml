@@ -2,6 +2,12 @@
 edition.workspace = true
 name = "agcodex-protocol-ts"
 version = { workspace = true }
+description = "TypeScript protocol bindings for AGCodex"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-protocol-ts"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 license = { workspace = true }
 
 [lints]
@@ -17,6 +23,6 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-agcodex-protocol = { path = "../protocol" }
+agcodex-protocol = { path = "../protocol", version = "0.1.0" }
 ts-rs = { workspace = true }
 clap = { workspace = true, features = ["derive"] }

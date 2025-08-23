@@ -2,6 +2,12 @@
 edition.workspace = true
 name = "agcodex-ollama"
 version = { workspace = true }
+description = "Ollama integration for local LLM support"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-ollama"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 license = { workspace = true }
 
 [lib]
@@ -14,7 +20,7 @@ workspace = true
 [dependencies]
 async-stream = { workspace = true }
 bytes = { workspace = true }
-agcodex-core = { path = "../core" }
+agcodex-core = { path = "../core", version = "0.1.0" }
 futures = { workspace = true }
 reqwest = { workspace = true, features = ["json", "stream"] }
 serde_json = { workspace = true }

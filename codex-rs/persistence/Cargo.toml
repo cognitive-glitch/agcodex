@@ -38,7 +38,7 @@ tempfile = "3.14"
 tracing = "0.1"
 
 # Internal dependencies
-agcodex-core = { path = "../core" }
+agcodex-core = { path = "../core", version = "0.1.0" }
 
 [dev-dependencies]
 tokio = { version = "1.42", features = ["full", "test-util"] }

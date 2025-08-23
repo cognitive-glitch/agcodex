@@ -1,6 +1,12 @@
 [package]
 name = "agcodex-mcp-client"
 version = { workspace = true }
+description = "Model Context Protocol client implementation"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-mcp-client"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 license = { workspace = true }
 edition.workspace = true
 
@@ -9,7 +15,7 @@ workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-agcodex-mcp-types = { path = "../mcp-types" }
+agcodex-mcp-types = { path = "../mcp-types", version = "0.1.0" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tracing = { workspace = true, features = ["log"] }
@@ -21,4 +27,3 @@ tokio = { workspace = true, features = [
     "rt-multi-thread",
     "sync",
     "time",
-] }

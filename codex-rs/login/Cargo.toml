@@ -2,6 +2,12 @@
 edition.workspace = true
 name = "agcodex-login"
 version = { workspace = true }
+description = "Authentication management for AGCodex"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-login"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 license = { workspace = true }
 
 [lints]
