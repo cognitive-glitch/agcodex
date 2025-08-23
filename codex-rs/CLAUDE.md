@@ -40,6 +40,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Platform-specific**: Seatbelt (macOS), Landlock (Linux), seccomp
 - **Approval workflows**: User consent for dangerous operations  
 - **Execution policies**: Configurable security restrictions
+- **Security validation testing**: Sandbox blocking tests validate security by expecting timeouts/panics
 
 #### Internal Tools Architecture
 ```rust

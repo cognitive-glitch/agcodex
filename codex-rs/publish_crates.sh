@@ -102,13 +102,13 @@ publish_crate "agcodex-mcp-client" "mcp-client"  # depends on mcp-types
 publish_crate "agcodex-protocol" "protocol"      # depends on mcp-types
 
 # Level 2: Dependencies on Level 0 and 1
+print_status "Publishing Level 3 crates..."
+publish_crate "agcodex-core" "core"              # depends on apply-patch, ast, login, mcp-client, protocol, mcp-types
+
+# Level 3: Core (depends on many)
 print_status "Publishing Level 2 crates..."
 publish_crate "agcodex-common" "common"          # depends on protocol
 publish_crate "agcodex-protocol-ts" "protocol-ts" # depends on protocol
-
-# Level 3: Core (depends on many)
-print_status "Publishing Level 3 crates..."
-publish_crate "agcodex-core" "core"              # depends on apply-patch, ast, login, mcp-client, protocol, mcp-types
 
 # Level 4: Dependencies on core
 print_status "Publishing Level 4 crates..."

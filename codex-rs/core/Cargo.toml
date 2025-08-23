@@ -134,11 +134,11 @@ seccompiler = { workspace = true }
 
 # Build OpenSSL from source for musl builds.
 [target.x86_64-unknown-linux-musl.dependencies]
-openssl-sys = { version = "*", features = ["vendored"] }
+openssl-sys = { version = "0.9", features = ["vendored"] }
 
 # Build OpenSSL from source for musl builds.
 [target.aarch64-unknown-linux-musl.dependencies]
-openssl-sys = { version = "*", features = ["vendored"] }
+openssl-sys = { version = "0.9", features = ["vendored"] }
 
 [dev-dependencies]
 assert_cmd = "2"
