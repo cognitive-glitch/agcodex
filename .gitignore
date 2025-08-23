@@ -77,3 +77,7 @@ CHANGELOG.ignore.md
 # nix related
 .direnv
 .envrc
+
+
+#Ignore cursor AI rules
+.cursor/rules/codacy.mdc
