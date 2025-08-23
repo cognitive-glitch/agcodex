@@ -7,7 +7,9 @@ use agcodex_core::exec::ExecParams;
 use agcodex_core::exec::SandboxType;
 use agcodex_core::exec::StdoutStream;
 use agcodex_core::exec::process_exec_tool_call;
+use agcodex_core::modes::ModeManager;
 use agcodex_core::modes::ModeRestrictions;
+use agcodex_core::modes::OperatingMode;
 use agcodex_core::protocol::Event;
 use agcodex_core::protocol::EventMsg;
 use agcodex_core::protocol::ExecCommandOutputDeltaEvent;
@@ -28,6 +30,12 @@ fn collect_stdout_events(rx: Receiver<Event>) -> Vec<u8> {
         }
     }
     out
+}
+
+fn build_mode_restrictions() -> ModeRestrictions {
+    // Create Build mode restrictions to allow command execution
+    let manager = ModeManager::new(OperatingMode::Build);
+    manager.restrictions
 }
 
 #[tokio::test]
@@ -64,7 +72,7 @@ async fn test_exec_stdout_stream_events_echo() {
         &policy,
         &None,
         Some(stdout_stream),
-        &ModeRestrictions::default(),
+        &build_mode_restrictions(),
     )
     .await;
 
@@ -115,7 +123,7 @@ async fn test_exec_stderr_stream_events_echo() {
         &policy,
         &None,
         Some(stdout_stream),
-        &ModeRestrictions::default(),
+        &build_mode_restrictions(),
     )
     .await;
 

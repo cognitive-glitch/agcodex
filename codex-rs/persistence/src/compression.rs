@@ -130,7 +130,9 @@ mod tests {
     #[test]
     fn test_compression_roundtrip() {
         let compressor = Compressor::new(CompressionLevel::Balanced);
-        let data = b"Hello, AGCodex! This is a test of the compression system.";
+        // Use larger, repetitive data that compresses well
+        let data = "Hello, AGCodex! This is a test of the compression system. ".repeat(100);
+        let data = data.as_bytes();
 
         let compressed = compressor.compress(data).unwrap();
         assert!(compressed.len() < data.len());

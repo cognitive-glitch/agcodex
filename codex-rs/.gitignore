@@ -2,6 +2,8 @@
 **/target/
 **/.agcodex
 *.new
+*.snap
+*.tar.gz
 
 # Recommended value of CARGO_TARGET_DIR when using Docker as explained in .devcontainer/README.md.
 /target-amd64/

@@ -14,7 +14,9 @@ mod tests {
     #[test]
     fn test_compression_works() {
         let compressor = Compressor::new(CompressionLevel::Balanced);
-        let data = b"This is test data for AGCodex session persistence!";
+        // Use larger, repetitive data that compresses well
+        let data = "This is test data for AGCodex session persistence! ".repeat(50);
+        let data = data.as_bytes();
 
         let compressed = compressor.compress(data).unwrap();
         assert!(compressed.len() < data.len());

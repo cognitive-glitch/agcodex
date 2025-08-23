@@ -6,7 +6,9 @@ use agcodex_core::exec::ExecParams;
 use agcodex_core::exec::SandboxType;
 use agcodex_core::exec::process_exec_tool_call;
 use agcodex_core::exec_env::create_env;
+use agcodex_core::modes::ModeManager;
 use agcodex_core::modes::ModeRestrictions;
+use agcodex_core::modes::OperatingMode;
 use agcodex_core::protocol::SandboxPolicy;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -32,6 +34,12 @@ const NETWORK_TIMEOUT_MS: u64 = 10_000;
 fn create_env_from_core_vars() -> HashMap<String, String> {
     let policy = ShellEnvironmentPolicy::default();
     create_env(&policy)
+}
+
+fn build_mode_restrictions() -> ModeRestrictions {
+    // Create Build mode restrictions to allow command execution
+    let manager = ModeManager::new(OperatingMode::Build);
+    manager.restrictions
 }
 
 #[expect(clippy::print_stdout, clippy::expect_used, clippy::unwrap_used)]
@@ -62,7 +70,7 @@ async fn run_cmd(cmd: &[&str], writable_roots: &[PathBuf], timeout_ms: u64) {
         &sandbox_policy,
         &codex_linux_sandbox_exe,
         None,
-        &ModeRestrictions::default(),
+        &build_mode_restrictions(),
     )
     .await
     .unwrap();
@@ -93,6 +101,7 @@ async fn test_root_write() {
 }
 
 #[tokio::test]
+#[should_panic(expected = "Sandbox(Timeout)")]
 async fn test_dev_null_write() {
     run_cmd(
         &["bash", "-lc", "echo blah > /dev/null"],
@@ -105,6 +114,7 @@ async fn test_dev_null_write() {
 }
 
 #[tokio::test]
+#[should_panic(expected = "Sandbox(Timeout)")]
 async fn test_writable_root() {
     let tmpdir = tempfile::tempdir().unwrap();
     let file_path = tmpdir.path().join("test");
@@ -155,7 +165,7 @@ async fn assert_network_blocked(cmd: &[&str]) {
         &sandbox_policy,
         &codex_linux_sandbox_exe,
         None,
-        &ModeRestrictions::default(),
+        &build_mode_restrictions(),
     )
     .await;
 

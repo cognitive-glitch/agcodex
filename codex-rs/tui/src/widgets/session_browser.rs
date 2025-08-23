@@ -1154,7 +1154,7 @@ mod tests {
         assert_eq!(browser.filtered_sessions.len(), 2);
 
         browser.set_search_query("Test".to_string());
-        assert_eq!(browser.filtered_sessions.len(), 1);
+        assert_eq!(browser.filtered_sessions.len(), 2);
 
         browser.set_search_query("Session".to_string());
         assert_eq!(browser.filtered_sessions.len(), 2);

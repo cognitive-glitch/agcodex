@@ -211,16 +211,16 @@ lto = "fat"
 # remove everything to make the binary as small as possible.
 strip = true
 
-# See https://github.com/openai/codex/issues/1411 for details.
-codegen-units = 1
+# # See https://github.com/openai/codex/issues/1411 for details.
+# codegen-units = 1
 
 [profile.release.build-override]
-codegen-units = 1
+# codegen-units = 1
 opt-level = 3
 strip = true
 
 [profile.release.package."*"]
-codegen-units = 1
+# codegen-units = 1
 opt-level = 3
 strip = true
 

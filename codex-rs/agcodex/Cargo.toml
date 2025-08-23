@@ -4,10 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "AGCodex - AI-powered coding assistant with AST-based intelligence"
-default-run = "agcodex"
+default-run = "agcodex-main"
 
 [[bin]]
-name = "agcodex"
+name = "agcodex-main"
 path = "src/main.rs"
 
 [dependencies]
