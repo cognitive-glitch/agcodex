@@ -15,8 +15,8 @@ pub mod think;
 pub mod tree;
 
 // Unified tool registry and adapters
-pub mod registry;
 pub mod adapters;
+pub mod registry;
 
 #[cfg(test)]
 mod integration_test_glob;
@@ -35,10 +35,10 @@ pub use grep_simple::GrepTool;
 pub use grep_simple::RuleType;
 pub use grep_simple::SupportedLanguage as GrepSupportedLanguage;
 
+pub use edit::AmbiguousMatches;
 pub use edit::EditError;
 pub use edit::EditResult;
 pub use edit::EditTool;
-pub use edit::AmbiguousMatches;
 pub use edit::MatchCandidate;
 pub use glob::FileMatch;
 pub use glob::FileType;
@@ -199,9 +199,9 @@ pub use registry::ToolOutput;
 pub use registry::ToolRegistry;
 
 /// Create the default tool registry with all tools registered
-/// 
+///
 /// This provides a simple, unified interface to all AGCodex tools.
-/// 
+///
 /// # Example
 /// ```
 /// let registry = create_default_registry();
@@ -210,7 +210,7 @@ pub use registry::ToolRegistry;
 /// ```
 pub fn create_default_registry() -> ToolRegistry {
     let mut registry = ToolRegistry::new();
-    
+
     // Register search tools
     registry.register(ToolInfo {
         name: "search",
@@ -219,7 +219,7 @@ pub fn create_default_registry() -> ToolRegistry {
         example: r#"{"query": "function main", "path": "src/"}"#,
         execute: adapters::adapt_search_tool,
     });
-    
+
     registry.register(ToolInfo {
         name: "grep",
         description: "Pattern-based text search",
@@ -227,7 +227,7 @@ pub fn create_default_registry() -> ToolRegistry {
         example: r#"{"pattern": "TODO", "path": "."}"#,
         execute: adapters::adapt_grep_tool,
     });
-    
+
     registry.register(ToolInfo {
         name: "glob",
         description: "Find files by pattern",
@@ -235,7 +235,7 @@ pub fn create_default_registry() -> ToolRegistry {
         example: r#"{"pattern": "*.rs", "path": "src/"}"#,
         execute: adapters::adapt_glob_tool,
     });
-    
+
     // Register edit tools
     registry.register(ToolInfo {
         name: "edit",
@@ -244,7 +244,7 @@ pub fn create_default_registry() -> ToolRegistry {
         example: r#"{"file": "main.rs", "old_text": "foo", "new_text": "bar"}"#,
         execute: adapters::adapt_edit_tool,
     });
-    
+
     registry.register(ToolInfo {
         name: "patch",
         description: "Bulk code transformations",
@@ -252,7 +252,7 @@ pub fn create_default_registry() -> ToolRegistry {
         example: r#"{"operation": "rename_symbol", "old_name": "foo", "new_name": "bar"}"#,
         execute: adapters::adapt_patch_tool,
     });
-    
+
     // Register analysis tools
     registry.register(ToolInfo {
         name: "think",
@@ -261,7 +261,7 @@ pub fn create_default_registry() -> ToolRegistry {
         example: r#"{"problem": "How to optimize database queries?"}"#,
         execute: adapters::adapt_think_tool,
     });
-    
+
     registry.register(ToolInfo {
         name: "plan",
         description: "Create task plans with dependencies",
@@ -269,7 +269,7 @@ pub fn create_default_registry() -> ToolRegistry {
         example: r#"{"description": "Refactor authentication", "constraints": ["maintain API"]}"#,
         execute: adapters::adapt_plan_tool,
     });
-    
+
     registry.register(ToolInfo {
         name: "tree",
         description: "Parse and analyze code structure",
@@ -277,7 +277,7 @@ pub fn create_default_registry() -> ToolRegistry {
         example: r#"{"file": "main.rs", "language": "rust"}"#,
         execute: adapters::adapt_tree_tool,
     });
-    
+
     // Register utility tools
     registry.register(ToolInfo {
         name: "bash",
@@ -286,6 +286,6 @@ pub fn create_default_registry() -> ToolRegistry {
         example: r#"{"command": "ls -la"}"#,
         execute: adapters::adapt_bash_tool,
     });
-    
+
     registry
 }

@@ -122,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // Demo 4: Search in specific directory
-    if let Ok(src_dir) = std::fs::read_dir(search_dir.join("src")) {
+    if let Ok(_src_dir) = std::fs::read_dir(search_dir.join("src")) {
         println!("📋 Demo 4: Searching in src/ directory only");
         match glob_tool.find_in_directory(&search_dir.join("src"), "*") {
             Ok(result) => {

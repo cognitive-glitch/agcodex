@@ -157,7 +157,7 @@ fn bench_orchestrator_setup(c: &mut Criterion) {
         b.iter(|| {
             let registry = Arc::new(SubagentRegistry::new().unwrap());
             let config = OrchestratorConfig::default();
-            let _orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
+            let orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
             black_box(orchestrator);
         })
     });
@@ -166,7 +166,7 @@ fn bench_orchestrator_setup(c: &mut Criterion) {
         b.iter(|| {
             let registry = Arc::new(SubagentRegistry::new().unwrap());
             let config = OrchestratorConfig::default();
-            let _orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
+            let orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
             black_box(orchestrator);
         })
     });

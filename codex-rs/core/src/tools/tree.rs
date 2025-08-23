@@ -409,7 +409,7 @@ pub struct ParsedAst {
 
 impl ParsedAst {
     /// Get the root node
-    pub fn root_node(&self) -> Node {
+    pub fn root_node(&self) -> Node<'_> {
         self.tree.root_node()
     }
 
@@ -419,7 +419,7 @@ impl ParsedAst {
     }
 
     /// Get all error nodes
-    pub fn error_nodes(&self) -> Vec<Node> {
+    pub fn error_nodes(&self) -> Vec<Node<'_>> {
         let mut errors = Vec::new();
         self.collect_error_nodes(self.root_node(), &mut errors);
         errors
