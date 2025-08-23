@@ -16,31 +16,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current Architecture
 
-### Core Systems Implemented
-
-#### TUI Foundation
-- **ChatWidget**: Main conversation interface with streaming support
-- **Bottom pane**: Input handling with enhanced keyboard support
-- **Onboarding flow**: First-run user guidance
-- **File search**: Integration with tree-sitter AST search
-
-#### Conversation Management  
-- **UUID-based tracking**: Each conversation has unique identifier
-- **Turn history**: Complete conversation state preservation
-- **Diff tracking**: Changes tracked between conversation turns
-- **Stream controller**: Manages streaming responses from LLMs
-
-#### Client Architecture
-- **Dual API support**: Both Responses and Chat Completions APIs
-- **Multi-provider**: OpenAI, Anthropic, Ollama, custom endpoints
-- **Streaming**: Real-time response streaming with backpressure
-- **Authentication**: API keys and ChatGPT login support
-
-#### Security & Sandboxing
-- **Platform-specific**: Seatbelt (macOS), Landlock (Linux), seccomp
-- **Approval workflows**: User consent for dangerous operations  
-- **Execution policies**: Configurable security restrictions
-- **Security validation testing**: Sandbox blocking tests validate security by expecting timeouts/panics
+### Core Systems
+- **TUI**: Chat interface with streaming, file search, keyboard shortcuts
+- **Conversation**: UUID tracking, turn history, diff tracking
+- **Client**: Multi-provider support (OpenAI, Anthropic, Ollama), streaming
+- **Security**: Platform sandboxing (Seatbelt/Landlock), approval workflows
 
 #### Internal Tools Architecture
 ```rust
@@ -75,118 +55,32 @@ pub struct SearchEngine {
 - **Code compression**: 70-95% reduction (3 levels)
 - **Location tracking**: Precise file:line:column metadata
 
-### Planned Architecture Enhancements
+### Key Features to Implement
+- **Operating Modes**: Plan/Build/Review with Shift+Tab switching (see modes.rs)
+- **Subagent System**: @agent-name invocation with isolated contexts
+- **Enhanced TUI**: Ctrl+J/H/S/O/A/Z/Y for navigation and management
+- **Embeddings**: Optional multi-provider system (disabled by default)
 
-#### Operating Modes System
-```rust
-// Target: Shift+Tab instant switching
-pub enum OperatingMode {
-    Plan,    // Read-only analysis
-    Build,   // Full access (default)
-    Review,  // Quality focus, limited edits
-}
-```
+## Commands
 
-#### Subagent System
-```rust
-// Target: @agent-name invocation
-pub struct SubAgent {
-    name: String,
-    mode_override: Option<OperatingMode>,
-    tools: Vec<Tool>,
-    custom_prompt: String,
-}
-```
-
-#### Multi-Agent Orchestration
-- **AgentOrchestrator**: Coordinate multiple agents
-- **Git worktree support**: Isolated development branches
-- **Message bus**: Inter-agent communication
-- **Context inheritance**: Shared AST indices
-
-#### Enhanced TUI Features
-- **Ctrl+J**: Jump to message with context restoration
-- **Ctrl+H**: History browser with timeline
-- **Ctrl+S/O**: Session save/load dialogs
-- **Ctrl+A**: Agent panel with progress bars
-- **Ctrl+Z/Y**: Undo/redo conversation turns
-
-#### Type System Improvements
-- **Newtype pattern**: Strong typing for domain concepts
-- **Builder pattern**: Fluent API construction
-- **Typestate pattern**: Compile-time state machines
-
-#### Independent Embeddings System
-```rust
-// Target: Optional, zero-overhead when disabled
-pub struct EmbeddingsManager {
-    config: Option<EmbeddingsConfig>,  // None = disabled
-    providers: HashMap<String, Box<dyn EmbeddingProvider>>,
-}
-```
-
-## Build and Development Commands
-
-### Building the Project
-
-### Running Tests
+### Testing
 ```bash
-# Run full tests without being interrupted by failuresf in the workspace
-cargo test --no-fail-fast
-
-# Run tests for a specific crate
-cargo test -p agcodex-core
-
-# Run a specific test
-cargo test test_name
-
-# Run tests with output displayed
-cargo test -- --nocapture
-
-# Run tests with specific features
-cargo test --all-features --no-fail-fast
+cargo test --no-fail-fast           # Run all tests
+cargo test -p agcodex-core          # Test specific crate
+cargo test -- --nocapture           # Show output
 ```
 
-### Code Quality Checks
+### Quality Checks
 ```bash
-# Check for compilation errors without building
-cargo check --all-features --all-targets --workspace --tests
-
-# Format code (REQUIRED before committing)
-cargo +nightly fmt --all
-
-# Lint autofix
-cargo clippy --all-features --all-targets --workspace --tests --fix --allow-dirty
-
-# Run clippy linter (REQUIRED before committing)
-cargo clippy --all-features --all-targets --workspace --tests -- -D warnings
-
-
-# Check individual crates to ensure proper feature specifications
-```bash
-# Use fd to locate Cargo.toml files at depth 2 (crate directories) and run cargo check for each
-fd --type file --min-depth 2 --max-depth 2 -g 'Cargo.toml' -x cargo check --manifest-path {}
+cargo +nightly fmt --all             # Format (required)
+cargo clippy --all-features --all-targets --workspace --tests -- -D warnings  # Lint
 ```
 
-### Running the Application
+### Running
 ```bash
-# Launch TUI (primary interface)
-cargo run --bin agcodex
-
-# Launch TUI with initial prompt
-cargo run --bin agcodex -- "explain this codebase to me"
-
-# TUI with specific model preference (can be changed in TUI)
-cargo run --bin agcodex -- --model o3
-
-# Launch in specific mode (Plan/Build/Review)
-cargo run --bin agcodex --mode plan    # Read-only analysis mode
-cargo run --bin agcodex --mode build   # Full access mode (default)
-cargo run --bin agcodex --mode review  # Quality review mode
-
-# Secondary modes (not primary workflow):
-cargo run --bin agcodex exec -- "your task here"  # Headless mode
-cargo run --bin agcodex mcp                        # MCP server mode
+cargo run --bin agcodex              # Launch TUI
+cargo run --bin agcodex -- --mode plan/build/review  # Specific mode
+cargo run --bin agcodex exec -- "task"  # Headless mode
 ```
 
 ### TUI Controls Once Launched
