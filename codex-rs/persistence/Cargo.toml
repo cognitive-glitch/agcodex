@@ -1,6 +1,12 @@
 [package]
 name = "agcodex-persistence"
 version.workspace = true
+description = "Session management with Zstd compression for AGCodex"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-persistence"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 edition.workspace = true
 license.workspace = true
 

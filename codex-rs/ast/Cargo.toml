@@ -1,6 +1,12 @@
 [package]
 name = "agcodex-ast"
 version.workspace = true
+description = "Abstract Syntax Tree parsing and analysis with tree-sitter"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-ast"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 edition.workspace = true
 license.workspace = true
 
