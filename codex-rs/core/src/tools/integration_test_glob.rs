@@ -48,7 +48,7 @@ mod tests {
 
         // Create gitignore with proper line endings
         fs::write(root.join(".gitignore"), "target/\n*.tmp\n").unwrap();
-        
+
         // Also create .ignore file for non-git environments
         // The ignore crate respects .ignore files even without git
         if !git_init {
@@ -130,8 +130,7 @@ mod tests {
     #[test]
     fn test_gitignore_support() {
         let workspace = create_test_workspace();
-        let glob_tool = GlobTool::new(workspace.path().to_path_buf())
-            .with_respect_ignore(true);  // Explicitly enable .gitignore respect
+        let glob_tool = GlobTool::new(workspace.path().to_path_buf()).with_respect_ignore(true); // Explicitly enable .gitignore respect
 
         // Test with recursive pattern to find all files
         let result = glob_tool.glob("**/*").unwrap();
@@ -151,10 +150,14 @@ mod tests {
                 .any(|f| f.path.file_name().unwrap() == "ignored.tmp"),
             "Should not find ignored.tmp file"
         );
-        
+
         // Test with simple pattern for .tmp files
         let tmp_result = glob_tool.glob("*.tmp").unwrap();
-        assert_eq!(tmp_result.result.len(), 0, "Should not find any .tmp files due to .gitignore");
+        assert_eq!(
+            tmp_result.result.len(),
+            0,
+            "Should not find any .tmp files due to .gitignore"
+        );
     }
 
     #[test]

@@ -1693,22 +1693,37 @@ mod tests {
         let result = tool
             .parse(rust_code.to_string(), Some(SupportedLanguage::Rust), None)
             .await;
-        assert!(result.is_ok(), "Failed to parse Rust code: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Failed to parse Rust code: {:?}",
+            result.err()
+        );
 
         let ast = result.unwrap();
         assert_eq!(ast.language, SupportedLanguage::Rust);
         assert!(!ast.has_errors(), "AST has parse errors");
-        assert!(ast.node_count > 10, "Expected more than 10 nodes, got {}", ast.node_count);
-        
+        assert!(
+            ast.node_count > 10,
+            "Expected more than 10 nodes, got {}",
+            ast.node_count
+        );
+
         // Verify the source code is preserved
         assert_eq!(ast.source_code, rust_code);
-        
+
         // Test parsing with errors
         let invalid_code = "fn broken { invalid syntax }";
         let invalid_result = tool
-            .parse(invalid_code.to_string(), Some(SupportedLanguage::Rust), None)
+            .parse(
+                invalid_code.to_string(),
+                Some(SupportedLanguage::Rust),
+                None,
+            )
             .await;
-        assert!(invalid_result.is_ok(), "Should parse even with syntax errors");
+        assert!(
+            invalid_result.is_ok(),
+            "Should parse even with syntax errors"
+        );
         let invalid_ast = invalid_result.unwrap();
         assert!(invalid_ast.has_errors(), "Should detect syntax errors");
     }
@@ -1742,7 +1757,7 @@ mod tests {
             tool.detect_language(Path::new("test.java")).unwrap(),
             SupportedLanguage::Java
         );
-        
+
         // Test case-insensitive extension matching via from_extension
         assert_eq!(
             SupportedLanguage::from_extension("RS"),
@@ -1752,13 +1767,13 @@ mod tests {
             SupportedLanguage::from_extension("PY"),
             Some(SupportedLanguage::Python)
         );
-        
+
         // Test unsupported extension
         assert!(tool.detect_language(Path::new("test.unknown")).is_err());
-        
+
         // Test file without extension
         assert!(tool.detect_language(Path::new("Makefile")).is_err());
-        
+
         // Note: LaTeX is disabled, so .tex files should not be recognized
         assert!(tool.detect_language(Path::new("test.tex")).is_err());
     }
@@ -1793,28 +1808,47 @@ mod tests {
 
         assert!(result.is_ok(), "Query failed: {:?}", result.err());
         let matches = result.unwrap();
-        assert_eq!(matches.len(), 3, "Should find 3 functions (main, helper, public_func)");
-        
+        assert_eq!(
+            matches.len(),
+            3,
+            "Should find 3 functions (main, helper, public_func)"
+        );
+
         // Verify captures are populated correctly
         for match_result in &matches {
-            assert!(!match_result.captures.is_empty(), "Each match should have captures");
+            assert!(
+                !match_result.captures.is_empty(),
+                "Each match should have captures"
+            );
             for capture in &match_result.captures {
-                assert_eq!(capture.name, "func_name", "Capture name should be 'func_name'");
+                assert_eq!(
+                    capture.name, "func_name",
+                    "Capture name should be 'func_name'"
+                );
                 assert!(!capture.text.is_empty(), "Capture text should not be empty");
             }
         }
-        
+
         // Extract function names from captures
         let func_names: Vec<String> = matches
             .iter()
             .flat_map(|m| m.captures.iter())
             .map(|c| c.text.clone())
             .collect();
-        
-        assert!(func_names.contains(&"main".to_string()), "Should find 'main' function");
-        assert!(func_names.contains(&"helper".to_string()), "Should find 'helper' function");
-        assert!(func_names.contains(&"public_func".to_string()), "Should find 'public_func' function");
-        
+
+        assert!(
+            func_names.contains(&"main".to_string()),
+            "Should find 'main' function"
+        );
+        assert!(
+            func_names.contains(&"helper".to_string()),
+            "Should find 'helper' function"
+        );
+        assert!(
+            func_names.contains(&"public_func".to_string()),
+            "Should find 'public_func' function"
+        );
+
         // Test invalid query pattern
         let invalid_query = "(invalid syntax @broken";
         let invalid_result = tool
@@ -1838,14 +1872,17 @@ mod tests {
             .parse(code.clone(), Some(SupportedLanguage::Rust), None)
             .await
             .expect("First parse failed");
-        
+
         let result2 = tool
             .parse(code.clone(), Some(SupportedLanguage::Rust), None)
             .await
             .expect("Second parse failed");
 
         // Both results should be identical (same Arc pointer)
-        assert!(Arc::ptr_eq(&result1, &result2), "Results should be the same cached instance");
+        assert!(
+            Arc::ptr_eq(&result1, &result2),
+            "Results should be the same cached instance"
+        );
 
         let stats = tool.cache_stats().expect("Failed to get cache stats");
         let cache_size = stats
@@ -1854,43 +1891,54 @@ mod tests {
             .as_u64()
             .expect("ast_cache_size should be a number") as usize;
         assert_eq!(cache_size, 1, "Should have exactly 1 cached entry");
-        
+
         // Parse different code - should create new cache entry
         let different_code = "fn another() { let x = 42; }".to_string();
         let _result3 = tool
             .parse(different_code, Some(SupportedLanguage::Rust), None)
             .await
             .expect("Third parse failed");
-        
-        let updated_stats = tool.cache_stats().expect("Failed to get updated cache stats");
+
+        let updated_stats = tool
+            .cache_stats()
+            .expect("Failed to get updated cache stats");
         let updated_cache_size = updated_stats
             .get("ast_cache_size")
             .expect("Missing ast_cache_size")
             .as_u64()
             .expect("ast_cache_size should be a number") as usize;
-        assert_eq!(updated_cache_size, 2, "Should have 2 cached entries after parsing different code");
-        
+        assert_eq!(
+            updated_cache_size, 2,
+            "Should have 2 cached entries after parsing different code"
+        );
+
         // Clear cache and verify it's empty
         tool.clear_caches().expect("Failed to clear caches");
-        let cleared_stats = tool.cache_stats().expect("Failed to get cleared cache stats");
+        let cleared_stats = tool
+            .cache_stats()
+            .expect("Failed to get cleared cache stats");
         let cleared_cache_size = cleared_stats
             .get("ast_cache_size")
             .expect("Missing ast_cache_size")
             .as_u64()
             .expect("ast_cache_size should be a number") as usize;
-        assert_eq!(cleared_cache_size, 0, "Cache should be empty after clearing");
+        assert_eq!(
+            cleared_cache_size, 0,
+            "Cache should be empty after clearing"
+        );
     }
 
     #[tokio::test]
     async fn test_diff_functionality() {
         let tool = TreeTool::new(IntelligenceLevel::Medium).expect("Failed to create TreeTool");
-        
+
         let old_code = r#"
             fn calculate(x: i32) -> i32 {
                 x * 2
             }
-        "#.to_string();
-        
+        "#
+        .to_string();
+
         let new_code = r#"
             fn calculate(x: i32, y: i32) -> i32 {
                 x * y
@@ -1899,20 +1947,29 @@ mod tests {
             fn helper() -> String {
                 "Helper".to_string()
             }
-        "#.to_string();
-        
+        "#
+        .to_string();
+
         let diff_result = tool
             .diff(old_code, new_code, Some(SupportedLanguage::Rust))
             .await;
-        
-        assert!(diff_result.is_ok(), "Diff computation failed: {:?}", diff_result.err());
+
+        assert!(
+            diff_result.is_ok(),
+            "Diff computation failed: {:?}",
+            diff_result.err()
+        );
         let diff = diff_result.unwrap();
-        
+
         // Check that we detected changes
-        assert!(!diff.added.is_empty() || !diff.modified.is_empty(), 
-                "Should detect additions or modifications");
-        assert!(diff.similarity_score >= 0.0 && diff.similarity_score <= 1.0,
-                "Similarity score should be between 0 and 1");
+        assert!(
+            !diff.added.is_empty() || !diff.modified.is_empty(),
+            "Should detect additions or modifications"
+        );
+        assert!(
+            diff.similarity_score >= 0.0 && diff.similarity_score <= 1.0,
+            "Similarity score should be between 0 and 1"
+        );
     }
 
     #[tokio::test]
@@ -1932,14 +1989,25 @@ class Person:
         "#;
 
         let result = tool
-            .parse(python_code.to_string(), Some(SupportedLanguage::Python), None)
+            .parse(
+                python_code.to_string(),
+                Some(SupportedLanguage::Python),
+                None,
+            )
             .await;
-        
-        assert!(result.is_ok(), "Failed to parse Python code: {:?}", result.err());
+
+        assert!(
+            result.is_ok(),
+            "Failed to parse Python code: {:?}",
+            result.err()
+        );
         let ast = result.unwrap();
         assert_eq!(ast.language, SupportedLanguage::Python);
         assert!(!ast.has_errors(), "Python AST has parse errors");
-        assert!(ast.node_count > 10, "Expected substantial node count for Python code");
+        assert!(
+            ast.node_count > 10,
+            "Expected substantial node count for Python code"
+        );
     }
 
     #[tokio::test]
@@ -1965,13 +2033,24 @@ class Calculator {
         "#;
 
         let result = tool
-            .parse(js_code.to_string(), Some(SupportedLanguage::JavaScript), None)
+            .parse(
+                js_code.to_string(),
+                Some(SupportedLanguage::JavaScript),
+                None,
+            )
             .await;
-        
-        assert!(result.is_ok(), "Failed to parse JavaScript code: {:?}", result.err());
+
+        assert!(
+            result.is_ok(),
+            "Failed to parse JavaScript code: {:?}",
+            result.err()
+        );
         let ast = result.unwrap();
         assert_eq!(ast.language, SupportedLanguage::JavaScript);
         assert!(!ast.has_errors(), "JavaScript AST has parse errors");
-        assert!(ast.node_count > 10, "Expected substantial node count for JavaScript code");
+        assert!(
+            ast.node_count > 10,
+            "Expected substantial node count for JavaScript code"
+        );
     }
 }

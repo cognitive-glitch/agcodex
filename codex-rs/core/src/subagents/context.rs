@@ -745,18 +745,18 @@ impl CancellationToken {
         }
 
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         // Add waiter while holding the lock
         {
             let mut waiters = self.inner.waiters.write().await;
-            
+
             // Double-check cancellation state after acquiring the lock
             // This prevents the race condition where cancellation happens
             // between the first check and adding the waiter
             if self.is_cancelled() {
                 return;
             }
-            
+
             waiters.push(tx);
         }
 

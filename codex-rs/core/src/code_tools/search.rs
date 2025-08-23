@@ -599,27 +599,21 @@ impl MultiLayerSearchEngine {
             }
         }
 
-        if self.config.enable_tantivy
-            && all_matches.len() < query.limit.unwrap_or(50)
-        {
+        if self.config.enable_tantivy && all_matches.len() < query.limit.unwrap_or(50) {
             any_layer_enabled = true;
             if let Ok(matches) = self.search_tantivy(query).await {
                 all_matches.extend(matches);
             }
         }
 
-        if self.config.enable_ast_cache
-            && all_matches.len() < query.limit.unwrap_or(50)
-        {
+        if self.config.enable_ast_cache && all_matches.len() < query.limit.unwrap_or(50) {
             any_layer_enabled = true;
             if let Ok(matches) = self.search_ast_cache(query).await {
                 all_matches.extend(matches);
             }
         }
 
-        if self.config.enable_ripgrep_fallback
-            && all_matches.len() < query.limit.unwrap_or(50)
-        {
+        if self.config.enable_ripgrep_fallback && all_matches.len() < query.limit.unwrap_or(50) {
             any_layer_enabled = true;
             if let Ok(matches) = self.search_ripgrep(query).await {
                 all_matches.extend(matches);
@@ -627,11 +621,10 @@ impl MultiLayerSearchEngine {
         }
 
         // If no layers are enabled, always use symbol index as fallback
-        if !any_layer_enabled {
-            if let Ok(matches) = self.search_symbol_index(query).await {
+        if !any_layer_enabled
+            && let Ok(matches) = self.search_symbol_index(query).await {
                 all_matches.extend(matches);
             }
-        }
 
         // Deduplicate and sort by score
         if !all_matches.is_empty() {
@@ -647,7 +640,8 @@ impl MultiLayerSearchEngine {
             });
 
             // Remove exact duplicates
-            all_matches.dedup_by(|a, b| a.file == b.file && a.line == b.line && a.column == b.column);
+            all_matches
+                .dedup_by(|a, b| a.file == b.file && a.line == b.line && a.column == b.column);
         }
 
         if let Some(limit) = query.limit {
@@ -1353,8 +1347,14 @@ mod tests {
         let query = SearchQuery::symbol("calculaeSum").fuzzy();
         let result = engine.search(query).await.unwrap();
 
-        assert!(!result.result.is_empty(), "Fuzzy search should find similar symbols");
-        assert!(result.result[0].score > 0.7, "Score should be above 0.7 for similar match");
+        assert!(
+            !result.result.is_empty(),
+            "Fuzzy search should find similar symbols"
+        );
+        assert!(
+            result.result[0].score > 0.7,
+            "Score should be above 0.7 for similar match"
+        );
     }
 
     #[tokio::test]

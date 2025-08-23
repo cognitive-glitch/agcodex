@@ -308,7 +308,9 @@ impl CompiledFilters {
             for pattern in &self.glob_matchers {
                 let is_match = if pattern.pattern.contains('/') || pattern.pattern.contains("**") {
                     // Match against relative path for complex patterns
-                    pattern.matcher.matches(&file.relative_path.to_string_lossy())
+                    pattern
+                        .matcher
+                        .matches(&file.relative_path.to_string_lossy())
                 } else {
                     // Match against filename only for simple patterns (e.g., "*.rs")
                     if let Some(file_name) = file.path.file_name() {
@@ -317,7 +319,7 @@ impl CompiledFilters {
                         false
                     }
                 };
-                
+
                 if pattern.negate {
                     if is_match {
                         return false;
@@ -1010,7 +1012,7 @@ impl GlobTool {
             .git_global(self.respect_ignore)
             .git_exclude(self.respect_ignore)
             .parents(self.respect_ignore)
-            .require_git(false);  // Don't require git for ignore files to work
+            .require_git(false); // Don't require git for ignore files to work
 
         // Add custom ignore patterns
         for ignore_pattern in &self.custom_ignores {
@@ -1307,13 +1309,13 @@ mod tests {
 
         // Create .gitignore with proper line endings
         fs::write(path.join(".gitignore"), "target/\n*.tmp\n").unwrap();
-        
+
         // Also create .ignore file for non-git environments
         // The ignore crate respects .ignore files even without git
         if !git_init {
             fs::write(path.join(".ignore"), "target/\n*.tmp\n").unwrap();
         }
-        
+
         // Create ignored file and directory
         fs::write(path.join("ignored.tmp"), "temporary").unwrap();
         fs::create_dir(path.join("target")).unwrap();
@@ -1401,8 +1403,7 @@ mod tests {
         let ignored_file = temp_dir.path().join("ignored.tmp");
         assert!(ignored_file.exists(), "ignored.tmp should exist");
 
-        let glob_tool = GlobTool::new(temp_dir.path().to_path_buf())
-            .with_respect_ignore(true);  // Explicitly enable .gitignore respect
+        let glob_tool = GlobTool::new(temp_dir.path().to_path_buf()).with_respect_ignore(true); // Explicitly enable .gitignore respect
         let result = glob_tool.glob("*.tmp").unwrap();
 
         // Should not find ignored.tmp due to .gitignore

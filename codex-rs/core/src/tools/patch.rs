@@ -344,10 +344,10 @@ impl PatchTool {
     ) -> PatchResult<(Vec<String>, String)> {
         // Simplified parameter detection - would use tree-sitter in practice
         let params = Vec::new(); // Extract from tree-sitter analysis
-        
+
         // Detect return type based on file extension for now
         let return_type = if file_path.extension().and_then(|e| e.to_str()) == Some("rs") {
-            "()".to_string()  // Rust uses () for void
+            "()".to_string() // Rust uses () for void
         } else {
             "void".to_string() // Other languages use void
         };
