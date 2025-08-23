@@ -105,7 +105,7 @@ mod tests {
         let root_files = glob_tool.glob("*").unwrap();
         // Get files from subdirectories
         let sub_files = glob_tool.glob("**/*").unwrap();
-        
+
         // Combine results
         let mut all_files = root_files.result;
         all_files.extend(sub_files.result);

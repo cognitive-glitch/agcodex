@@ -1417,36 +1417,27 @@ mod tests {
         let timeout_duration = Duration::from_secs(3);
 
         // First search - should miss cache
-        let result1 = tokio::time::timeout(
-            timeout_duration,
-            engine.search(query.clone())
-        )
-        .await
-        .expect("First search timed out")
-        .unwrap();
+        let result1 = tokio::time::timeout(timeout_duration, engine.search(query.clone()))
+            .await
+            .expect("First search timed out")
+            .unwrap();
         assert!(!result1.result.is_empty(), "Should find the test symbol");
 
         // Second search - should hit cache (cache functionality is internal)
-        let result2 = tokio::time::timeout(
-            timeout_duration,
-            engine.search(query.clone())
-        )
-        .await
-        .expect("Second search timed out")
-        .unwrap();
+        let result2 = tokio::time::timeout(timeout_duration, engine.search(query.clone()))
+            .await
+            .expect("Second search timed out")
+            .unwrap();
         assert_eq!(result1.result.len(), result2.result.len());
 
         // Wait for cache to expire
         tokio::time::sleep(Duration::from_millis(150)).await;
 
         // Third search - should miss cache (expired) but still find the symbol
-        let result3 = tokio::time::timeout(
-            timeout_duration,
-            engine.search(query)
-        )
-        .await
-        .expect("Third search timed out")
-        .unwrap();
+        let result3 = tokio::time::timeout(timeout_duration, engine.search(query))
+            .await
+            .expect("Third search timed out")
+            .unwrap();
         assert_eq!(result1.result.len(), result3.result.len());
     }
 

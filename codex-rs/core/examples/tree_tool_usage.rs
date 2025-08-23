@@ -389,12 +389,11 @@ mod tests {
 
             if let Ok(output) = result {
                 // Check for errors in diagnostics
-                let has_errors = output.diagnostics.iter().any(|d| matches!(d.level, agcodex_core::tools::DiagnosticLevel::Error));
-                assert!(
-                    !has_errors,
-                    "Parse had errors for {}",
-                    lang.as_str()
-                );
+                let has_errors = output
+                    .diagnostics
+                    .iter()
+                    .any(|d| matches!(d.level, agcodex_core::tools::DiagnosticLevel::Error));
+                assert!(!has_errors, "Parse had errors for {}", lang.as_str());
                 match output.result {
                     TreeOutput::Parsed { has_errors, .. } => {
                         assert!(!has_errors, "Parse had errors for {}", lang.as_str());
@@ -424,7 +423,10 @@ mod tests {
 
         let result = tool.execute(input).await.unwrap();
         // Check for errors in diagnostics
-        let has_errors = result.diagnostics.iter().any(|d| matches!(d.level, agcodex_core::tools::DiagnosticLevel::Error));
+        let has_errors = result
+            .diagnostics
+            .iter()
+            .any(|d| matches!(d.level, agcodex_core::tools::DiagnosticLevel::Error));
         assert!(!has_errors, "Query execution had errors");
 
         match result.result {

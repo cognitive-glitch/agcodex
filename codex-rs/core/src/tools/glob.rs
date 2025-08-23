@@ -614,16 +614,16 @@ impl GlobTool {
         // We need to match files at all levels, including root
         // Using two patterns: *.ext for root files and **/*.ext for nested files
         let ext_clean = extension.trim_start_matches('.').trim_start_matches('*');
-        
+
         // Create a filter chain with both patterns
         let mut filters = self.default_filters.clone();
-        
+
         // Add pattern for root-level files
         filters.add_glob(&format!("*.{}", ext_clean), true, false)?;
-        
+
         // Add pattern for files in subdirectories
         filters.add_glob(&format!("**/*.{}", ext_clean), true, false)?;
-        
+
         self.search_with_filters(filters)
     }
 
