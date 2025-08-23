@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "agcodex",
     "ast",
     "ansi-escape",
     "apply-patch",

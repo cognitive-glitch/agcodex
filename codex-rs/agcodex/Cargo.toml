@@ -1,0 +1,29 @@
+[package]
+name = "agcodex"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "AGCodex - AI-powered coding assistant with AST-based intelligence"
+default-run = "agcodex"
+
+[[bin]]
+name = "agcodex"
+path = "src/main.rs"
+
+[dependencies]
+# Core dependencies that will be needed for the main binary
+clap = { workspace = true, features = ["derive", "env"] }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+color-eyre = { workspace = true }
+
+# Internal crate dependencies (to be uncommented as needed)
+# agcodex-core = { path = "../core" }
+# agcodex-tui = { path = "../tui" }
+# agcodex-cli = { path = "../cli" }
+# agcodex-exec = { path = "../exec" }
+# agcodex-persistence = { path = "../persistence" }
+
+[lints]
+workspace = true
