@@ -127,6 +127,12 @@ pub struct InvocationParser {
     /// Regex for matching conditional patterns (if)
     conditional_pattern: Regex,
 
+    /// Regex for simple agent names (for context extraction)
+    simple_agent_pattern: Regex,
+
+    /// Regex for multiple spaces (for context extraction)
+    multiple_spaces_pattern: Regex,
+
     /// Registry for validating agent names
     registry: Option<std::sync::Arc<super::SubagentRegistry>>,
 }
@@ -154,11 +160,19 @@ impl InvocationParser {
             Regex::new(r"@([a-zA-Z0-9_-]+)(?:\s+([^@→+\n]*?))?\s+if\s+([^@→+\n]+)")
                 .expect("Invalid conditional pattern regex");
 
+        let simple_agent_pattern =
+            Regex::new(r"@[a-zA-Z0-9_-]+").expect("Invalid simple agent pattern regex");
+
+        let multiple_spaces_pattern =
+            Regex::new(r"\s+").expect("Invalid multiple spaces pattern regex");
+
         Self {
             agent_pattern,
             chain_pattern,
             parallel_pattern,
             conditional_pattern,
+            simple_agent_pattern,
+            multiple_spaces_pattern,
             registry: None,
         }
     }
@@ -557,10 +571,22 @@ impl InvocationParser {
     fn extract_context(&self, input: &str) -> String {
         let mut context = input.to_string();
 
-        // Remove agent invocations and operators
-        context = self.agent_pattern.replace_all(&context, "").to_string();
+        // Remove agent invocations more precisely
+        // First, match @agent-name patterns without their parameters
+        context = self
+            .simple_agent_pattern
+            .replace_all(&context, "")
+            .to_string();
+
+        // Remove chain and parallel operators
         context = context.replace('→', " ");
         context = context.replace('+', " ");
+
+        // Collapse multiple spaces into single spaces
+        context = self
+            .multiple_spaces_pattern
+            .replace_all(&context, " ")
+            .to_string();
 
         // Clean up whitespace
         context = context

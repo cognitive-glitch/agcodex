@@ -1359,13 +1359,25 @@ mod tests {
     #[test]
     fn test_gitignore_respected() {
         let temp_dir = create_test_dir();
-        let glob_tool = GlobTool::new(temp_dir.path().to_path_buf());
 
+        // Ensure .gitignore is properly set up
+        let gitignore_path = temp_dir.path().join(".gitignore");
+        assert!(gitignore_path.exists(), ".gitignore should exist");
+
+        // Test that ignored.tmp exists
+        let ignored_file = temp_dir.path().join("ignored.tmp");
+        assert!(ignored_file.exists(), "ignored.tmp should exist");
+
+        let glob_tool = GlobTool::new(temp_dir.path().to_path_buf());
         let result = glob_tool.glob("*.tmp").unwrap();
 
         // Should not find ignored.tmp due to .gitignore
-        assert_eq!(result.result.len(), 0);
-        // Files are filtered out by the walker, so just check it's empty
+        // The walker with git_ignore(true) should filter out the file
+        assert_eq!(
+            result.result.len(),
+            0,
+            "Should find 0 files (ignored.tmp should be filtered by .gitignore)"
+        );
         assert!(result.result.is_empty());
     }
 

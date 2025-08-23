@@ -80,6 +80,8 @@ pub struct AgentHandle {
 pub struct MessageBus {
     /// Broadcast sender for messages
     sender: broadcast::Sender<AgentMessage>,
+    /// Keep one receiver alive to prevent channel closure
+    _receiver: broadcast::Receiver<AgentMessage>,
     /// Message history
     history: Arc<RwLock<Vec<AgentMessage>>>,
     /// Topic subscriptions
@@ -89,9 +91,10 @@ pub struct MessageBus {
 impl MessageBus {
     /// Create a new message bus
     pub fn new(capacity: usize) -> Self {
-        let (sender, _) = broadcast::channel(capacity);
+        let (sender, receiver) = broadcast::channel(capacity);
         Self {
             sender,
+            _receiver: receiver,
             history: Arc::new(RwLock::new(Vec::new())),
             subscriptions: Arc::new(DashMap::new()),
         }
@@ -124,7 +127,11 @@ impl MessageBus {
     pub async fn get_history(&self, limit: Option<usize>) -> Vec<AgentMessage> {
         let history = self.history.read().await;
         match limit {
-            Some(n) => history.iter().rev().take(n).cloned().collect(),
+            Some(n) => {
+                // Return the last n messages in their original order
+                let start = history.len().saturating_sub(n);
+                history[start..].to_vec()
+            }
             None => history.clone(),
         }
     }

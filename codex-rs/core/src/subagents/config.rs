@@ -179,16 +179,19 @@ impl SubagentConfig {
             ));
         }
 
-        if self.description.is_empty() {
-            return Err(super::SubagentError::InvalidConfig(
-                "agent description cannot be empty".to_string(),
-            ));
-        }
+        // If using a template, description and prompt can be empty (will be inherited)
+        if self.template.is_none() {
+            if self.description.is_empty() {
+                return Err(super::SubagentError::InvalidConfig(
+                    "agent description cannot be empty (unless using a template)".to_string(),
+                ));
+            }
 
-        if self.prompt.is_empty() {
-            return Err(super::SubagentError::InvalidConfig(
-                "agent prompt cannot be empty".to_string(),
-            ));
+            if self.prompt.is_empty() {
+                return Err(super::SubagentError::InvalidConfig(
+                    "agent prompt cannot be empty (unless using a template)".to_string(),
+                ));
+            }
         }
 
         if self.timeout_seconds == 0 {

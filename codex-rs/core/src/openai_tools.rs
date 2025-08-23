@@ -745,7 +745,16 @@ mod tests {
         );
         let tools = get_openai_tools(&config, Some(HashMap::new()));
 
-        assert_eq_tool_names(&tools, &["local_shell", "update_plan"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "local_shell",
+                "update_plan",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+            ],
+        );
     }
 
     #[test]
@@ -760,7 +769,16 @@ mod tests {
         );
         let tools = get_openai_tools(&config, Some(HashMap::new()));
 
-        assert_eq_tool_names(&tools, &["shell", "update_plan"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "shell",
+                "update_plan",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+            ],
+        );
     }
 
     #[test]
@@ -811,10 +829,19 @@ mod tests {
             )])),
         );
 
-        assert_eq_tool_names(&tools, &["shell", "test_server/do_something_cool"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "shell",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+                "test_server/do_something_cool",
+            ],
+        );
 
         assert_eq!(
-            tools[1],
+            tools[4],
             OpenAiTool::Function(ResponsesApiTool {
                 name: "test_server/do_something_cool".to_string(),
                 parameters: JsonSchema::Object {
@@ -891,10 +918,19 @@ mod tests {
             )])),
         );
 
-        assert_eq_tool_names(&tools, &["shell", "dash/search"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "shell",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+                "dash/search",
+            ],
+        );
 
         assert_eq!(
-            tools[1],
+            tools[4],
             OpenAiTool::Function(ResponsesApiTool {
                 name: "dash/search".to_string(),
                 parameters: JsonSchema::Object {
@@ -945,9 +981,18 @@ mod tests {
             )])),
         );
 
-        assert_eq_tool_names(&tools, &["shell", "dash/paginate"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "shell",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+                "dash/paginate",
+            ],
+        );
         assert_eq!(
-            tools[1],
+            tools[4],
             OpenAiTool::Function(ResponsesApiTool {
                 name: "dash/paginate".to_string(),
                 parameters: JsonSchema::Object {
@@ -996,9 +1041,18 @@ mod tests {
             )])),
         );
 
-        assert_eq_tool_names(&tools, &["shell", "dash/tags"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "shell",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+                "dash/tags",
+            ],
+        );
         assert_eq!(
-            tools[1],
+            tools[4],
             OpenAiTool::Function(ResponsesApiTool {
                 name: "dash/tags".to_string(),
                 parameters: JsonSchema::Object {
@@ -1050,9 +1104,18 @@ mod tests {
             )])),
         );
 
-        assert_eq_tool_names(&tools, &["shell", "dash/value"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "shell",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+                "dash/value",
+            ],
+        );
         assert_eq!(
-            tools[1],
+            tools[4],
             OpenAiTool::Function(ResponsesApiTool {
                 name: "dash/value".to_string(),
                 parameters: JsonSchema::Object {

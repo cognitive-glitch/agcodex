@@ -88,11 +88,11 @@ pub struct Finding {
 /// Severity levels for findings
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Severity {
-    Critical,
-    High,
-    Medium,
-    Low,
     Info,
+    Low,
+    Medium,
+    High,
+    Critical,
 }
 
 /// Core trait for all subagents

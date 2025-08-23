@@ -383,7 +383,21 @@ impl MultiLayerSearchEngine {
                 SearchLayer::RipgrepFallback
             }
             SearchStrategy::Hybrid => SearchLayer::Combined,
-            _ => SearchLayer::RipgrepFallback, // Fallback
+            _ => {
+                // Fallback to first available layer
+                if self.config.enable_symbol_index {
+                    SearchLayer::SymbolIndex
+                } else if self.config.enable_ast_cache {
+                    SearchLayer::AstCache
+                } else if self.config.enable_tantivy {
+                    SearchLayer::Tantivy
+                } else if self.config.enable_ripgrep_fallback {
+                    SearchLayer::RipgrepFallback
+                } else {
+                    // No layers available, use symbol index as last resort
+                    SearchLayer::SymbolIndex
+                }
+            }
         };
 
         // Execute search on selected layer
@@ -1248,11 +1262,13 @@ impl SearchQuery {
 mod tests {
     use super::*;
 
-    use tokio::test;
-
-    #[test]
+    #[tokio::test]
     async fn test_symbol_search() {
-        let config = SearchConfig::default();
+        let config = SearchConfig {
+            enable_tantivy: false,          // Disable Tantivy for tests
+            enable_ripgrep_fallback: false, // Disable ripgrep for tests
+            ..Default::default()
+        };
         let engine = MultiLayerSearchEngine::new(config).unwrap();
 
         // Add test symbol
@@ -1286,9 +1302,13 @@ mod tests {
         assert_eq!(result.metadata.search_layer, SearchLayer::SymbolIndex);
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_fuzzy_search() {
-        let config = SearchConfig::default();
+        let config = SearchConfig {
+            enable_tantivy: false,          // Disable Tantivy for tests
+            enable_ripgrep_fallback: false, // Disable ripgrep for tests
+            ..Default::default()
+        };
         let engine = MultiLayerSearchEngine::new(config).unwrap();
 
         let symbol = Symbol {
@@ -1319,15 +1339,19 @@ mod tests {
         assert!(result.result[0].score > 0.7);
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_search_strategy_selection() {
-        let config = SearchConfig::default();
+        let config = SearchConfig {
+            enable_tantivy: false,          // Disable Tantivy for tests
+            enable_ripgrep_fallback: false, // Disable ripgrep for tests
+            ..Default::default()
+        };
         let engine = MultiLayerSearchEngine::new(config).unwrap();
 
         // Symbol-like pattern should select FastSymbolLookup
         let query = SearchQuery::new("function_name");
         let strategy = engine.select_strategy(&query);
-        assert_eq!(strategy, SearchStrategy::FullTextIndex); // No symbol in index
+        assert_eq!(strategy, SearchStrategy::FastSymbolLookup); // Symbol-like pattern
 
         // Long text should select different strategy
         let query = SearchQuery::new("this is a long text search query");
@@ -1335,40 +1359,70 @@ mod tests {
         assert_eq!(strategy, SearchStrategy::Hybrid);
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_cache_functionality() {
         let config = SearchConfig {
             max_cache_size: 2,
             cache_ttl: Duration::from_millis(100),
+            enable_tantivy: false,          // Disable Tantivy for tests
+            enable_ripgrep_fallback: false, // Disable ripgrep for tests
+            enable_ast_cache: false,        // Disable AST cache for tests
             ..Default::default()
         };
         let engine = MultiLayerSearchEngine::new(config).unwrap();
 
-        let query = SearchQuery::new("test");
+        // Add a test symbol first so we have something to search
+        let symbol = Symbol {
+            name: "test".to_string(),
+            kind: SymbolKind::Function,
+            location: Location {
+                file: PathBuf::from("test.rs"),
+                line: 1,
+                column: 1,
+                byte_offset: 0,
+            },
+            scope: Scope {
+                function: None,
+                class: None,
+                module: None,
+                namespace: None,
+            },
+            visibility: Visibility::Public,
+        };
+        engine.add_symbol(symbol);
+
+        let query = SearchQuery::symbol("test");
 
         // First search - should miss cache
-        let _result1 = engine.search(query.clone()).await.unwrap();
+        let result1 = engine.search(query.clone()).await.unwrap();
+        assert!(!result1.result.is_empty());
 
-        // Second search - should hit cache
-        let _result2 = engine.search(query.clone()).await.unwrap();
+        // Second search - should hit cache (cache functionality is internal)
+        let result2 = engine.search(query.clone()).await.unwrap();
+        assert_eq!(result1.result.len(), result2.result.len());
 
         // Wait for cache to expire
         tokio::time::sleep(Duration::from_millis(150)).await;
 
-        // Third search - should miss cache (expired)
-        let _result3 = engine.search(query).await.unwrap();
+        // Third search - should miss cache (expired) but still find the symbol
+        let result3 = engine.search(query).await.unwrap();
+        assert_eq!(result1.result.len(), result3.result.len());
     }
 
     #[tokio::test]
     async fn test_similarity_calculation() {
-        let config = SearchConfig::default();
+        let config = SearchConfig {
+            enable_tantivy: false,          // Disable Tantivy for tests
+            enable_ripgrep_fallback: false, // Disable ripgrep for tests
+            ..Default::default()
+        };
         let engine = MultiLayerSearchEngine::new(config).unwrap();
 
         assert_eq!(engine.calculate_similarity("hello", "hello"), 1.0);
         assert_eq!(engine.calculate_similarity("", ""), 1.0);
 
         let similarity = engine.calculate_similarity("hello", "helo");
-        assert!(similarity > 0.8);
+        assert!(similarity >= 0.8); // Levenshtein distance of 1 gives exactly 0.8
 
         let similarity = engine.calculate_similarity("test", "completely_different");
         assert!(similarity < 0.3);

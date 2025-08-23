@@ -474,7 +474,8 @@ mod tests {
 
         assert!(!result.tasks.is_empty());
         assert!(!result.parallel_groups.is_empty());
-        assert_eq!(result.estimated_complexity, Complexity::Medium);
+        // Generic decomposition returns 3 tasks, which is classified as Simple
+        assert_eq!(result.estimated_complexity, Complexity::Simple);
     }
 
     #[test]

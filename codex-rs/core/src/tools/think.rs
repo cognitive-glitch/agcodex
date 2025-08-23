@@ -772,20 +772,45 @@ impl ThinkTool {
     fn classify_code_problem(problem: &str) -> CodeProblemType {
         let p_lower = problem.to_lowercase();
 
-        // Check more specific categories first (higher priority)
-        if p_lower.contains("security")
+        // Check bug/debug/fix keywords first (highest priority for debugging tasks)
+        if p_lower.contains("bug")
+            || p_lower.contains("crash")
+            || p_lower.contains("debug")
+            || p_lower.contains("exception")
+            || p_lower.contains("failure")
+            || p_lower.contains("memory leak") // Memory leaks are bugs to fix
+            || (p_lower.contains("fix")
+                && (p_lower.contains("error")
+                    || p_lower.contains("issue")
+                    || p_lower.contains("null")))
+        {
+            CodeProblemType::BugFix
+        // Implementation should take priority when explicitly mentioned
+        } else if p_lower.contains("implement")
+            || p_lower.contains("build")
+            || p_lower.contains("create")
+            || p_lower.contains("develop")
+            || p_lower.contains("add feature")
+            || p_lower.contains("new feature")
+        {
+            CodeProblemType::Implementation
+        // Security checks (without conflicting with implementation)
+        } else if p_lower.contains("security")
             || p_lower.contains("vulnerability")
             || p_lower.contains("exploit")
             || p_lower.contains("injection")
             || p_lower.contains("csrf")
             || p_lower.contains("xss")
-            || (p_lower.contains("auth") && !p_lower.contains("fix") && !p_lower.contains("bug"))
+            || (p_lower.contains("auth")
+                && p_lower.contains("secure")
+                && !p_lower.contains("implement"))
+        // Only pure security-focused auth
         {
             CodeProblemType::Security
-        } else if p_lower.contains("optimize")
+        // Performance optimization (without memory leak which is a bug)
+        } else if p_lower.contains("optimiz") // Catches both optimize and optimization
             || p_lower.contains("performance")
             || p_lower.contains("speed")
-            || p_lower.contains("memory leak")
             || p_lower.contains("efficient")
             || p_lower.contains("bottleneck")
             || p_lower.contains("latency")
@@ -832,25 +857,9 @@ impl ThinkTool {
                 || p_lower.contains("lint"))
         {
             CodeProblemType::CodeReview
-        } else if p_lower.contains("implement")
-            || p_lower.contains("create")
-            || p_lower.contains("build")
-            || p_lower.contains("add feature")
-            || p_lower.contains("develop")
-            || p_lower.contains("new feature")
-        {
+        // Catch any remaining auth-related tasks as implementation
+        } else if p_lower.contains("auth") && !p_lower.contains("secure") {
             CodeProblemType::Implementation
-        } else if p_lower.contains("bug")
-            || p_lower.contains("crash")
-            || p_lower.contains("debug")
-            || p_lower.contains("exception")
-            || p_lower.contains("failure")
-            || (p_lower.contains("fix")
-                && (p_lower.contains("error")
-                    || p_lower.contains("issue")
-                    || p_lower.contains("null")))
-        {
-            CodeProblemType::BugFix
         } else {
             CodeProblemType::Implementation // Default for ambiguous cases
         }
@@ -1431,21 +1440,69 @@ impl ThinkTool {
     }
 
     fn generate_code_conclusion(
-        _problem: &str,
+        problem: &str,
         _steps: &[ThinkStep],
         problem_type: &CodeProblemType,
     ) -> String {
-        match problem_type {
-            CodeProblemType::BugFix => "Bug analysis complete: Systematic debugging approach will isolate root cause and enable targeted fix with regression prevention.",
-            CodeProblemType::Refactoring => "Refactoring strategy defined: Incremental improvements with behavior preservation and comprehensive test validation.",
-            CodeProblemType::Implementation => "Implementation plan ready: Clear requirements breakdown with TDD approach ensures robust, maintainable solution.",
-            CodeProblemType::Performance => "Performance optimization strategy: Profile-driven improvements with measurable results and correctness validation.",
-            CodeProblemType::Security => "Security analysis complete: Defense-in-depth approach with threat modeling and comprehensive protection measures.",
-            CodeProblemType::Testing => "Testing strategy established: Comprehensive coverage with behavior verification and maintainable test suite.",
-            CodeProblemType::Documentation => "Documentation plan ready: User-focused content with examples and maintainable structure.",
-            CodeProblemType::Architecture => "Architectural design complete: Scalable, maintainable system with clear separation of concerns and migration path.",
-            CodeProblemType::CodeReview => "Code review framework ready: Systematic evaluation covering correctness, performance, security, and maintainability.",
-        }.to_string()
+        let base_conclusion = match problem_type {
+            CodeProblemType::BugFix => {
+                "Bug analysis complete: Systematic debugging approach will isolate root cause and enable targeted fix with regression prevention."
+            }
+            CodeProblemType::Refactoring => {
+                "Refactoring strategy defined: Incremental improvements with behavior preservation and comprehensive test validation."
+            }
+            CodeProblemType::Implementation => {
+                "Implementation plan ready: Clear requirements breakdown with TDD approach ensures robust, maintainable solution."
+            }
+            CodeProblemType::Performance => {
+                "Performance optimization strategy: Profile-driven improvements with measurable results and correctness validation."
+            }
+            CodeProblemType::Security => {
+                "Security analysis complete: Defense-in-depth approach with threat modeling and comprehensive protection measures."
+            }
+            CodeProblemType::Testing => {
+                "Testing strategy established: Comprehensive coverage with behavior verification and maintainable test suite."
+            }
+            CodeProblemType::Documentation => {
+                "Documentation plan ready: User-focused content with examples and maintainable structure."
+            }
+            CodeProblemType::Architecture => {
+                "Architectural design complete: Scalable, maintainable system with clear separation of concerns and migration path."
+            }
+            CodeProblemType::CodeReview => {
+                "Code review framework ready: Systematic evaluation covering correctness, performance, security, and maintainability."
+            }
+        };
+
+        // Add problem-specific context to conclusion
+        let p_lower = problem.to_lowercase();
+        let mut specific_context = Vec::new();
+
+        if p_lower.contains("auth") {
+            specific_context.push("authentication mechanisms");
+        }
+        if p_lower.contains("oauth") || p_lower.contains("oauth2") {
+            specific_context.push("OAuth2 integration");
+        }
+        if p_lower.contains("security") || p_lower.contains("secure") {
+            specific_context.push("security best practices");
+        }
+        if p_lower.contains("database") {
+            specific_context.push("database optimization");
+        }
+        if p_lower.contains("scalab") {
+            specific_context.push("scalability considerations");
+        }
+
+        if specific_context.is_empty() {
+            base_conclusion.to_string()
+        } else {
+            format!(
+                "{} Focus areas include: {}.",
+                base_conclusion,
+                specific_context.join(", ")
+            )
+        }
     }
 
     fn calculate_code_confidence(
@@ -1453,26 +1510,45 @@ impl ThinkTool {
         steps: &[ThinkStep],
         problem_type: &CodeProblemType,
     ) -> f32 {
-        let mut confidence: f32 = 0.6; // Base confidence for code problems
+        let mut confidence: f32 = 0.58; // Base confidence for code problems, slightly reduced
 
         // Boost confidence for well-defined problem types
         match problem_type {
             CodeProblemType::BugFix | CodeProblemType::Testing | CodeProblemType::Documentation => {
                 confidence += 0.15
             }
-            CodeProblemType::Implementation | CodeProblemType::Refactoring => confidence += 0.1,
-            CodeProblemType::Performance | CodeProblemType::Security => confidence += 0.05, // More complex
+            CodeProblemType::Implementation => confidence += 0.05, // Reduced for more conservative estimate
+            CodeProblemType::Refactoring => confidence += 0.08, // Slightly reduced to stay within bounds
+            CodeProblemType::Performance => confidence += 0.04, // More complex, conservative estimate
+            CodeProblemType::Security => confidence += 0.05,    // More complex
             CodeProblemType::Architecture | CodeProblemType::CodeReview => confidence += 0.0, // Highly contextual
         }
 
-        // Boost for technical specificity
+        // Boost for technical specificity (but not for already complex problem types)
         if Self::contains_technical_terms(problem) {
-            confidence += 0.1;
+            // Less boost for complex problem types that already have uncertainty
+            match problem_type {
+                CodeProblemType::Architecture
+                | CodeProblemType::Performance
+                | CodeProblemType::Security => {
+                    confidence += 0.05; // Smaller boost for complex problems
+                }
+                _ => confidence += 0.1, // Normal boost for simpler problems
+            }
         }
 
-        // Boost for sufficient reasoning steps
-        if steps.len() > 3 {
-            confidence += 0.05;
+        // Boost for sufficient reasoning steps (but not for already uncertain problem types)
+        if steps.len() > 4 {
+            // Increased threshold to avoid over-boosting
+            // Don't boost confidence for complex problem types that are inherently uncertain
+            match problem_type {
+                CodeProblemType::Architecture
+                | CodeProblemType::Performance
+                | CodeProblemType::Security => {
+                    // Skip boost for complex problems
+                }
+                _ => confidence += 0.05,
+            }
         }
 
         // Reduce confidence for vague problems
@@ -1523,20 +1599,35 @@ impl ThinkTool {
     fn determine_error_action(error_message: &str) -> String {
         let error_lower = error_message.to_lowercase();
 
-        if error_lower.contains("compilation") || error_lower.contains("syntax") {
-            "Fix syntax errors: Check for missing semicolons, brackets, or type mismatches"
+        let base_action = if error_lower.contains("compilation") || error_lower.contains("syntax") {
+            "Fix syntax errors: Check for missing semicolons, brackets, or type mismatches. Review code structure and ensure all language requirements are met"
         } else if error_lower.contains("null") || error_lower.contains("undefined") {
-            "Handle null/undefined: Add null checks, initialize variables properly"
+            "Handle null/undefined: Add comprehensive null checks before dereferencing, initialize all variables at declaration, implement Option/Result patterns for safe error handling"
         } else if error_lower.contains("memory") || error_lower.contains("segmentation") {
-            "Fix memory issue: Check array bounds, pointer validity, memory allocation/deallocation"
+            "Fix memory issue: Validate array bounds before access, verify pointer validity, audit memory allocation/deallocation patterns, check for use-after-free and double-free bugs"
         } else if error_lower.contains("timeout") || error_lower.contains("deadlock") {
-            "Resolve concurrency issue: Check for race conditions, proper synchronization"
+            "Resolve concurrency issue: Audit lock acquisition order, check for race conditions, ensure proper synchronization primitives, implement timeout mechanisms"
         } else if error_lower.contains("permission") || error_lower.contains("access") {
-            "Fix access issue: Check file permissions, user privileges, path accessibility"
+            "Fix access issue: Verify file permissions match requirements, check user privileges, validate path accessibility, ensure proper resource ownership"
         } else {
-            "Debug systematically: Add logging, reproduce error, trace execution path"
+            "Debug systematically: Add comprehensive logging at key points, reproduce error consistently, trace full execution path, examine state at failure point"
+        };
+
+        // Add specific context if line number or file is mentioned
+        if error_lower.contains("line")
+            || error_lower.contains(".rs")
+            || error_lower.contains(".cpp")
+            || error_lower.contains(".java")
+            || error_lower.contains(".py")
+            || error_lower.contains(".js")
+        {
+            format!(
+                "{} - Focus on the specific file and line mentioned in the error message for targeted debugging",
+                base_action
+            )
+        } else {
+            base_action.to_string()
         }
-        .to_string()
     }
 
     fn extract_files_from_error(error_message: &str) -> Vec<String> {

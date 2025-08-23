@@ -286,10 +286,17 @@ mod tests {
 
     #[test]
     fn test_index_key_separation() {
-        let key1 = IndexKey::new(Path::new("/repo1"), "model1", 1536).unwrap();
-        let key2 = IndexKey::new(Path::new("/repo1"), "model2", 1536).unwrap();
-        let key3 = IndexKey::new(Path::new("/repo2"), "model1", 1536).unwrap();
-        let key4 = IndexKey::new(Path::new("/repo1"), "model1", 768).unwrap();
+        // Create actual temporary directories for testing
+        let temp_dir = tempdir().unwrap();
+        let repo1_path = temp_dir.path().join("repo1");
+        let repo2_path = temp_dir.path().join("repo2");
+        std::fs::create_dir(&repo1_path).unwrap();
+        std::fs::create_dir(&repo2_path).unwrap();
+
+        let key1 = IndexKey::new(&repo1_path, "model1", 1536).unwrap();
+        let key2 = IndexKey::new(&repo1_path, "model2", 1536).unwrap();
+        let key3 = IndexKey::new(&repo2_path, "model1", 1536).unwrap();
+        let key4 = IndexKey::new(&repo1_path, "model1", 768).unwrap();
 
         // All keys should be different
         assert_ne!(key1, key2); // Different model
@@ -326,17 +333,24 @@ mod tests {
         let dir = tempdir().unwrap();
         let manager = EmbeddingIndexManager::new(dir.path().to_path_buf());
 
+        // Create actual temporary directories for repos
+        let temp_repos = tempdir().unwrap();
+        let repo1_path = temp_repos.path().join("repo1");
+        let repo2_path = temp_repos.path().join("repo2");
+        std::fs::create_dir(&repo1_path).unwrap();
+        std::fs::create_dir(&repo2_path).unwrap();
+
         // Create indexes for different combinations
         let index1 = manager
-            .get_or_create_index(Path::new("/repo1"), "openai:text-embedding-3-small", 1536)
+            .get_or_create_index(&repo1_path, "openai:text-embedding-3-small", 1536)
             .unwrap();
 
         let index2 = manager
-            .get_or_create_index(Path::new("/repo1"), "gemini:embedding-001", 768)
+            .get_or_create_index(&repo1_path, "gemini:embedding-001", 768)
             .unwrap();
 
         let index3 = manager
-            .get_or_create_index(Path::new("/repo2"), "openai:text-embedding-3-small", 1536)
+            .get_or_create_index(&repo2_path, "openai:text-embedding-3-small", 1536)
             .unwrap();
 
         // All indexes should be separate instances

@@ -695,7 +695,13 @@ impl ExecutionMetricsSnapshot {
 }
 
 /// Cancellation token for graceful shutdown
+#[derive(Debug, Clone)]
 pub struct CancellationToken {
+    inner: Arc<CancellationTokenInner>,
+}
+
+#[derive(Debug)]
+struct CancellationTokenInner {
     cancelled: AtomicBool,
     waiters: RwLock<Vec<tokio::sync::oneshot::Sender<()>>>,
 }
@@ -710,15 +716,17 @@ impl CancellationToken {
     /// Create a new cancellation token
     pub fn new() -> Self {
         Self {
-            cancelled: AtomicBool::new(false),
-            waiters: RwLock::new(Vec::new()),
+            inner: Arc::new(CancellationTokenInner {
+                cancelled: AtomicBool::new(false),
+                waiters: RwLock::new(Vec::new()),
+            }),
         }
     }
 
     /// Cancel all operations
     pub async fn cancel(&self) {
-        self.cancelled.store(true, Ordering::SeqCst);
-        let mut waiters = self.waiters.write().await;
+        self.inner.cancelled.store(true, Ordering::SeqCst);
+        let mut waiters = self.inner.waiters.write().await;
         for waiter in waiters.drain(..) {
             let _ = waiter.send(());
         }
@@ -726,7 +734,7 @@ impl CancellationToken {
 
     /// Check if cancelled
     pub fn is_cancelled(&self) -> bool {
-        self.cancelled.load(Ordering::SeqCst)
+        self.inner.cancelled.load(Ordering::SeqCst)
     }
 
     /// Wait for cancellation
@@ -736,14 +744,14 @@ impl CancellationToken {
         }
 
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.waiters.write().await.push(tx);
+        self.inner.waiters.write().await.push(tx);
 
         let _ = rx.await;
     }
 
     /// Create a child token that cancels when parent cancels
-    pub fn child(&self) -> Arc<CancellationToken> {
-        let child = Arc::new(CancellationToken::new());
+    pub fn child(&self) -> CancellationToken {
+        let child = CancellationToken::new();
         let child_clone = child.clone();
         let parent = self.clone();
 
@@ -753,15 +761,6 @@ impl CancellationToken {
         });
 
         child
-    }
-}
-
-impl Clone for CancellationToken {
-    fn clone(&self) -> Self {
-        Self {
-            cancelled: AtomicBool::new(self.cancelled.load(Ordering::SeqCst)),
-            waiters: RwLock::new(Vec::new()),
-        }
     }
 }
 

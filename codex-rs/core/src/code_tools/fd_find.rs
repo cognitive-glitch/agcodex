@@ -573,10 +573,13 @@ impl FdFind {
         });
 
         // Extract final results
-        let results = Arc::try_unwrap(search_state.results)
-            .map_err(|_| ToolError::InvalidQuery("Failed to extract results".to_string()))?
-            .into_inner()
-            .map_err(|_| ToolError::InvalidQuery("Failed to acquire results lock".to_string()))?;
+        // Use clone and lock instead of try_unwrap to avoid Arc reference issues
+        let mut results = search_state.results.lock().unwrap().clone();
+
+        // Enforce max_results limit (in case parallel threads added extra results)
+        if query.max_results > 0 && results.len() > query.max_results {
+            results.truncate(query.max_results);
+        }
 
         Ok(results)
     }
