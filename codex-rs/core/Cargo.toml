@@ -146,7 +146,6 @@ core_test_support = { path = "tests/common" }
 criterion = { workspace = true }
 maplit = "1.0.2"
 predicates = "3"
-pretty_assertions = "1.4.1"
 tempfile = { workspace = true }
 tokio-test = "0.4"
 walkdir = "2.5.0"
