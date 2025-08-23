@@ -14,7 +14,7 @@ use super::OperationScope;
 use super::PerformanceMetrics;
 use super::ScopeType;
 // Import SourceLocation from ast module
-use ast::SourceLocation;
+use agcodex_ast::SourceLocation;
 use dashmap::DashMap;
 use serde::Deserialize;
 use serde::Serialize;

@@ -23,7 +23,7 @@
 //! - Concurrency: Lock-free via DashMap
 
 use crate::code_tools::ToolError;
-use ast::Language;
+use agcodex_ast::Language;
 use dashmap::DashMap;
 use std::collections::HashMap;
 use std::sync::Arc;

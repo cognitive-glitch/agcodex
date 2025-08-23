@@ -32,7 +32,7 @@ use super::output::IoStats;
 use super::output::MemoryUsage;
 use super::output::OutputBuilder;
 use super::output::PerformanceMetrics;
-use ast::SourceLocation;
+use agcodex_ast::SourceLocation;
 
 // use regex::Regex; // Will implement regex-based symbol extraction when regex crate is available
 use serde::Deserialize;

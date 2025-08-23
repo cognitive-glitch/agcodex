@@ -17,7 +17,7 @@ use super::InternalTool;
 use super::ToolMetadata;
 use super::output::ComprehensiveToolOutput as ToolOutput;
 use crate::subagents::IntelligenceLevel;
-use ast::SourceLocation;
+use agcodex_ast::SourceLocation;
 
 use dashmap::DashMap;
 use lru::LruCache;

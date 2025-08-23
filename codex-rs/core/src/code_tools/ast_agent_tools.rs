@@ -20,10 +20,10 @@ use tree_sitter::Tree;
 use tree_sitter::TreeCursor;
 
 // Import AST infrastructure
-use ast::CompressionLevel;
-use ast::Language;
-use ast::LanguageRegistry;
-use ast::ParsedAst;
+use agcodex_ast::CompressionLevel;
+use agcodex_ast::Language;
+use agcodex_ast::LanguageRegistry;
+use agcodex_ast::ParsedAst;
 
 // Re-export for easier access
 type AstRegistry = LanguageRegistry;

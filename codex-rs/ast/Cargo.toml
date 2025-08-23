@@ -1,5 +1,5 @@
 [package]
-name = "ast"
+name = "agcodex-ast"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -5,11 +5,11 @@ use super::ToolError;
 use super::queries::CompiledQuery;
 use super::queries::QueryLibrary;
 use super::queries::QueryType;
-use ast::AstEngine;
-use ast::CompressionLevel;
-use ast::Language;
-use ast::LanguageRegistry;
-use ast::ParsedAst;
+use agcodex_ast::AstEngine;
+use agcodex_ast::CompressionLevel;
+use agcodex_ast::Language;
+use agcodex_ast::LanguageRegistry;
+use agcodex_ast::ParsedAst;
 use dashmap::DashMap;
 use std::path::Path;
 use std::path::PathBuf;
@@ -350,7 +350,7 @@ impl TreeSitterTool {
     /// Get a structured query using the new query library
     fn get_structured_query(
         &self,
-        language: ast::Language,
+        language: agcodex_ast::Language,
         query_type: QueryType,
     ) -> Result<Arc<CompiledQuery>, ToolError> {
         self.query_library
@@ -419,7 +419,7 @@ impl TreeSitterTool {
     /// Execute a structured query using the query library
     pub async fn search_structured(
         &self,
-        language: ast::Language,
+        language: agcodex_ast::Language,
         query_type: QueryType,
         files: Vec<PathBuf>,
     ) -> Result<Vec<TsMatch>, ToolError> {
@@ -472,7 +472,7 @@ impl TreeSitterTool {
     }
 
     /// Check if a language supports a specific query type
-    pub fn supports_query(&self, language: ast::Language, query_type: &QueryType) -> bool {
+    pub fn supports_query(&self, language: agcodex_ast::Language, query_type: &QueryType) -> bool {
         self.query_library.supports_query(language, query_type)
     }
 

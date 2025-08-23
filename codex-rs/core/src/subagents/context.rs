@@ -9,7 +9,7 @@
 
 use crate::code_tools::ast_agent_tools::Location as SourceLocation;
 use crate::modes::OperatingMode;
-use ast::types::ParsedAst;
+use agcodex_ast::types::ParsedAst;
 use chrono::DateTime;
 use chrono::Utc;
 use dashmap::DashMap;

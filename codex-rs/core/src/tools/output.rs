@@ -11,9 +11,9 @@
 //! - **LLM-optimized**: Structured data with human-readable summaries
 //! - **Serializable**: Full serde support for persistence and transmission
 
-// use ast::AstNode; // unused
-use ast::Language;
-pub use ast::SourceLocation;
+// use agcodex_ast::AstNode; // unused
+use agcodex_ast::Language;
+pub use agcodex_ast::SourceLocation;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
