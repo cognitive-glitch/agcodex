@@ -5,6 +5,8 @@ edition.workspace = true
 license.workspace = true
 description = "AGCodex - AI-powered coding assistant with AST-based intelligence"
 default-run = "agcodex-main"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
 
 [[bin]]
 name = "agcodex-main"
