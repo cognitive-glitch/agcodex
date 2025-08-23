@@ -68,10 +68,10 @@ mod tests {
         let workspace = create_test_workspace();
         let glob_tool = GlobTool::new(workspace.path().to_path_buf());
 
-        // Test basic glob pattern
-        let result = glob_tool.glob("*.rs").unwrap();
+        // Test basic glob pattern - use **/*.rs to find files in subdirectories
+        let result = glob_tool.glob("**/*.rs").unwrap();
 
-        // Should find source files but not deeply nested ones with this pattern
+        // Should find source files in subdirectories
         assert!(!result.result.is_empty());
         assert!(result.summary.contains("Found"));
         assert!(result.metadata.operation == "file_discovery");
@@ -101,23 +101,26 @@ mod tests {
         let workspace = create_test_workspace();
         let glob_tool = GlobTool::new(workspace.path().to_path_buf());
 
-        let result = glob_tool.glob("*").unwrap();
+        // Get files from root
+        let root_files = glob_tool.glob("*").unwrap();
+        // Get files from subdirectories
+        let sub_files = glob_tool.glob("**/*").unwrap();
+        
+        // Combine results
+        let mut all_files = root_files.result;
+        all_files.extend(sub_files.result);
 
         // Verify content category classification
-        let has_source = result
-            .result
+        let has_source = all_files
             .iter()
             .any(|f| f.content_category == ContentCategory::Source);
-        let has_config = result
-            .result
+        let has_config = all_files
             .iter()
             .any(|f| f.content_category == ContentCategory::Config);
-        let has_docs = result
-            .result
+        let has_docs = all_files
             .iter()
             .any(|f| f.content_category == ContentCategory::Documentation);
-        let has_test = result
-            .result
+        let has_test = all_files
             .iter()
             .any(|f| f.content_category == ContentCategory::Test);
 
@@ -218,7 +221,7 @@ mod tests {
         let workspace = create_test_workspace();
         let glob_tool = GlobTool::new(workspace.path().to_path_buf());
 
-        let result = glob_tool.glob("*.rs").unwrap();
+        let result = glob_tool.glob("**/*.rs").unwrap();
 
         // Verify complete ToolOutput structure
         assert!(!result.result.is_empty());

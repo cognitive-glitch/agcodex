@@ -443,7 +443,7 @@ fn bench_config_loading(c: &mut Criterion) {
 
         b.iter(|| {
             let config: Result<SubagentConfig, _> = toml::from_str(config_str);
-            black_box(config);
+            let _ = black_box(config);
         })
     });
 
@@ -451,14 +451,13 @@ fn bench_config_loading(c: &mut Criterion) {
         b.iter(|| {
             // Test registry initialization
             let result = SubagentRegistry::new();
-            black_box(result);
+            let _ = black_box(result);
         })
     });
 
     group.finish();
 }
 
-/// Main benchmark groups
 criterion_group!(
     benches,
     bench_agent_initialization,

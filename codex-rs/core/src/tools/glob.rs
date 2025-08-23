@@ -312,8 +312,14 @@ impl CompiledFilters {
                         .matcher
                         .matches(&file.relative_path.to_string_lossy())
                 } else {
-                    // Match against filename only for simple patterns (e.g., "*.rs")
-                    if let Some(file_name) = file.path.file_name() {
+                    // For simple patterns (e.g., "*.rs"), only match files in the root directory
+                    // Check that the relative path doesn't contain any directory separators
+                    let relative_path_str = file.relative_path.to_string_lossy();
+                    if relative_path_str.contains('/') || relative_path_str.contains('\\') {
+                        // File is in a subdirectory, don't match for simple patterns
+                        false
+                    } else if let Some(file_name) = file.path.file_name() {
+                        // File is in root directory, check if filename matches
                         pattern.matcher.matches(&file_name.to_string_lossy())
                     } else {
                         false
@@ -605,14 +611,20 @@ impl GlobTool {
 
     /// Core API: Find files by extension (*.ext pattern)
     pub fn find_type(&self, extension: &str) -> GlobResult<GlobOutput<Vec<FileMatch>>> {
-        let pattern = if extension.starts_with("**/*.") {
-            extension.to_string()
-        } else if extension.starts_with("*.") {
-            format!("**/{}", extension)
-        } else {
-            format!("**/*.{}", extension.trim_start_matches('.'))
-        };
-        self.glob(&pattern)
+        // We need to match files at all levels, including root
+        // Using two patterns: *.ext for root files and **/*.ext for nested files
+        let ext_clean = extension.trim_start_matches('.').trim_start_matches('*');
+        
+        // Create a filter chain with both patterns
+        let mut filters = self.default_filters.clone();
+        
+        // Add pattern for root-level files
+        filters.add_glob(&format!("*.{}", ext_clean), true, false)?;
+        
+        // Add pattern for files in subdirectories
+        filters.add_glob(&format!("**/*.{}", ext_clean), true, false)?;
+        
+        self.search_with_filters(filters)
     }
 
     /// Advanced API: Search with custom FilterChain
