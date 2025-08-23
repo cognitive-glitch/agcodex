@@ -209,15 +209,15 @@ impl Default for GrepConfig {
 
 /// Simplified grep engine
 pub struct SimpleGrepEngine {
-    config: GrepConfig,
-    pattern_cache: Arc<DashMap<String, Vec<GrepMatch>>>,
+    _config: GrepConfig,
+    _pattern_cache: Arc<DashMap<String, Vec<GrepMatch>>>,
 }
 
 impl SimpleGrepEngine {
     pub fn new(config: GrepConfig) -> Self {
         Self {
-            config,
-            pattern_cache: Arc::new(DashMap::new()),
+            _config: config,
+            _pattern_cache: Arc::new(DashMap::new()),
         }
     }
 

@@ -97,6 +97,7 @@ pub async fn example_usage() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Helper function to create example context (simplified)
+#[allow(dead_code)]
 fn create_example_context() -> crate::tools::plan::PlanContext {
     crate::tools::plan::PlanContext {
         goal: "Example context".to_string(),

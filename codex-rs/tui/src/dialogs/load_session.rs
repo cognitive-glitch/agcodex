@@ -688,7 +688,7 @@ impl<'a> LoadSessionBrowser<'a> {
             let mut scrollbar_state = ScrollbarState::new(self.state.filtered_sessions.len())
                 .position(self.state.scroll_offset);
 
-            scrollbar.render(inner, buf, &mut scrollbar_state);
+            StatefulWidget::render(scrollbar, inner, buf, &mut scrollbar_state);
         }
     }
 

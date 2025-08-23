@@ -324,7 +324,7 @@ impl<'a> SessionSwitcher<'a> {
         let mut total_width = 0u16;
 
         // Calculate how much space each tab can use
-        let max_tab_width = if self.state.compact_mode { 15 } else { 25 };
+        let _max_tab_width = if self.state.compact_mode { 15 } else { 25 };
 
         for session in &self.state.sessions {
             let full_title = session.tab_display();
@@ -430,6 +430,7 @@ impl<'a> WidgetRef for SessionSwitcher<'a> {
 }
 
 /// Detailed session switcher popup (for when there are many sessions)
+#[allow(dead_code)]
 pub struct SessionSwitcherPopup<'a> {
     state: &'a SessionSwitcherState,
 }

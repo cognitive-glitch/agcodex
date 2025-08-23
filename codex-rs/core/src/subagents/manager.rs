@@ -7,7 +7,6 @@ use super::SubagentContext;
 use super::SubagentError;
 use super::SubagentStatus;
 use super::agents::AgentResult;
-use super::agents::Subagent;
 use super::context::AgentMessage;
 use super::context::MessagePriority;
 use super::context::MessageTarget;
@@ -51,7 +50,7 @@ pub struct AgentManager {
     /// Agent registry
     registry: Arc<SubagentRegistry>,
     /// Agent parser
-    parser: AgentParser,
+    _parser: AgentParser,
     /// Orchestrator for execution
     orchestrator: Arc<AgentOrchestrator>,
     /// Active agent executions
@@ -144,7 +143,7 @@ impl AgentManager {
 
         Self {
             registry,
-            parser,
+            _parser: parser,
             orchestrator,
             active_agents: Arc::new(DashMap::new()),
             message_bus: Arc::new(MessageBus::new(1000)),
@@ -599,7 +598,7 @@ impl AgentManager {
     fn clone_for_async(&self) -> Self {
         Self {
             registry: self.registry.clone(),
-            parser: AgentParser::with_registry(self.registry.clone()),
+            _parser: AgentParser::with_registry(self.registry.clone()),
             orchestrator: self.orchestrator.clone(),
             active_agents: self.active_agents.clone(),
             message_bus: self.message_bus.clone(),

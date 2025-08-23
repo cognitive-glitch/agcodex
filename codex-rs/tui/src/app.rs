@@ -1064,12 +1064,7 @@ impl App<'_> {
                 }
 
                 // TODO: Implement remaining event handlers
-                AppEvent::OpenSessionBrowser
-                | AppEvent::CloseSessionBrowser
-                | AppEvent::SessionBrowserNavigate(_)
-                | AppEvent::SessionBrowserFocusNext
-                | AppEvent::SessionBrowserFocusPrevious
-                | AppEvent::SessionBrowserToggleExpand
+                AppEvent::SessionBrowserToggleExpand
                 | AppEvent::SessionBrowserSelect
                 | AppEvent::SessionBrowserDelete
                 | AppEvent::SessionBrowserFilter(_)
@@ -1077,18 +1072,12 @@ impl App<'_> {
                 | AppEvent::StartHistoryGet
                 | AppEvent::HistoryGetResult(_)
                 | AppEvent::StartJumpToMessage(_)
-                | AppEvent::JumpToMessage(_)
                 | AppEvent::StartUndo
                 | AppEvent::UndoComplete
                 | AppEvent::StartRedo
                 | AppEvent::RedoComplete
                 | AppEvent::StartFork
-                | AppEvent::ForkComplete(_)
-                | AppEvent::OpenLoadDialog
-                | AppEvent::CloseLoadDialog
-                | AppEvent::StartLoadSessionList
-                | AppEvent::LoadSessionListResult(_)
-                | AppEvent::LoadSession(_) => {
+                | AppEvent::ForkComplete(_) => {
                     // These events are not yet implemented
                     // TODO: Add implementations as features are completed
                 }

@@ -567,7 +567,7 @@ impl CodeReviewerAgent {
 /// Systematic refactoring agent
 #[derive(Debug)]
 pub struct RefactorerAgent {
-    config: RefactorConfig,
+    _config: RefactorConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -601,7 +601,7 @@ impl Default for RefactorerAgent {
 impl RefactorerAgent {
     pub fn new() -> Self {
         Self {
-            config: RefactorConfig {
+            _config: RefactorConfig {
                 risk_threshold: RiskLevel::Medium,
                 operations: vec![
                     RefactorOperation::ExtractMethod,

@@ -395,6 +395,7 @@ pub struct ProgressStage {
 
 /// History of completed stages
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct StageHistory {
     stage_index: usize,
     duration: Duration,
@@ -521,8 +522,8 @@ pub enum MessagePriority {
 /// Message bus for inter-agent communication
 struct MessageBus {
     subscribers: Arc<DashMap<String, mpsc::UnboundedSender<AgentMessage>>>,
-    broadcast_tx: mpsc::UnboundedSender<AgentMessage>,
-    broadcast_rx: Arc<RwLock<mpsc::UnboundedReceiver<AgentMessage>>>,
+    _broadcast_tx: mpsc::UnboundedSender<AgentMessage>,
+    _broadcast_rx: Arc<RwLock<mpsc::UnboundedReceiver<AgentMessage>>>,
 }
 
 impl MessageBus {
@@ -530,8 +531,8 @@ impl MessageBus {
         let (broadcast_tx, broadcast_rx) = mpsc::unbounded_channel();
         Self {
             subscribers: Arc::new(DashMap::new()),
-            broadcast_tx,
-            broadcast_rx: Arc::new(RwLock::new(broadcast_rx)),
+            _broadcast_tx: broadcast_tx,
+            _broadcast_rx: Arc::new(RwLock::new(broadcast_rx)),
         }
     }
 
@@ -618,11 +619,11 @@ impl ExecutionMetrics {
         self.findings_generated.fetch_add(1, Ordering::Relaxed);
     }
 
-    fn record_cache_hit(&self) {
+    fn _record_cache_hit(&self) {
         self.cache_hits.fetch_add(1, Ordering::Relaxed);
     }
 
-    fn record_cache_miss(&self) {
+    fn _record_cache_miss(&self) {
         self.cache_misses.fetch_add(1, Ordering::Relaxed);
     }
 

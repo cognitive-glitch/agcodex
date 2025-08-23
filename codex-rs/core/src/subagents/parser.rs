@@ -17,7 +17,7 @@ pub struct AgentParser {
     /// Base invocation parser
     base_parser: InvocationParser,
     /// Registry for agent validation
-    registry: Option<Arc<SubagentRegistry>>,
+    _registry: Option<Arc<SubagentRegistry>>,
     /// Default operating mode
     default_mode: OperatingMode,
 }
@@ -27,7 +27,7 @@ impl AgentParser {
     pub fn new() -> Self {
         Self {
             base_parser: InvocationParser::new(),
-            registry: None,
+            _registry: None,
             default_mode: OperatingMode::Build,
         }
     }
@@ -36,7 +36,7 @@ impl AgentParser {
     pub fn with_registry(registry: Arc<SubagentRegistry>) -> Self {
         Self {
             base_parser: InvocationParser::with_registry(registry.clone()),
-            registry: Some(registry),
+            _registry: Some(registry),
             default_mode: OperatingMode::Build,
         }
     }

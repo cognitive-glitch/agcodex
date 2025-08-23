@@ -843,7 +843,7 @@ impl GlobTool {
 
                 match entry_result {
                     Ok(entry) => {
-                        let path = entry.path();
+                        let _path = entry.path();
 
                         // Update statistics
                         {
@@ -934,7 +934,7 @@ impl GlobTool {
 
             match entry_result {
                 Ok(entry) => {
-                    let path = entry.path();
+                    let _path = entry.path();
 
                     // Handle directories
                     if entry.file_type().is_some_and(|ft| ft.is_dir()) {
@@ -1115,6 +1115,7 @@ impl GlobTool {
 
 /// Internal statistics tracking
 #[derive(Default)]
+#[allow(dead_code)]
 struct GlobStats {
     files_examined: usize,
     directories_traversed: usize,

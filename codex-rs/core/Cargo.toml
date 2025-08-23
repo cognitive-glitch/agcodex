@@ -103,7 +103,7 @@ tree-sitter-make = { workspace = true }
 
 # Documentation languages
 tree-sitter-markdown = { workspace = true }
-tree-sitter-latex = { workspace = true }
+# tree-sitter-latex = { workspace = true } # Disabled due to linking issues
 tree-sitter-rst = { workspace = true }
 rayon = { workspace = true }
 ignore = { workspace = true }

@@ -21,8 +21,8 @@ mod tests {
     fn create_test_metadata(turn: usize) -> SnapshotMetadata {
         SnapshotMetadata {
             turn_number: turn,
-            total_tokens: turn * 100,
-            model: "test-model".to_string(),
+            _total_tokens: turn * 100,
+            _model: "test-model".to_string(),
             mode: "Build".to_string(),
             user: None,
             tags: Vec::new(),

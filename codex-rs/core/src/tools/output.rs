@@ -757,7 +757,7 @@ pub struct Diagnostic {
     pub location: Option<SourceLocation>,
 
     /// Error code or identifier
-    pub code: Option<String>,
+    pub _code: Option<String>,
 
     /// Suggestions for resolution
     pub suggestions: Vec<String>,
@@ -1288,7 +1288,7 @@ impl Diagnostic {
             level: DiagnosticLevel::Info,
             message,
             location: None,
-            code: None,
+            _code: None,
             suggestions: Vec::new(),
             related: Vec::new(),
         }
@@ -1300,7 +1300,7 @@ impl Diagnostic {
             level: DiagnosticLevel::Warning,
             message,
             location: None,
-            code: None,
+            _code: None,
             suggestions: Vec::new(),
             related: Vec::new(),
         }
@@ -1312,7 +1312,7 @@ impl Diagnostic {
             level: DiagnosticLevel::Error,
             message,
             location: None,
-            code: None,
+            _code: None,
             suggestions: Vec::new(),
             related: Vec::new(),
         }
@@ -1332,7 +1332,7 @@ impl Diagnostic {
 
     /// Set the error code
     pub fn with_code(mut self, code: String) -> Self {
-        self.code = Some(code);
+        self._code = Some(code);
         self
     }
 }

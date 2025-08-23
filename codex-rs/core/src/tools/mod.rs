@@ -4,6 +4,7 @@
 //! and automated workflow management. These tools are designed to work seamlessly
 //! with the subagent orchestration system.
 
+pub mod edit;
 pub mod glob;
 pub mod index;
 pub mod integration_example;
@@ -13,8 +14,15 @@ pub mod plan;
 pub mod think;
 pub mod tree;
 
+// Unified tool registry and adapters
+pub mod registry;
+pub mod adapters;
+
 #[cfg(test)]
 mod integration_test_glob;
+
+#[cfg(test)]
+mod integration_test_registry;
 
 // Use simplified grep implementation to avoid ast-grep API issues
 pub mod grep_simple;
@@ -27,6 +35,11 @@ pub use grep_simple::GrepTool;
 pub use grep_simple::RuleType;
 pub use grep_simple::SupportedLanguage as GrepSupportedLanguage;
 
+pub use edit::EditError;
+pub use edit::EditResult;
+pub use edit::EditTool;
+pub use edit::AmbiguousMatches;
+pub use edit::MatchCandidate;
 pub use glob::FileMatch;
 pub use glob::FileType;
 pub use glob::GlobError;
@@ -177,3 +190,102 @@ pub struct ToolMetadata {
 
 /// Common result type for all internal tools
 pub type ToolResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+
+// Re-export registry types for unified tool access
+pub use registry::ToolCategory;
+pub use registry::ToolError;
+pub use registry::ToolInfo;
+pub use registry::ToolOutput;
+pub use registry::ToolRegistry;
+
+/// Create the default tool registry with all tools registered
+/// 
+/// This provides a simple, unified interface to all AGCodex tools.
+/// 
+/// # Example
+/// ```
+/// let registry = create_default_registry();
+/// let tools = registry.list_tools();
+/// println!("Available tools: {:?}", tools);
+/// ```
+pub fn create_default_registry() -> ToolRegistry {
+    let mut registry = ToolRegistry::new();
+    
+    // Register search tools
+    registry.register(ToolInfo {
+        name: "search",
+        description: "Search for code patterns and symbols",
+        category: ToolCategory::Search,
+        example: r#"{"query": "function main", "path": "src/"}"#,
+        execute: adapters::adapt_search_tool,
+    });
+    
+    registry.register(ToolInfo {
+        name: "grep",
+        description: "Pattern-based text search",
+        category: ToolCategory::Search,
+        example: r#"{"pattern": "TODO", "path": "."}"#,
+        execute: adapters::adapt_grep_tool,
+    });
+    
+    registry.register(ToolInfo {
+        name: "glob",
+        description: "Find files by pattern",
+        category: ToolCategory::Search,
+        example: r#"{"pattern": "*.rs", "path": "src/"}"#,
+        execute: adapters::adapt_glob_tool,
+    });
+    
+    // Register edit tools
+    registry.register(ToolInfo {
+        name: "edit",
+        description: "Simple text replacement in files",
+        category: ToolCategory::Edit,
+        example: r#"{"file": "main.rs", "old_text": "foo", "new_text": "bar"}"#,
+        execute: adapters::adapt_edit_tool,
+    });
+    
+    registry.register(ToolInfo {
+        name: "patch",
+        description: "Bulk code transformations",
+        category: ToolCategory::Edit,
+        example: r#"{"operation": "rename_symbol", "old_name": "foo", "new_name": "bar"}"#,
+        execute: adapters::adapt_patch_tool,
+    });
+    
+    // Register analysis tools
+    registry.register(ToolInfo {
+        name: "think",
+        description: "Step-by-step reasoning about problems",
+        category: ToolCategory::Analysis,
+        example: r#"{"problem": "How to optimize database queries?"}"#,
+        execute: adapters::adapt_think_tool,
+    });
+    
+    registry.register(ToolInfo {
+        name: "plan",
+        description: "Create task plans with dependencies",
+        category: ToolCategory::Analysis,
+        example: r#"{"description": "Refactor authentication", "constraints": ["maintain API"]}"#,
+        execute: adapters::adapt_plan_tool,
+    });
+    
+    registry.register(ToolInfo {
+        name: "tree",
+        description: "Parse and analyze code structure",
+        category: ToolCategory::Analysis,
+        example: r#"{"file": "main.rs", "language": "rust"}"#,
+        execute: adapters::adapt_tree_tool,
+    });
+    
+    // Register utility tools
+    registry.register(ToolInfo {
+        name: "bash",
+        description: "Execute safe shell commands",
+        category: ToolCategory::Utility,
+        example: r#"{"command": "ls -la"}"#,
+        execute: adapters::adapt_bash_tool,
+    });
+    
+    registry
+}

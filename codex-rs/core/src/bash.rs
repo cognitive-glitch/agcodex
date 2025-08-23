@@ -11,6 +11,7 @@ use tree_sitter_bash::LANGUAGE as BASH;
 
 /// Errors that can occur during bash parsing and validation
 #[derive(Error, Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum BashParseError {
     #[error("Failed to parse bash syntax: {message}")]
     ParseError { message: String },
@@ -38,6 +39,7 @@ pub enum ConfidenceLevel {
 }
 
 impl ConfidenceLevel {
+    #[allow(dead_code)]
     pub fn from_score(score: f32) -> Self {
         match score {
             s if s <= 0.40 => Self::Low,
@@ -47,6 +49,7 @@ impl ConfidenceLevel {
         }
     }
 
+    #[allow(dead_code)]
     pub const fn as_score(&self) -> f32 {
         match self {
             Self::Low => 0.25,
@@ -124,6 +127,7 @@ pub enum SandboxAction {
 
 /// Command validator for security analysis
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CommandValidator {
     dangerous_patterns: Vec<Regex>,
     allowed_commands: HashSet<String>,
@@ -187,6 +191,7 @@ impl CommandValidator {
         }
     }
 
+    #[allow(dead_code)]
     pub fn validate_command(&self, command: &[String]) -> Result<SecurityAnalysis, BashParseError> {
         if command.is_empty() {
             return Ok(SecurityAnalysis {
@@ -238,6 +243,7 @@ impl CommandValidator {
         })
     }
 
+    #[allow(dead_code)]
     fn is_high_risk_command(&self, command: &str) -> bool {
         matches!(
             command,
@@ -248,6 +254,7 @@ impl CommandValidator {
 
 /// Command rewriter for dangerous patterns
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CommandRewriter {
     rewrite_rules: HashMap<String, String>,
 }
@@ -264,6 +271,7 @@ impl CommandRewriter {
         Self { rewrite_rules }
     }
 
+    #[allow(dead_code)]
     pub fn rewrite_command(&self, command: &mut Vec<String>) -> Vec<AppliedRewrite> {
         let mut applied_rewrites = Vec::new();
         let _original_command = command.join(" ");
@@ -296,6 +304,7 @@ impl CommandRewriter {
 
 /// Sandbox rules engine
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct SandboxRules {
     rules: Vec<SandboxRule>,
 }
@@ -314,6 +323,7 @@ impl SandboxRules {
         Self { rules }
     }
 
+    #[allow(dead_code)]
     pub fn apply_rules(&self, command: &[String]) -> Result<(), BashParseError> {
         let full_command = command.join(" ");
 
@@ -351,6 +361,7 @@ impl SandboxRules {
 
 /// Enhanced bash parser with comprehensive safety validation
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct EnhancedBashParser {
     parser: Arc<std::sync::Mutex<Parser>>,
     validator: CommandValidator,
@@ -388,6 +399,7 @@ impl EnhancedBashParser {
     }
 
     /// Parse and validate a bash command with comprehensive safety analysis
+    #[allow(dead_code)]
     pub fn parse_and_validate(&self, cmd: &str) -> Result<SafeCommandReport, BashParseError> {
         let start_time = std::time::Instant::now();
 
@@ -442,6 +454,7 @@ impl EnhancedBashParser {
         })
     }
 
+    #[allow(dead_code)]
     fn parse_bash(&self, cmd: &str) -> Result<Tree, BashParseError> {
         let mut parser = self.parser.lock().map_err(|_| BashParseError::ParseError {
             message: "Failed to acquire parser lock".to_string(),
@@ -454,12 +467,14 @@ impl EnhancedBashParser {
             })
     }
 
+    #[allow(dead_code)]
     fn extract_commands(&self, tree: &Tree, src: &str) -> Result<Vec<Vec<String>>, BashParseError> {
         try_parse_word_only_commands_sequence(tree, src).ok_or_else(|| BashParseError::ParseError {
             message: "Command contains unsupported constructs".to_string(),
         })
     }
 
+    #[allow(dead_code)]
     fn merge_security_analyses(&self, analyses: Vec<SecurityAnalysis>) -> SecurityAnalysis {
         let mut detected_patterns = Vec::new();
         let mut risk_factors = Vec::new();
@@ -494,6 +509,7 @@ impl EnhancedBashParser {
         }
     }
 
+    #[allow(dead_code)]
     const fn threat_level_severity(&self, level: ThreatLevel) -> u8 {
         match level {
             ThreatLevel::Safe => 0,
@@ -504,6 +520,7 @@ impl EnhancedBashParser {
         }
     }
 
+    #[allow(dead_code)]
     fn calculate_confidence_score(
         &self,
         commands: &[Vec<String>],

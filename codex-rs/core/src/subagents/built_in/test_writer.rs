@@ -35,9 +35,9 @@ use std::time::SystemTime;
 pub struct TestWriterAgent {
     name: String,
     description: String,
-    mode_override: Option<OperatingMode>,
-    tool_permissions: Vec<String>,
-    prompt_template: String,
+    _mode_override: Option<OperatingMode>,
+    _tool_permissions: Vec<String>,
+    _prompt_template: String,
     test_strategy: TestStrategy,
 }
 
@@ -61,14 +61,14 @@ impl TestWriterAgent {
         Self {
             name: "test-writer".to_string(),
             description: "Generates comprehensive test suites with high coverage".to_string(),
-            mode_override: Some(OperatingMode::Build),
-            tool_permissions: vec![
+            _mode_override: Some(OperatingMode::Build),
+            _tool_permissions: vec![
                 "search".to_string(),
                 "edit".to_string(),
                 "tree".to_string(),
                 "think".to_string(),
             ],
-            prompt_template: r#"
+            _prompt_template: r#"
 You are an expert test engineer focused on:
 - Achieving high code coverage (>90%)
 - Testing edge cases and error conditions
@@ -146,7 +146,7 @@ Write tests that are:
     /// Generate test cases for a function
     async fn generate_test_cases(
         &self,
-        ast_tools: &mut ASTAgentTools,
+        _ast_tools: &mut ASTAgentTools,
         function_name: &str,
         file: &Path,
     ) -> String {

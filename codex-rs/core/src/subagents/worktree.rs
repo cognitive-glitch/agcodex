@@ -668,7 +668,7 @@ mod tests {
 
         // Acquire worktrees
         let wt1 = pool.acquire("agent1").await.unwrap();
-        let wt2 = pool.acquire("agent2").await.unwrap();
+        let _wt2 = pool.acquire("agent2").await.unwrap();
 
         // Should fail when pool is full
         assert!(pool.acquire("agent3").await.is_err());

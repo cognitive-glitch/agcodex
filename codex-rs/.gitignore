@@ -13,3 +13,6 @@ Cargo.lock
 *.backup
 *.log
 *.tmp
+
+#Ignore cursor AI rules
+.cursor/rules/codacy.mdc

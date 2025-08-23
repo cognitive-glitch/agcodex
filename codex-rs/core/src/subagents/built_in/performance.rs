@@ -35,9 +35,9 @@ use std::time::SystemTime;
 pub struct PerformanceAgent {
     name: String,
     description: String,
-    mode_override: Option<OperatingMode>,
-    tool_permissions: Vec<String>,
-    prompt_template: String,
+    _mode_override: Option<OperatingMode>,
+    _tool_permissions: Vec<String>,
+    _prompt_template: String,
     optimization_level: OptimizationLevel,
 }
 
@@ -61,15 +61,15 @@ impl PerformanceAgent {
         Self {
             name: "performance".to_string(),
             description: "Identifies and optimizes performance bottlenecks".to_string(),
-            mode_override: Some(OperatingMode::Review),
-            tool_permissions: vec![
+            _mode_override: Some(OperatingMode::Review),
+            _tool_permissions: vec![
                 "search".to_string(),
                 "tree".to_string(),
                 "grep".to_string(),
                 "edit".to_string(),
                 "think".to_string(),
             ],
-            prompt_template: r#"
+            _prompt_template: r#"
 You are a performance optimization expert focused on:
 - Algorithm complexity reduction (O(n²) → O(n log n))
 - Memory usage optimization

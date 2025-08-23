@@ -9,7 +9,6 @@ use ratatui::layout::Rect;
 use ratatui::style::Color;
 use ratatui::style::Modifier;
 use ratatui::style::Style;
-use ratatui::style::Stylize;
 use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::Block;
@@ -516,8 +515,10 @@ impl NotificationManager {
             // Apply dimming to non-latest notifications
             for y in area.top()..area.bottom() {
                 for x in area.left()..area.right() {
-                    let cell = buf.get_mut(x, y);
-                    cell.set_style(cell.style().add_modifier(Modifier::DIM));
+                    if let Some(cell) = buf.cell_mut((x, y)) {
+                        let style = cell.style().add_modifier(Modifier::DIM);
+                        cell.set_style(style);
+                    }
                 }
             }
         }

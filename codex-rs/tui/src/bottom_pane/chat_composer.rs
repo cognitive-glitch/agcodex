@@ -12,7 +12,6 @@ use ratatui::style::Color;
 use ratatui::style::Modifier;
 use ratatui::style::Style;
 use ratatui::style::Styled;
-use ratatui::style::Stylize;
 use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::Block;
@@ -715,7 +714,7 @@ impl WidgetRef for &ChatComposer {
                 }
 
                 Line::from(hint)
-                    .style(Style::default().dim())
+                    .style(Style::default().add_modifier(Modifier::DIM))
                     .render_ref(bottom_line_rect, buf);
             }
         }
@@ -740,7 +739,7 @@ impl WidgetRef for &ChatComposer {
         StatefulWidgetRef::render_ref(&(&self.textarea), textarea_rect, buf, &mut state);
         if self.textarea.text().is_empty() {
             Line::from(self.placeholder_text.as_str())
-                .style(Style::default().dim())
+                .style(Style::default().add_modifier(Modifier::DIM))
                 .render_ref(textarea_rect.inner(Margin::new(1, 0)), buf);
         }
     }

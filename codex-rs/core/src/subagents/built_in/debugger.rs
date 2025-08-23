@@ -35,9 +35,9 @@ use std::time::SystemTime;
 pub struct DebuggerAgent {
     name: String,
     description: String,
-    mode_override: Option<OperatingMode>,
-    tool_permissions: Vec<String>,
-    prompt_template: String,
+    _mode_override: Option<OperatingMode>,
+    _tool_permissions: Vec<String>,
+    _prompt_template: String,
     debug_depth: DebugDepth,
 }
 
@@ -61,15 +61,15 @@ impl DebuggerAgent {
         Self {
             name: "debugger".to_string(),
             description: "Deep debugging analysis and root cause identification".to_string(),
-            mode_override: Some(OperatingMode::Review),
-            tool_permissions: vec![
+            _mode_override: Some(OperatingMode::Review),
+            _tool_permissions: vec![
                 "search".to_string(),
                 "tree".to_string(),
                 "grep".to_string(),
                 "bash".to_string(),
                 "think".to_string(),
             ],
-            prompt_template: r#"
+            _prompt_template: r#"
 You are an expert debugger specializing in:
 - Root cause analysis
 - Execution path tracing

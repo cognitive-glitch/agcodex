@@ -4,6 +4,7 @@ use thiserror::Error;
 pub type Result<T> = std::result::Result<T, CliError>;
 
 #[derive(Error, Debug)]
+#[allow(dead_code)]
 pub enum CliError {
     #[error("protocol mode expects stdin to be a pipe, not a terminal")]
     ProtocolModeRequiresPipe,

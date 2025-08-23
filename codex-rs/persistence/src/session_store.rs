@@ -674,7 +674,7 @@ mod tests {
             ..Default::default()
         };
 
-        let store = SessionStore::new(config).await.unwrap();
+        let _store = SessionStore::new(config).await.unwrap();
         assert!(temp_dir.path().join("sessions").exists());
         assert!(temp_dir.path().join("checkpoints").exists());
         assert!(temp_dir.path().join("metadata").exists());
@@ -732,7 +732,7 @@ mod tests {
             .unwrap();
 
         // Load session
-        let (loaded_meta, loaded_conv, loaded_state) = store.load_session(id).await.unwrap();
+        let (loaded_meta, loaded_conv, _loaded_state) = store.load_session(id).await.unwrap();
 
         assert_eq!(loaded_meta.id, id);
         assert_eq!(loaded_meta.title, "Test Session");

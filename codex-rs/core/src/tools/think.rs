@@ -5,7 +5,8 @@
 
 use serde::Deserialize;
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::collections::HashSet;
 use thiserror::Error;
 
 /// Tool recommendation for a thinking step
@@ -171,7 +172,7 @@ impl ThinkSession {
                 .entry(branch_id.clone())
                 .or_default()
                 .push(thought);
-            
+
             // Trim branch if it exceeds max size
             if let Some(branch) = self.branches.get_mut(branch_id) {
                 while branch.len() > self.max_history_size {
@@ -181,7 +182,7 @@ impl ThinkSession {
         } else {
             // Add to main history
             self.thought_history.push(thought);
-            
+
             // Trim history if it exceeds max size
             while self.thought_history.len() > self.max_history_size {
                 self.thought_history.remove(0);
@@ -219,7 +220,10 @@ impl ThinkSession {
     /// Get the current thought history (main or branch)
     pub fn current_history(&self) -> &[ThoughtData] {
         if let Some(branch_id) = &self.active_branch {
-            self.branches.get(branch_id).map(Vec::as_slice).unwrap_or(&[])
+            self.branches
+                .get(branch_id)
+                .map(Vec::as_slice)
+                .unwrap_or(&[])
         } else {
             &self.thought_history
         }
@@ -227,7 +231,9 @@ impl ThinkSession {
 
     /// Find a thought that can be revised
     pub fn find_thought_to_revise(&self, thought_number: usize) -> Option<&ThoughtData> {
-        self.current_history().iter().find(|t| t.thought_number == thought_number)
+        self.current_history()
+            .iter()
+            .find(|t| t.thought_number == thought_number)
     }
 
     /// Get all thoughts that revised other thoughts
@@ -281,7 +287,6 @@ pub enum ThinkError {
     ConfidenceError(String),
 }
 
-
 /// A single step in the reasoning process
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThinkStep {
@@ -334,8 +339,6 @@ pub struct CodeThinkResult {
     pub problem_type: CodeProblemType,
 }
 
-
-
 /// Complete result from the think tool (backward compatibility)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThinkResult {
@@ -348,7 +351,6 @@ pub struct ThinkResult {
     /// Thought data for sequential thinking
     pub thought_data: Option<ThoughtData>,
 }
-
 
 /// Simple think tool implementation
 #[derive(Debug)]
@@ -386,13 +388,13 @@ impl ThinkTool {
         // Create thought data using the constructor
         let mut thought_data = ThoughtData::new(thought.clone(), thought_number, total_thoughts)
             .with_tools(recommended_tools);
-        
+
         // Handle revision if specified
         if let Some(true) = is_revision {
             thought_data.is_revision = true;
             thought_data.revises_thought = revises_thought;
         }
-        
+
         // Update next_thought_needed if different from default
         thought_data.next_thought_needed = next_thought_needed;
 
@@ -405,11 +407,17 @@ impl ThinkTool {
         let steps = vec![ThinkStep {
             step_number: thought_number,
             thought: thought.clone(),
-            reasoning: format!("Processing thought {} of {}", thought_number, total_thoughts),
+            reasoning: format!(
+                "Processing thought {} of {}",
+                thought_number, total_thoughts
+            ),
         }];
 
         let conclusion = if next_thought_needed {
-            format!("Thought {} processed. More thoughts needed.", thought_number)
+            format!(
+                "Thought {} processed. More thoughts needed.",
+                thought_number
+            )
         } else {
             format!("Thought {} processed. Thinking complete.", thought_number)
         };
@@ -553,7 +561,6 @@ impl ThinkTool {
                 rationale: "Thought suggests need for task planning".to_string(),
                 priority,
             });
-            priority += 1;
         }
 
         // Sort by priority (already in order, but ensure consistency)
@@ -645,10 +652,10 @@ impl ThinkTool {
             return Err(ThinkError::EmptyProblem);
         }
 
-        let problem = format!("Refactor to address: {}", code_smell);
+        let _problem = format!("Refactor to address: {}", code_smell);
         let steps = Self::generate_refactoring_steps(code_smell)?;
         let recommended_action = "Implement refactoring strategy".to_string();
-        let complexity = 5; // Default complexity score for refactoring
+        let _complexity = 5; // Default complexity score for refactoring
 
         Ok(CodeThinkResult {
             steps,
@@ -1399,7 +1406,7 @@ impl ThinkTool {
         }
     }
 
-    fn propose_solution_strategy(problem_type: &CodeProblemType, problem: &str) -> String {
+    fn propose_solution_strategy(problem_type: &CodeProblemType, _problem: &str) -> String {
         match problem_type {
             CodeProblemType::BugFix => "1) Reproduce the bug consistently, 2) Identify root cause through debugging, 3) Implement minimal fix, 4) Add regression tests".to_string(),
             CodeProblemType::Refactoring => "1) Ensure comprehensive test coverage, 2) Apply refactoring incrementally, 3) Validate behavior after each change, 4) Update documentation".to_string(),
@@ -1652,7 +1659,7 @@ impl ThinkTool {
         }.to_string()
     }
 
-    fn assess_refactoring_complexity(code_smell: &str) -> Complexity {
+    fn _assess_refactoring_complexity(code_smell: &str) -> Complexity {
         let smell_lower = code_smell.to_lowercase();
 
         if smell_lower.contains("system")
@@ -2012,7 +2019,6 @@ impl ThinkTool {
                 confidence: 0.8,
                 rationale: "Thought mentions reasoning or consideration - think tool provides structured reasoning strategies".to_string(),
                 priority,            });
-            priority += 1;
         }
 
         // If no specific tools were identified, provide general recommendations based on context
@@ -2026,8 +2032,11 @@ impl ThinkTool {
             recommendations.push(ToolRecommendation {
                 tool: "edit".to_string(),
                 confidence: 0.5,
-                rationale: "No specific tools mentioned - edit tool enables making necessary code changes".to_string(),
-                priority: 2,            });
+                rationale:
+                    "No specific tools mentioned - edit tool enables making necessary code changes"
+                        .to_string(),
+                priority: 2,
+            });
         }
 
         // Sort by priority to ensure correct order
@@ -2340,19 +2349,36 @@ mod tests {
 
         // Verify each result has proper sequential structure
         for (i, result) in results.iter().enumerate() {
-            assert!(result.steps.len() >= 3, "Problem {} should have at least 3 steps", i);
-            
+            assert!(
+                result.steps.len() >= 3,
+                "Problem {} should have at least 3 steps",
+                i
+            );
+
             // Verify steps are properly numbered sequentially
             for (step_idx, step) in result.steps.iter().enumerate() {
-                assert_eq!(step.step_number, step_idx + 1, "Step numbering should be sequential");
+                assert_eq!(
+                    step.step_number,
+                    step_idx + 1,
+                    "Step numbering should be sequential"
+                );
                 assert!(!step.thought.is_empty(), "Each thought should have content");
-                assert!(!step.reasoning.is_empty(), "Each step should have reasoning");
+                assert!(
+                    !step.reasoning.is_empty(),
+                    "Each step should have reasoning"
+                );
             }
 
             // Verify metadata consistency
-            assert!(result.confidence >= 0.1 && result.confidence <= 0.95, "Confidence should be in valid range");
+            assert!(
+                result.confidence >= 0.1 && result.confidence <= 0.95,
+                "Confidence should be in valid range"
+            );
             assert!(!result.conclusion.is_empty(), "Should have a conclusion");
-            assert!(!result.recommended_action.is_empty(), "Should have recommended action");
+            assert!(
+                !result.recommended_action.is_empty(),
+                "Should have recommended action"
+            );
         }
 
         // Verify different problems produce different classifications
@@ -2366,30 +2392,46 @@ mod tests {
     fn test_thought_revision() {
         // Test the capability to revise previous thoughts through re-analysis
         let initial_problem = "Fix the authentication bug";
-        
+
         // Initial analysis
-        let initial_result = ThinkTool::think_about_code(initial_problem, Some("rust"), None).unwrap();
+        let initial_result =
+            ThinkTool::think_about_code(initial_problem, Some("rust"), None).unwrap();
         assert_eq!(initial_result.problem_type, CodeProblemType::BugFix);
-        
+
         // More specific problem with additional context (simulating revision)
-        let revised_problem = "Fix the authentication bug that causes null pointer exception in login validation";
-        let revised_result = ThinkTool::think_about_code(revised_problem, Some("rust"), Some("src/auth.rs")).unwrap();
-        
+        let revised_problem =
+            "Fix the authentication bug that causes null pointer exception in login validation";
+        let revised_result =
+            ThinkTool::think_about_code(revised_problem, Some("rust"), Some("src/auth.rs"))
+                .unwrap();
+
         // Verify revision produces more detailed analysis
-        assert!(revised_result.steps.len() >= initial_result.steps.len(), "Revised analysis should be as detailed or more");
-        assert!(!revised_result.affected_files.is_empty(), "Revised analysis should identify affected files");
-        assert!(revised_result.confidence >= initial_result.confidence - 0.1, "Confidence should not significantly decrease");
-        
+        assert!(
+            revised_result.steps.len() >= initial_result.steps.len(),
+            "Revised analysis should be as detailed or more"
+        );
+        assert!(
+            !revised_result.affected_files.is_empty(),
+            "Revised analysis should identify affected files"
+        );
+        assert!(
+            revised_result.confidence >= initial_result.confidence - 0.1,
+            "Confidence should not significantly decrease"
+        );
+
         // Error-specific analysis should be more targeted
-        let error_result = ThinkTool::analyze_error("NullPointerException in auth validation").unwrap();
+        let error_result =
+            ThinkTool::analyze_error("NullPointerException in auth validation").unwrap();
         assert_eq!(error_result.problem_type, CodeProblemType::BugFix);
-        assert!(error_result.recommended_action.contains("null") || error_result.recommended_action.contains("check"));
-        
+        assert!(
+            error_result.recommended_action.contains("null")
+                || error_result.recommended_action.contains("check")
+        );
+
         // Test thought data revision capability
         let thought1 = ThoughtData::new("Initial analysis".to_string(), 1, 3);
-        let thought2 = ThoughtData::new("Revised analysis".to_string(), 2, 3)
-            .as_revision(1);
-        
+        let thought2 = ThoughtData::new("Revised analysis".to_string(), 2, 3).as_revision(1);
+
         assert!(!thought1.is_revision);
         assert!(thought2.is_revision);
         assert_eq!(thought2.revises_thought, Some(1));
@@ -2399,36 +2441,84 @@ mod tests {
     fn test_tool_recommendations() {
         // Test that appropriate tools are recommended for different problem types
         let test_cases = [
-            ("Debug memory leak in C++ application", CodeProblemType::BugFix, "debug"),
-            ("Optimize slow database queries", CodeProblemType::Performance, "profile"),
-            ("Refactor messy legacy code", CodeProblemType::Refactoring, "refactor"),
-            ("Implement user registration feature", CodeProblemType::Implementation, "implement"),
-            ("Fix SQL injection vulnerability", CodeProblemType::Security, "security"),
-            ("Write comprehensive unit tests", CodeProblemType::Testing, "test"),
-            ("Document the REST API endpoints", CodeProblemType::Documentation, "documentation"),
-            ("Design microservices architecture", CodeProblemType::Architecture, "architecture"),
-            ("Review code for best practices", CodeProblemType::CodeReview, "review"),
+            (
+                "Debug memory leak in C++ application",
+                CodeProblemType::BugFix,
+                "debug",
+            ),
+            (
+                "Optimize slow database queries",
+                CodeProblemType::Performance,
+                "profile",
+            ),
+            (
+                "Refactor messy legacy code",
+                CodeProblemType::Refactoring,
+                "refactor",
+            ),
+            (
+                "Implement user registration feature",
+                CodeProblemType::Implementation,
+                "implement",
+            ),
+            (
+                "Fix SQL injection vulnerability",
+                CodeProblemType::Security,
+                "security",
+            ),
+            (
+                "Write comprehensive unit tests",
+                CodeProblemType::Testing,
+                "test",
+            ),
+            (
+                "Document the REST API endpoints",
+                CodeProblemType::Documentation,
+                "documentation",
+            ),
+            (
+                "Design microservices architecture",
+                CodeProblemType::Architecture,
+                "architecture",
+            ),
+            (
+                "Review code for best practices",
+                CodeProblemType::CodeReview,
+                "review",
+            ),
         ];
 
         for (problem, expected_type, expected_action_keyword) in test_cases {
             let result = ThinkTool::think_about_code(problem, Some("rust"), None).unwrap();
-            
-            assert_eq!(result.problem_type, expected_type, "Problem '{}' should be classified as {:?}", problem, expected_type);
-            
+
+            assert_eq!(
+                result.problem_type, expected_type,
+                "Problem '{}' should be classified as {:?}",
+                problem, expected_type
+            );
+
             let action_lower = result.recommended_action.to_lowercase();
-            assert!(action_lower.contains(expected_action_keyword), 
-                "Recommended action '{}' should contain '{}' for problem type {:?}", 
-                result.recommended_action, expected_action_keyword, expected_type);
-                
+            assert!(
+                action_lower.contains(expected_action_keyword),
+                "Recommended action '{}' should contain '{}' for problem type {:?}",
+                result.recommended_action,
+                expected_action_keyword,
+                expected_type
+            );
+
             // Verify approach reasoning contains problem-specific guidance
             let has_relevant_step = result.steps.iter().any(|step| {
                 let step_content = format!("{} {}", step.thought, step.reasoning).to_lowercase();
-                step_content.contains(expected_action_keyword) || 
-                step_content.contains(&format!("{:?}", expected_type).to_lowercase())
+                step_content.contains(expected_action_keyword)
+                    || step_content.contains(&format!("{:?}", expected_type).to_lowercase())
             });
-            assert!(has_relevant_step, "Steps should contain problem-type specific reasoning for {:?}", expected_type);
+            assert!(
+                has_relevant_step,
+                "Steps should contain problem-type specific reasoning for {:?}",
+                expected_type
+            );
         }
-        
+
         // Test tool recommendation structure
         let tool_rec = ToolRecommendation {
             tool: "search".to_string(),
@@ -2436,7 +2526,7 @@ mod tests {
             rationale: "Need to find relevant code".to_string(),
             priority: 1,
         };
-        
+
         assert_eq!(tool_rec.tool, "search");
         assert!(tool_rec.confidence > 0.0 && tool_rec.confidence <= 1.0);
         assert!(!tool_rec.rationale.is_empty());
@@ -2445,70 +2535,94 @@ mod tests {
     #[test]
     fn test_branch_management() {
         // Test branching thoughts for alternative approaches
-        
+
         // Analyze from performance perspective
         let perf_result = ThinkTool::think_about_code(
             "Optimize performance bottlenecks in authentication system",
             Some("rust"),
-            Some("src/auth.rs")
-        ).unwrap();
-        
-        // Analyze from security perspective  
+            Some("src/auth.rs"),
+        )
+        .unwrap();
+
+        // Analyze from security perspective
         let security_result = ThinkTool::think_about_code(
             "Fix security vulnerabilities in authentication system",
             Some("rust"),
-            Some("src/auth.rs")
-        ).unwrap();
-        
+            Some("src/auth.rs"),
+        )
+        .unwrap();
+
         // Verify different approaches are taken
         assert_eq!(perf_result.problem_type, CodeProblemType::Performance);
         assert_eq!(security_result.problem_type, CodeProblemType::Security);
-        
+
         // Performance branch should focus on optimization
         let perf_actions = perf_result.recommended_action.to_lowercase();
-        assert!(perf_actions.contains("profile") || perf_actions.contains("measure") || perf_actions.contains("performance"));
-        
+        assert!(
+            perf_actions.contains("profile")
+                || perf_actions.contains("measure")
+                || perf_actions.contains("performance")
+        );
+
         // Security branch should focus on vulnerabilities
         let security_actions = security_result.recommended_action.to_lowercase();
-        assert!(security_actions.contains("security") || security_actions.contains("vulnerability") || security_actions.contains("assessment"));
-        
+        assert!(
+            security_actions.contains("security")
+                || security_actions.contains("vulnerability")
+                || security_actions.contains("assessment")
+        );
+
         // Both should identify the same affected files but different approaches
         assert_eq!(perf_result.affected_files, security_result.affected_files);
-        assert_ne!(perf_result.recommended_action, security_result.recommended_action);
-        
+        assert_ne!(
+            perf_result.recommended_action,
+            security_result.recommended_action
+        );
+
         // Test ThoughtData branching functionality
         let mut session = ThinkSession::new(100);
         session.add_thought(ThoughtData::new("Main thought".to_string(), 1, 3));
-        
+
         // Create a branch from the first thought
         session.create_branch(0, "security-branch".to_string());
         assert!(session.branches.contains_key("security-branch"));
-        
+
         // Test thought with branch data
         let branched_thought = ThoughtData::new("Security analysis".to_string(), 1, 2)
             .with_branch(1, "security-branch".to_string());
-        
+
         assert_eq!(branched_thought.branch_from_thought, Some(1));
-        assert_eq!(branched_thought.branch_id, Some("security-branch".to_string()));
-        
+        assert_eq!(
+            branched_thought.branch_id,
+            Some("security-branch".to_string())
+        );
+
         // Error analysis branching - different error types should produce different strategies
         let null_error = ThinkTool::analyze_error("NullPointerException in user service").unwrap();
-        let memory_error = ThinkTool::analyze_error("Segmentation fault in buffer handling").unwrap();
+        let memory_error =
+            ThinkTool::analyze_error("Segmentation fault in buffer handling").unwrap();
         let network_error = ThinkTool::analyze_error("Connection timeout in API client").unwrap();
-        
+
         // All should be bug fixes but with different approaches
         assert_eq!(null_error.problem_type, CodeProblemType::BugFix);
         assert_eq!(memory_error.problem_type, CodeProblemType::BugFix);
         assert_eq!(network_error.problem_type, CodeProblemType::BugFix);
-        
+
         // But recommended actions should be different
-        let actions = [&null_error.recommended_action, &memory_error.recommended_action, &network_error.recommended_action];
+        let actions = [
+            &null_error.recommended_action,
+            &memory_error.recommended_action,
+            &network_error.recommended_action,
+        ];
         assert!(actions.iter().all(|action| !action.is_empty()));
         // Actions should be unique (no two identical approaches)
         for (i, action1) in actions.iter().enumerate() {
             for (j, action2) in actions.iter().enumerate() {
                 if i != j {
-                    assert_ne!(action1, action2, "Different error types should have different recommended actions");
+                    assert_ne!(
+                        action1, action2,
+                        "Different error types should have different recommended actions"
+                    );
                 }
             }
         }
@@ -2518,16 +2632,16 @@ mod tests {
     fn test_session_history() {
         // Test that thought history is maintained correctly across multiple analyses
         let mut session = ThinkSession::new(100);
-        
+
         // Simulate a debugging session with progressive problem refinement
         let problems = [
             "Application crashes on startup",
-            "Application crashes when loading configuration", 
+            "Application crashes when loading configuration",
             "Null pointer when parsing config file in src/config.rs line 45",
         ];
-        
+
         let mut session_results = Vec::new();
-        
+
         for (i, problem) in problems.iter().enumerate() {
             let context = if i == 2 { Some("src/config.rs") } else { None };
             let result = if i == 2 {
@@ -2535,40 +2649,52 @@ mod tests {
             } else {
                 ThinkTool::think_about_code(problem, Some("rust"), context).unwrap()
             };
-            
+
             // Add thought to session
             let thought = ThoughtData::new(format!("Problem {}: {}", i + 1, problem), i + 1, 3)
                 .with_confidence(result.confidence);
             session.add_thought(thought);
-            
+
             session_results.push(result);
         }
-        
+
         // Verify session history
         assert_eq!(session.thought_history.len(), 3);
         assert_eq!(session.total_thought_count, 3);
-        
+
         // Verify progression in specificity and confidence
         assert!(session_results.len() == 3);
-        
+
         // Later results should be more specific
         assert!(session_results[2].affected_files.len() >= session_results[0].affected_files.len());
-        
+
         // Error analysis (last) should have high confidence
-        assert!(session_results[2].confidence >= 0.7, "Error analysis should have high confidence");
-        
+        assert!(
+            session_results[2].confidence >= 0.7,
+            "Error analysis should have high confidence"
+        );
+
         // All should be related to debugging/bug fixing
         let problem_types: Vec<_> = session_results.iter().map(|r| &r.problem_type).collect();
-        assert!(problem_types.iter().all(|&pt| matches!(pt, &CodeProblemType::BugFix | &CodeProblemType::Implementation)));
-        
+        assert!(problem_types.iter().all(|&pt| matches!(
+            pt,
+            &CodeProblemType::BugFix | &CodeProblemType::Implementation
+        )));
+
         // Recommended actions should become more specific
-        let actions: Vec<_> = session_results.iter().map(|r| &r.recommended_action).collect();
-        assert!(actions[2].len() >= actions[0].len(), "Later actions should be more detailed");
-        
+        let actions: Vec<_> = session_results
+            .iter()
+            .map(|r| &r.recommended_action)
+            .collect();
+        assert!(
+            actions[2].len() >= actions[0].len(),
+            "Later actions should be more detailed"
+        );
+
         // Test session history access
         let current_history = session.current_history();
         assert_eq!(current_history.len(), 3);
-        
+
         // Test session thought progression
         for (i, thought) in current_history.iter().enumerate() {
             assert_eq!(thought.thought_number, i + 1);
@@ -2581,64 +2707,132 @@ mod tests {
         // Verify confidence scores are appropriate for each problem type
         let test_cases = [
             // High confidence cases (well-defined, specific problems)
-            ("Fix NullPointerException in UserService.java line 42", CodeProblemType::BugFix, 0.7, 0.95),
-            ("Write unit tests for calculateTax method", CodeProblemType::Testing, 0.7, 0.95),
-            ("Document the getUserById API endpoint", CodeProblemType::Documentation, 0.7, 0.95),
-            
+            (
+                "Fix NullPointerException in UserService.java line 42",
+                CodeProblemType::BugFix,
+                0.7,
+                0.95,
+            ),
+            (
+                "Write unit tests for calculateTax method",
+                CodeProblemType::Testing,
+                0.7,
+                0.95,
+            ),
+            (
+                "Document the getUserById API endpoint",
+                CodeProblemType::Documentation,
+                0.7,
+                0.95,
+            ),
             // Medium confidence cases (moderately complex)
-            ("Implement user authentication with JWT", CodeProblemType::Implementation, 0.5, 0.8),
-            ("Refactor the large UserService class", CodeProblemType::Refactoring, 0.5, 0.8),
-            
+            (
+                "Implement user authentication with JWT",
+                CodeProblemType::Implementation,
+                0.5,
+                0.8,
+            ),
+            (
+                "Refactor the large UserService class",
+                CodeProblemType::Refactoring,
+                0.5,
+                0.8,
+            ),
             // Lower confidence cases (complex, contextual)
-            ("Design scalable microservices architecture", CodeProblemType::Architecture, 0.4, 0.7),
-            ("Optimize overall system performance", CodeProblemType::Performance, 0.4, 0.7),
-            ("Review codebase for security issues", CodeProblemType::Security, 0.4, 0.7),
+            (
+                "Design scalable microservices architecture",
+                CodeProblemType::Architecture,
+                0.4,
+                0.7,
+            ),
+            (
+                "Optimize overall system performance",
+                CodeProblemType::Performance,
+                0.4,
+                0.7,
+            ),
+            (
+                "Review codebase for security issues",
+                CodeProblemType::Security,
+                0.4,
+                0.7,
+            ),
         ];
-        
+
         for (problem, expected_type, min_confidence, max_confidence) in test_cases {
             let result = ThinkTool::think_about_code(problem, Some("java"), None).unwrap();
-            
-            assert_eq!(result.problem_type, expected_type, "Problem type should match for: {}", problem);
-            
-            assert!(result.confidence >= min_confidence && result.confidence <= max_confidence,
+
+            assert_eq!(
+                result.problem_type, expected_type,
+                "Problem type should match for: {}",
+                problem
+            );
+
+            assert!(
+                result.confidence >= min_confidence && result.confidence <= max_confidence,
                 "Confidence {:.2} should be between {:.2} and {:.2} for {:?} problem: '{}'",
-                result.confidence, min_confidence, max_confidence, expected_type, problem);
+                result.confidence,
+                min_confidence,
+                max_confidence,
+                expected_type,
+                problem
+            );
         }
-        
+
         // Test confidence with technical specificity
         let vague_problem = "Fix something that's broken";
-        let specific_problem = "Fix memory leak in ArrayList resize operation in Java HashMap implementation";
-        
+        let specific_problem =
+            "Fix memory leak in ArrayList resize operation in Java HashMap implementation";
+
         let vague_result = ThinkTool::think_about_code(vague_problem, Some("java"), None).unwrap();
-        let specific_result = ThinkTool::think_about_code(specific_problem, Some("java"), None).unwrap();
-        
-        assert!(specific_result.confidence > vague_result.confidence,
-            "Specific problems should have higher confidence than vague ones");
-        
+        let specific_result =
+            ThinkTool::think_about_code(specific_problem, Some("java"), None).unwrap();
+
+        assert!(
+            specific_result.confidence > vague_result.confidence,
+            "Specific problems should have higher confidence than vague ones"
+        );
+
         // Test confidence with language context
-        let rust_result = ThinkTool::think_about_code("Implement memory-safe linked list", Some("rust"), None).unwrap();
-        let assembly_result = ThinkTool::think_about_code("Implement memory-safe linked list", Some("assembly"), None).unwrap();
-        
+        let rust_result =
+            ThinkTool::think_about_code("Implement memory-safe linked list", Some("rust"), None)
+                .unwrap();
+        let assembly_result = ThinkTool::think_about_code(
+            "Implement memory-safe linked list",
+            Some("assembly"),
+            None,
+        )
+        .unwrap();
+
         // Assembly should have lower confidence due to complexity
-        assert!(rust_result.confidence >= assembly_result.confidence,
-            "Complex languages should not increase confidence unnecessarily");
-            
+        assert!(
+            rust_result.confidence >= assembly_result.confidence,
+            "Complex languages should not increase confidence unnecessarily"
+        );
+
         // Test error analysis confidence
-        let error_result = ThinkTool::analyze_error("java.lang.NullPointerException: Cannot invoke method on null object").unwrap();
-        assert!(error_result.confidence >= 0.7, "Error analysis with clear error messages should have high confidence");
-        
+        let error_result = ThinkTool::analyze_error(
+            "java.lang.NullPointerException: Cannot invoke method on null object",
+        )
+        .unwrap();
+        assert!(
+            error_result.confidence >= 0.7,
+            "Error analysis with clear error messages should have high confidence"
+        );
+
         // Test refactoring confidence
         let refactoring_result = ThinkTool::plan_refactoring("Long method with 200 lines").unwrap();
-        assert!(refactoring_result.confidence >= 0.8, "Clear refactoring problems should have high confidence");
-        
+        assert!(
+            refactoring_result.confidence >= 0.8,
+            "Clear refactoring problems should have high confidence"
+        );
+
         // Test ThoughtData confidence
-        let thought = ThoughtData::new("Test thought".to_string(), 1, 3)
-            .with_confidence(0.85);
+        let thought = ThoughtData::new("Test thought".to_string(), 1, 3).with_confidence(0.85);
         assert_eq!(thought.confidence, 0.85);
-        
+
         // Test confidence bounds
-        let bounded_thought = ThoughtData::new("Test".to_string(), 1, 1)
-            .with_confidence(1.5); // Should be clamped to 1.0
+        let bounded_thought = ThoughtData::new("Test".to_string(), 1, 1).with_confidence(1.5); // Should be clamped to 1.0
         assert_eq!(bounded_thought.confidence, 1.0);
     }
 
@@ -2646,54 +2840,89 @@ mod tests {
     fn test_sequential_thinking_step_quality() {
         // Test the quality and coherence of sequential thinking steps
         let complex_problem = "Design and implement a secure, scalable user authentication system with OAuth2 integration";
-        
-        let result = ThinkTool::think_about_code(complex_problem, Some("typescript"), Some("src/auth/")).unwrap();
-        
+
+        let result =
+            ThinkTool::think_about_code(complex_problem, Some("typescript"), Some("src/auth/"))
+                .unwrap();
+
         // Should generate multiple detailed steps for complex problems
-        assert!(result.steps.len() >= 4, "Complex problems should generate more detailed analysis");
-        
+        assert!(
+            result.steps.len() >= 4,
+            "Complex problems should generate more detailed analysis"
+        );
+
         // Verify step progression makes logical sense
-        let step_keywords = result.steps.iter().map(|step| {
-            format!("{} {}", step.thought, step.reasoning).to_lowercase()
-        }).collect::<Vec<_>>();
-        
+        let step_keywords = result
+            .steps
+            .iter()
+            .map(|step| format!("{} {}", step.thought, step.reasoning).to_lowercase())
+            .collect::<Vec<_>>();
+
         // Early steps should focus on understanding/analysis
-        assert!(step_keywords[0].contains("context") || step_keywords[0].contains("understand") || step_keywords[0].contains("analyz"));
-        
+        assert!(
+            step_keywords[0].contains("context")
+                || step_keywords[0].contains("understand")
+                || step_keywords[0].contains("analyz")
+        );
+
         // Later steps should focus on implementation/solution
         let last_steps = &step_keywords[step_keywords.len().saturating_sub(2)..];
         assert!(last_steps.iter().any(|step| {
             step.contains("implement") || step.contains("solution") || step.contains("strategy")
         }));
-        
+
         // Verify step content quality
         for (i, step) in result.steps.iter().enumerate() {
-            assert!(step.thought.len() >= 20, "Step {} thought should be substantial", i + 1);
-            assert!(step.reasoning.len() >= 30, "Step {} reasoning should be detailed", i + 1);
-            
+            assert!(
+                step.thought.len() >= 20,
+                "Step {} thought should be substantial",
+                i + 1
+            );
+            assert!(
+                step.reasoning.len() >= 30,
+                "Step {} reasoning should be detailed",
+                i + 1
+            );
+
             // Steps should not be repetitive
             for (j, other_step) in result.steps.iter().enumerate() {
                 if i != j {
-                    assert_ne!(step.thought, other_step.thought, "Steps should not be identical");
+                    assert_ne!(
+                        step.thought, other_step.thought,
+                        "Steps should not be identical"
+                    );
                 }
             }
         }
-        
+
         // Verify conclusion incorporates the analysis
-        assert!(result.conclusion.len() >= 50, "Conclusion should be comprehensive");
-        assert!(result.conclusion.contains("auth") || result.conclusion.contains("security") || result.conclusion.contains("OAuth"));
-        
+        assert!(
+            result.conclusion.len() >= 50,
+            "Conclusion should be comprehensive"
+        );
+        assert!(
+            result.conclusion.contains("auth")
+                || result.conclusion.contains("security")
+                || result.conclusion.contains("OAuth")
+        );
+
         // Verify recommended action is specific and actionable
-        assert!(result.recommended_action.len() >= 30, "Recommended action should be detailed");
-        assert!(!result.recommended_action.contains("TODO") && !result.recommended_action.contains("..."));
-        
+        assert!(
+            result.recommended_action.len() >= 30,
+            "Recommended action should be detailed"
+        );
+        assert!(
+            !result.recommended_action.contains("TODO")
+                && !result.recommended_action.contains("...")
+        );
+
         // Test step description structure
         let step_desc = StepDescription {
             description: "Analyze authentication requirements".to_string(),
             expected_outcome: "Clear understanding of auth needs".to_string(),
             next_conditions: vec!["Security requirements defined".to_string()],
         };
-        
+
         assert!(!step_desc.description.is_empty());
         assert!(!step_desc.expected_outcome.is_empty());
         assert!(!step_desc.next_conditions.is_empty());
@@ -2703,37 +2932,50 @@ mod tests {
     fn test_thinking_consistency() {
         // Test that repeated analysis of the same problem produces consistent results
         let problem = "Optimize database query performance for user search";
-        
-        let results: Vec<_> = (0..3).map(|_| {
-            ThinkTool::think_about_code(problem, Some("sql"), Some("queries/user_search.sql")).unwrap()
-        }).collect();
-        
+
+        let results: Vec<_> = (0..3)
+            .map(|_| {
+                ThinkTool::think_about_code(problem, Some("sql"), Some("queries/user_search.sql"))
+                    .unwrap()
+            })
+            .collect();
+
         // All results should have same classification
         let problem_types: Vec<_> = results.iter().map(|r| &r.problem_type).collect();
-        assert!(problem_types.iter().all(|&pt| pt == &CodeProblemType::Performance));
-        
+        assert!(
+            problem_types
+                .iter()
+                .all(|&pt| pt == &CodeProblemType::Performance)
+        );
+
         // Confidence should be consistent (within reasonable variance)
         let confidences: Vec<_> = results.iter().map(|r| r.confidence).collect();
         let confidence_variance = {
             let mean = confidences.iter().sum::<f32>() / confidences.len() as f32;
             confidences.iter().map(|c| (c - mean).abs()).sum::<f32>() / confidences.len() as f32
         };
-        assert!(confidence_variance < 0.1, "Confidence should be consistent across runs");
-        
+        assert!(
+            confidence_variance < 0.1,
+            "Confidence should be consistent across runs"
+        );
+
         // Step count should be consistent
         let step_counts: Vec<_> = results.iter().map(|r| r.steps.len()).collect();
         let min_steps = *step_counts.iter().min().unwrap();
         let max_steps = *step_counts.iter().max().unwrap();
-        assert!(max_steps - min_steps <= 1, "Step count should be consistent");
-        
+        assert!(
+            max_steps - min_steps <= 1,
+            "Step count should be consistent"
+        );
+
         // Recommended actions should be similar (same problem type)
         let actions: Vec<_> = results.iter().map(|r| &r.recommended_action).collect();
         assert!(actions.iter().all(|action| {
-            action.to_lowercase().contains("profile") || 
-            action.to_lowercase().contains("measure") ||
-            action.to_lowercase().contains("performance")
+            action.to_lowercase().contains("profile")
+                || action.to_lowercase().contains("measure")
+                || action.to_lowercase().contains("performance")
         }));
-        
+
         // Test basic ThinkResult with thought_data
         let basic_result = ThinkTool::think("How to solve this?").unwrap();
         assert!(basic_result.steps.len() >= 3);

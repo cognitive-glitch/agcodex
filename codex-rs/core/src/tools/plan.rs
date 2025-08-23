@@ -129,7 +129,7 @@ impl Plan {
     /// Find tasks that can run in parallel
     fn identify_parallel_groups(
         tasks: &[Task],
-        dependency_graph: &HashMap<TaskId, Vec<TaskId>>,
+        _dependency_graph: &HashMap<TaskId, Vec<TaskId>>,
     ) -> Vec<Vec<TaskId>> {
         let mut groups = Vec::new();
         let mut processed = std::collections::HashSet::new();
@@ -211,7 +211,7 @@ impl PlanTool {
     /// Decompose a goal into concrete tasks
     fn decompose_goal(&self, goal: &str) -> PlanResult<Vec<Task>> {
         let goal_lower = goal.to_lowercase();
-        let mut tasks = Vec::new();
+        let mut tasks;
 
         // Pattern-based task decomposition
         if goal_lower.contains("add")

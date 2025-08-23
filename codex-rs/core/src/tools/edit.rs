@@ -47,7 +47,7 @@ pub struct EditTool {
 }
 
 impl EditTool {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
     
@@ -275,7 +275,7 @@ impl EditTool {
                 matches.push(MatchCandidate {
                     line_number,
                     context,
-                    full_line: line.to_string(),
+                    full_line: (*line).to_string(),
                 });
             }
         }
@@ -292,7 +292,7 @@ mod tests {
     
     #[test]
     fn test_edit_line() {
-        let mut temp_file = NamedTempFile::new().unwrap();
+        let temp_file = NamedTempFile::new().unwrap();
         let content = "line 1\nline 2\nline 3\n";
         fs::write(temp_file.path(), content).unwrap();
         
@@ -314,7 +314,7 @@ mod tests {
     
     #[test]
     fn test_edit_text_unique() {
-        let mut temp_file = NamedTempFile::new().unwrap();
+        let temp_file = NamedTempFile::new().unwrap();
         let content = "hello world\nthis is unique\ngoodbye world\n";
         fs::write(temp_file.path(), content).unwrap();
         
@@ -334,7 +334,7 @@ mod tests {
     
     #[test]
     fn test_edit_text_ambiguous() {
-        let mut temp_file = NamedTempFile::new().unwrap();
+        let temp_file = NamedTempFile::new().unwrap();
         let content = "hello world\nhello again\nhello there\n";
         fs::write(temp_file.path(), content).unwrap();
         
@@ -349,7 +349,7 @@ mod tests {
     
     #[test]
     fn test_indentation_preservation() {
-        let mut temp_file = NamedTempFile::new().unwrap();
+        let temp_file = NamedTempFile::new().unwrap();
         let content = "fn main() {\n    let x = 1;\n    let y = 2;\n}\n";
         fs::write(temp_file.path(), content).unwrap();
         
@@ -364,7 +364,7 @@ mod tests {
     
     #[test]
     fn test_find_matches() {
-        let mut temp_file = NamedTempFile::new().unwrap();
+        let temp_file = NamedTempFile::new().unwrap();
         let content = "hello world\nhello again\nhello there\n";
         fs::write(temp_file.path(), content).unwrap();
         

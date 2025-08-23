@@ -88,7 +88,7 @@ struct VoyageRequest {
 #[derive(Debug, Deserialize)]
 struct VoyageResponse {
     data: Vec<VoyageEmbedding>,
-    usage: VoyageUsage,
+    _usage: VoyageUsage,
 }
 
 #[derive(Debug, Deserialize)]
@@ -99,7 +99,7 @@ struct VoyageEmbedding {
 
 #[derive(Debug, Deserialize)]
 struct VoyageUsage {
-    total_tokens: usize,
+    _total_tokens: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -112,7 +112,7 @@ struct VoyageErrorDetail {
     message: String,
     #[serde(rename = "type")]
     error_type: String,
-    code: Option<String>,
+    _code: Option<String>,
 }
 
 #[async_trait::async_trait]

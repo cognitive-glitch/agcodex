@@ -35,9 +35,9 @@ use std::time::SystemTime;
 pub struct RefactorerAgent {
     name: String,
     description: String,
-    mode_override: Option<OperatingMode>,
-    tool_permissions: Vec<String>,
-    prompt_template: String,
+    _mode_override: Option<OperatingMode>,
+    _tool_permissions: Vec<String>,
+    _prompt_template: String,
     risk_tolerance: RiskLevel,
 }
 
@@ -61,15 +61,15 @@ impl RefactorerAgent {
         Self {
             name: "refactorer".to_string(),
             description: "Performs systematic code refactoring with risk assessment".to_string(),
-            mode_override: Some(OperatingMode::Build),
-            tool_permissions: vec![
+            _mode_override: Some(OperatingMode::Build),
+            _tool_permissions: vec![
                 "search".to_string(),
                 "edit".to_string(),
                 "patch".to_string(),
                 "tree".to_string(),
                 "grep".to_string(),
             ],
-            prompt_template: r#"
+            _prompt_template: r#"
 You are an expert refactoring specialist focused on:
 - Improving code structure without changing behavior
 - Reducing complexity and duplication

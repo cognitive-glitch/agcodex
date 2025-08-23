@@ -173,7 +173,7 @@ tree-sitter-nix = "0.3"
 tree-sitter-make = "1.1"
 # Documentation languages
 tree-sitter-markdown = "0.7.1"
-tree-sitter-latex = "0.1.0"
+# tree-sitter-latex = "0.1.0" # Disabled due to linking issues
 tree-sitter-rst = "0.2"
 # Additional utilities for AST work
 lru = "0.16"

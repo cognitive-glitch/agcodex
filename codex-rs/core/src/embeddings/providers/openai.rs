@@ -53,8 +53,8 @@ struct OpenAIRequest {
 #[derive(Debug, Deserialize)]
 struct OpenAIResponse {
     data: Vec<OpenAIEmbedding>,
-    model: String,
-    usage: OpenAIUsage,
+    _model: String,
+    _usage: OpenAIUsage,
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,8 +65,8 @@ struct OpenAIEmbedding {
 
 #[derive(Debug, Deserialize)]
 struct OpenAIUsage {
-    prompt_tokens: usize,
-    total_tokens: usize,
+    _prompt_tokens: usize,
+    _total_tokens: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -79,7 +79,7 @@ struct OpenAIErrorDetail {
     message: String,
     #[serde(rename = "type")]
     error_type: String,
-    code: Option<String>,
+    _code: Option<String>,
 }
 
 #[async_trait::async_trait]

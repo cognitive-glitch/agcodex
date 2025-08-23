@@ -157,7 +157,7 @@ fn bench_orchestrator_setup(c: &mut Criterion) {
         b.iter(|| {
             let registry = Arc::new(SubagentRegistry::new().unwrap());
             let config = OrchestratorConfig::default();
-            let orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
+            let _orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
             black_box(orchestrator);
         })
     });
@@ -166,7 +166,7 @@ fn bench_orchestrator_setup(c: &mut Criterion) {
         b.iter(|| {
             let registry = Arc::new(SubagentRegistry::new().unwrap());
             let config = OrchestratorConfig::default();
-            let orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
+            let _orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
             black_box(orchestrator);
         })
     });
@@ -239,7 +239,7 @@ fn bench_agent_execution(c: &mut Criterion) {
     group.bench_function("mock_execution", |b| {
         let registry = Arc::new(SubagentRegistry::new().unwrap());
         let config = OrchestratorConfig::default();
-        let orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
+        let _orchestrator = AgentOrchestrator::new(registry, config, OperatingMode::Build);
 
         b.iter_custom(|iters| {
             let start = std::time::Instant::now();
@@ -278,7 +278,7 @@ fn bench_parallel_execution(c: &mut Criterion) {
             |b, &num_agents| {
                 let registry = Arc::new(SubagentRegistry::new().unwrap());
                 let config = OrchestratorConfig::default();
-                let orchestrator = Arc::new(AgentOrchestrator::new(
+                let _orchestrator = Arc::new(AgentOrchestrator::new(
                     registry,
                     config,
                     OperatingMode::Build,

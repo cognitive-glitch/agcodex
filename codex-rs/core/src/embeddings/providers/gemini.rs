@@ -77,7 +77,7 @@ struct GeminiError {
 #[derive(Debug, Deserialize)]
 struct GeminiErrorDetail {
     message: String,
-    code: Option<u32>,
+    _code: Option<u32>,
     status: Option<String>,
 }
 

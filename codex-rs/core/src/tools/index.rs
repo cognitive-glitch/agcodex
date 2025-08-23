@@ -1581,8 +1581,8 @@ impl IndexTool {
     ) -> IndexResult<(HashMap<String, u64>, HashMap<String, u64>, f64)> {
         let mut language_stats = HashMap::new();
         let mut symbol_stats = HashMap::new();
-        let mut total_size = 0u64;
-        let mut doc_count = 0u64;
+        let mut _total_size = 0u64;
+        let mut _doc_count = 0u64;
 
         // Get document count from searcher
         let segment_readers = searcher.segment_readers();
@@ -1606,11 +1606,11 @@ impl IndexTool {
         symbol_stats.insert("interface".to_string(), total_docs / 3);
 
         // Estimate average document size
-        total_size = total_docs * 5000; // Assume 5KB average
-        doc_count = total_docs;
+        _total_size = total_docs * 5000; // Assume 5KB average
+        _doc_count = total_docs;
 
-        let avg_document_size = if doc_count > 0 {
-            total_size as f64 / doc_count as f64
+        let avg_document_size = if _doc_count > 0 {
+            _total_size as f64 / _doc_count as f64
         } else {
             0.0
         };

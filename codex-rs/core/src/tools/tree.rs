@@ -61,7 +61,7 @@ extern crate tree_sitter_java;
 extern crate tree_sitter_javascript;
 extern crate tree_sitter_json;
 extern crate tree_sitter_kotlin_ng;
-extern crate tree_sitter_latex;
+// extern crate tree_sitter_latex; // Disabled due to linking issues
 extern crate tree_sitter_lua;
 extern crate tree_sitter_make;
 extern crate tree_sitter_markdown;
@@ -165,7 +165,7 @@ pub enum SupportedLanguage {
 
     // Documentation languages
     Markdown,
-    Latex,
+    // Latex, // Disabled due to linking issues
     Rst,
 }
 
@@ -218,7 +218,7 @@ impl SupportedLanguage {
 
             // Documentation languages
             SupportedLanguage::Markdown => &["md", "markdown"],
-            SupportedLanguage::Latex => &["tex", "latex"],
+            // SupportedLanguage::Latex => &["tex", "latex"], // Disabled
             SupportedLanguage::Rst => &["rst"],
         }
     }
@@ -280,7 +280,7 @@ impl SupportedLanguage {
             SupportedLanguage::Markdown => {
                 todo!("Markdown parser has version compatibility issues")
             }
-            SupportedLanguage::Latex => tree_sitter_latex::LANGUAGE.into(),
+            // SupportedLanguage::Latex => tree_sitter_latex::LANGUAGE.into(), // Disabled
             SupportedLanguage::Rst => tree_sitter_rst::LANGUAGE.into(),
         }
     }
@@ -338,7 +338,7 @@ impl SupportedLanguage {
             SupportedLanguage::Make,
             // Documentation languages
             SupportedLanguage::Markdown,
-            SupportedLanguage::Latex,
+            // SupportedLanguage::Latex, // Disabled
             SupportedLanguage::Rst,
         ]
     }
@@ -391,7 +391,7 @@ impl SupportedLanguage {
 
             // Documentation languages
             SupportedLanguage::Markdown => "markdown",
-            SupportedLanguage::Latex => "latex",
+            // SupportedLanguage::Latex => "latex", // Disabled
             SupportedLanguage::Rst => "rst",
         }
     }
@@ -627,7 +627,7 @@ struct CacheKey {
 /// Thread-safe wrapper for Parser
 struct ThreadSafeParser {
     parser: Mutex<Parser>,
-    language: SupportedLanguage,
+    _language: SupportedLanguage,
 }
 
 impl ThreadSafeParser {
@@ -641,7 +641,7 @@ impl ThreadSafeParser {
 
         Ok(Self {
             parser: Mutex::new(parser),
-            language,
+            _language: language,
         })
     }
 
@@ -860,7 +860,7 @@ impl SemanticDiffEngine {
 
 /// Query library for common AST patterns
 struct QueryLibrary {
-    queries: HashMap<String, HashMap<SupportedLanguage, String>>,
+    _queries: HashMap<String, HashMap<SupportedLanguage, String>>,
 }
 
 impl QueryLibrary {
@@ -936,11 +936,11 @@ impl QueryLibrary {
         );
         queries.insert("variables".to_string(), variable_queries);
 
-        Self { queries }
+        Self { _queries: queries }
     }
 
-    fn get_query(&self, pattern_name: &str, language: SupportedLanguage) -> Option<&String> {
-        self.queries.get(pattern_name)?.get(&language)
+    fn _get_query(&self, pattern_name: &str, language: SupportedLanguage) -> Option<&String> {
+        self._queries.get(pattern_name)?.get(&language)
     }
 }
 
@@ -951,9 +951,9 @@ pub struct TreeTool {
     /// AST cache with timed eviction
     ast_cache: Arc<Mutex<LruCache<CacheKey, (Arc<ParsedAst>, Instant)>>>,
     /// Semantic diff engine
-    diff_engine: SemanticDiffEngine,
+    _diff_engine: SemanticDiffEngine,
     /// Query library for common patterns
-    query_library: QueryLibrary,
+    _query_library: QueryLibrary,
     /// Performance configuration
     intelligence_level: IntelligenceLevel,
     /// Maximum cache size
@@ -978,8 +978,8 @@ impl TreeTool {
         let mut tool = Self {
             parsers: Arc::new(DashMap::new()),
             ast_cache: Arc::new(Mutex::new(LruCache::new(cache_size))),
-            diff_engine: SemanticDiffEngine,
-            query_library: QueryLibrary::new(),
+            _diff_engine: SemanticDiffEngine,
+            _query_library: QueryLibrary::new(),
             intelligence_level,
             max_cache_size: cache_size,
             cache_ttl,
@@ -1244,7 +1244,7 @@ impl TreeTool {
             | SupportedLanguage::Nix
             | SupportedLanguage::Make
             | SupportedLanguage::Markdown
-            | SupportedLanguage::Latex
+            // | SupportedLanguage::Latex // Disabled
             | SupportedLanguage::Rst => {
                 // TODO: Implement specific symbol extraction for these languages
                 vec![]
@@ -1379,7 +1379,7 @@ impl TreeTool {
         pattern: &str,
         language: SupportedLanguage,
     ) -> TreeResult<Query> {
-        let cache_key = format!("{}:{}", language.as_str(), pattern);
+        let _cache_key = format!("{}:{}", language.as_str(), pattern);
 
         // Compile the query - we can't cache Query objects as they don't implement Clone
         let query = Query::new(&language.grammar(), pattern).map_err(|e| {

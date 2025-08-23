@@ -100,7 +100,7 @@ pub struct SubagentRegistry {
     templates: Arc<Mutex<HashMap<String, TemplateInfo>>>,
 
     /// Whether to watch for file changes
-    watch_enabled: bool,
+    _watch_enabled: bool,
 
     /// Last full scan time
     last_scan: Arc<Mutex<SystemTime>>,
@@ -126,7 +126,7 @@ impl SubagentRegistry {
             agents: Arc::new(Mutex::new(HashMap::new())),
             executable_agents: Arc::new(Mutex::new(HashMap::new())),
             templates: Arc::new(Mutex::new(HashMap::new())),
-            watch_enabled: true,
+            _watch_enabled: true,
             last_scan: Arc::new(Mutex::new(SystemTime::UNIX_EPOCH)),
         };
 
@@ -644,7 +644,7 @@ mod tests {
             agents: Arc::new(Mutex::new(HashMap::new())),
             executable_agents: Arc::new(Mutex::new(HashMap::new())),
             templates: Arc::new(Mutex::new(HashMap::new())),
-            watch_enabled: false,
+            _watch_enabled: false,
             last_scan: Arc::new(Mutex::new(SystemTime::UNIX_EPOCH)),
         };
 

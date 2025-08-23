@@ -35,14 +35,14 @@ pub struct TreeSitterTool {
 struct QueryEngine {
     /// Cache of compiled queries per language
     query_cache: DashMap<(Language, String), Arc<Query>>,
-    registry: Arc<LanguageRegistry>,
+    _registry: Arc<LanguageRegistry>,
 }
 
 impl QueryEngine {
     fn new(registry: Arc<LanguageRegistry>) -> Self {
         Self {
             query_cache: DashMap::new(),
-            registry,
+            _registry: registry,
         }
     }
 
@@ -83,11 +83,11 @@ impl QueryEngine {
                     .to_string();
 
                 results.push(TsQueryMatch {
-                    capture_name: query.capture_names()[capture.index as usize].to_string(),
+                    _capture_name: query.capture_names()[capture.index as usize].to_string(),
                     node_kind: node.kind().to_string(),
                     text,
-                    start_byte: node.start_byte(),
-                    end_byte: node.end_byte(),
+                    _start_byte: node.start_byte(),
+                    _end_byte: node.end_byte(),
                     start_position: (node.start_position().row, node.start_position().column),
                     end_position: (node.end_position().row, node.end_position().column),
                 });
@@ -101,11 +101,11 @@ impl QueryEngine {
 /// Result of a query execution
 #[derive(Debug, Clone)]
 struct TsQueryMatch {
-    capture_name: String,
+    _capture_name: String,
     node_kind: String,
     text: String,
-    start_byte: usize,
-    end_byte: usize,
+    _start_byte: usize,
+    _end_byte: usize,
     start_position: (usize, usize),
     end_position: (usize, usize),
 }

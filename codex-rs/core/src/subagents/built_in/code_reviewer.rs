@@ -40,11 +40,11 @@ pub struct CodeReviewerAgent {
     /// Agent description
     description: String,
     /// Operating mode override
-    mode_override: Option<OperatingMode>,
+    _mode_override: Option<OperatingMode>,
     /// Tool permissions
-    tool_permissions: Vec<String>,
+    _tool_permissions: Vec<String>,
     /// Custom prompt template
-    prompt_template: String,
+    _prompt_template: String,
     /// Intelligence level
     intelligence_level: IntelligenceLevel,
 }
@@ -69,14 +69,14 @@ impl CodeReviewerAgent {
         Self {
             name: "code-reviewer".to_string(),
             description: "Reviews code for quality, security, and maintainability".to_string(),
-            mode_override: Some(OperatingMode::Review),
-            tool_permissions: vec![
+            _mode_override: Some(OperatingMode::Review),
+            _tool_permissions: vec![
                 "search".to_string(),
                 "tree".to_string(),
                 "grep".to_string(),
                 "glob".to_string(),
             ],
-            prompt_template: r#"
+            _prompt_template: r#"
 You are a senior code reviewer with expertise in:
 - Security vulnerability detection (OWASP Top 10)
 - Performance optimization

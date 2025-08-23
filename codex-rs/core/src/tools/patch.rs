@@ -74,14 +74,14 @@ pub struct ImportStats {
 
 /// Main patch tool for essential bulk transformations
 pub struct PatchTool {
-    tree_tool: TreeTool,
+    _tree_tool: TreeTool,
 }
 
 impl PatchTool {
     /// Create a new simplified patch tool
     pub fn new() -> Self {
         Self {
-            tree_tool: TreeTool::new(IntelligenceLevel::Medium)
+            _tree_tool: TreeTool::new(IntelligenceLevel::Medium)
                 .expect("Failed to initialize TreeTool"),
         }
     }
@@ -296,7 +296,7 @@ impl PatchTool {
 
     async fn find_symbol_occurrences(
         &self,
-        file_path: &Path,
+        _file_path: &Path,
         symbol: &str,
         content: &str,
     ) -> PatchResult<Vec<(usize, usize)>> {
@@ -339,7 +339,7 @@ impl PatchTool {
 
     async fn analyze_extracted_code(
         &self,
-        code: &str,
+        _code: &str,
         _file_path: &Path,
     ) -> PatchResult<(Vec<String>, String)> {
         // Simplified parameter detection - would use tree-sitter in practice
