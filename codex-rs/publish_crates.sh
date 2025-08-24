@@ -117,6 +117,11 @@ publish_crate "agcodex-ollama" "ollama"          # depends on core
 publish_crate "agcodex-persistence" "persistence" # depends on core
 publish_crate "agcodex-linux-sandbox" "linux-sandbox" # depends on common, core
 
+# Level 8: arg0 (main binary not ready yet)
+print_status "Publishing Level 8 crates..."
+publish_crate "agcodex-arg0" "arg0"              # depends on apply-patch, core, linux-sandbox
+# publish_crate "agcodex" "agcodex"              # Main binary - NOT READY (dependencies commented out)
+
 # Level 5: Higher-level components
 print_status "Publishing Level 5 crates..."
 publish_crate "agcodex-exec" "exec"              # depends on common, core, ollama, protocol
@@ -129,11 +134,6 @@ publish_crate "agcodex-tui" "tui"                # depends on ansi-escape, commo
 # Level 7: CLI (depends on many including tui)
 print_status "Publishing Level 7 crates..."
 publish_crate "agcodex-cli" "cli"                # depends on chatgpt, common, core, exec, login, mcp-server, protocol, tui, protocol-ts
-
-# Level 8: arg0 (main binary not ready yet)
-print_status "Publishing Level 8 crates..."
-publish_crate "agcodex-arg0" "arg0"              # depends on apply-patch, core, linux-sandbox
-# publish_crate "agcodex" "agcodex"              # Main binary - NOT READY (dependencies commented out)
 
 echo ""
 echo "==========================================="
