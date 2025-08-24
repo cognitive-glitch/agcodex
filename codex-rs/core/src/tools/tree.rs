@@ -51,7 +51,7 @@ extern crate tree_sitter_c_sharp;
 extern crate tree_sitter_clojure;
 extern crate tree_sitter_cpp;
 extern crate tree_sitter_css;
-extern crate tree_sitter_dockerfile;
+// extern crate tree_sitter_dockerfile; // Temporarily disabled - conflicts with ast-grep
 extern crate tree_sitter_elixir;
 extern crate tree_sitter_go;
 extern crate tree_sitter_haskell;
@@ -64,7 +64,7 @@ extern crate tree_sitter_kotlin_ng;
 // extern crate tree_sitter_latex; // Disabled due to linking issues
 extern crate tree_sitter_lua;
 extern crate tree_sitter_make;
-extern crate tree_sitter_markdown;
+// extern crate tree_sitter_markdown; // Temporarily disabled - conflicts with ast-grep
 extern crate tree_sitter_nix;
 extern crate tree_sitter_objc;
 extern crate tree_sitter_ocaml;
@@ -75,7 +75,7 @@ extern crate tree_sitter_ruby;
 extern crate tree_sitter_rust;
 extern crate tree_sitter_scala;
 extern crate tree_sitter_swift;
-extern crate tree_sitter_toml;
+// extern crate tree_sitter_toml; // Temporarily disabled - conflicts with ast-grep
 extern crate tree_sitter_typescript;
 extern crate tree_sitter_yaml;
 extern crate tree_sitter_zig;
