@@ -1,14 +1,14 @@
 [package]
-edition.workspace = true
-name = "agcodex-mcp-server"
-version = { workspace = true }
-description = "Model Context Protocol server mode for AGCodex"
-homepage = "https://github.com/agcodex/agcodex"
-repository = "https://github.com/agcodex/agcodex"
-documentation = "https://docs.rs/agcodex-mcp-server"
-keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
 categories = ["development-tools", "command-line-utilities"]
+description = "Model Context Protocol server mode for AGCodex"
+documentation = "https://docs.rs/agcodex-mcp-server"
+edition.workspace = true
+homepage = "https://github.com/agcodex/agcodex"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
 license = { workspace = true }
+name = "agcodex-mcp-server"
+repository = "https://github.com/agcodex/agcodex"
+version = { workspace = true }
 
 [[bin]]
 name = "agcodex-mcp-server"
@@ -22,13 +22,13 @@ path = "src/lib.rs"
 workspace = true
 
 [dependencies]
-anyhow = { workspace = true }
-agcodex-arg0 = { path = "../arg0" }
+agcodex-arg0 = { path = "../arg0", version = "0.1.0" }
 agcodex-common = { path = "../common", version = "0.1.0" }
 agcodex-core = { path = "../core", version = "0.1.0" }
 agcodex-login = { path = "../login", version = "0.1.0" }
-agcodex-protocol = { path = "../protocol", version = "0.1.0" }
 agcodex-mcp-types = { path = "../mcp-types", version = "0.1.0" }
+agcodex-protocol = { path = "../protocol", version = "0.1.0" }
+anyhow = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

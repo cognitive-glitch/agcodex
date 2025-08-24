@@ -1,14 +1,14 @@
 [package]
-edition.workspace = true
-name = "agcodex-exec"
-version = { workspace = true }
-description = "Headless execution mode for AGCodex"
-homepage = "https://github.com/agcodex/agcodex"
-repository = "https://github.com/agcodex/agcodex"
-documentation = "https://docs.rs/agcodex-exec"
-keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
 categories = ["development-tools", "command-line-utilities"]
+description = "Headless execution mode for AGCodex"
+documentation = "https://docs.rs/agcodex-exec"
+edition.workspace = true
+homepage = "https://github.com/agcodex/agcodex"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
 license = { workspace = true }
+name = "agcodex-exec"
+repository = "https://github.com/agcodex/agcodex"
+version = { workspace = true }
 
 [[bin]]
 name = "agcodex-exec"
@@ -22,10 +22,7 @@ path = "src/lib.rs"
 workspace = true
 
 [dependencies]
-anyhow = { workspace = true }
-chrono = { workspace = true }
-clap = { workspace = true, features = ["derive"] }
-agcodex-arg0 = { path = "../arg0" }
+agcodex-arg0 = { path = "../arg0", version = "0.1.0" }
 agcodex-common = { path = "../common", version = "0.1.0", features = [
     "cli",
     "elapsed",
@@ -34,6 +31,9 @@ agcodex-common = { path = "../common", version = "0.1.0", features = [
 agcodex-core = { path = "../core", version = "0.1.0" }
 agcodex-ollama = { path = "../ollama", version = "0.1.0" }
 agcodex-protocol = { path = "../protocol", version = "0.1.0" }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
 owo-colors = { workspace = true }
 serde_json = { workspace = true }
 shlex = { workspace = true }

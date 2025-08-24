@@ -1,14 +1,14 @@
 [package]
-edition.workspace = true
-name = "agcodex-cli"
-version = { workspace = true }
-description = "Command-line interface for AGCodex"
-homepage = "https://github.com/agcodex/agcodex"
-repository = "https://github.com/agcodex/agcodex"
-documentation = "https://docs.rs/agcodex-cli"
-keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
 categories = ["development-tools", "command-line-utilities"]
+description = "Command-line interface for AGCodex"
+documentation = "https://docs.rs/agcodex-cli"
+edition.workspace = true
+homepage = "https://github.com/agcodex/agcodex"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
 license = { workspace = true }
+name = "agcodex-cli"
+repository = "https://github.com/agcodex/agcodex"
+version = { workspace = true }
 
 [[bin]]
 name = "agcodex"
@@ -22,11 +22,7 @@ path = "src/lib.rs"
 workspace = true
 
 [dependencies]
-anyhow = { workspace = true }
-thiserror = { workspace = true }
-clap = { workspace = true, features = ["derive"] }
-clap_complete = { workspace = true }
-agcodex-arg0 = { path = "../arg0" }
+agcodex-arg0 = { path = "../arg0", version = "0.1.0" }
 agcodex-chatgpt = { path = "../chatgpt", version = "0.1.0" }
 agcodex-common = { path = "../common", version = "0.1.0", features = ["cli"] }
 agcodex-core = { path = "../core", version = "0.1.0" }
@@ -34,8 +30,13 @@ agcodex-exec = { path = "../exec", version = "0.1.0" }
 agcodex-login = { path = "../login", version = "0.1.0" }
 agcodex-mcp-server = { path = "../mcp-server", version = "0.1.0" }
 agcodex-protocol = { path = "../protocol", version = "0.1.0" }
+agcodex-protocol-ts = { path = "../protocol-ts", version = "0.1.0" }
 agcodex-tui = { path = "../tui", version = "0.1.0" }
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+clap_complete = { workspace = true }
 serde_json = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true, features = [
     "io-std",
     "macros",
@@ -45,4 +46,3 @@ tokio = { workspace = true, features = [
 ] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-agcodex-protocol-ts = { path = "../protocol-ts", version = "0.1.0" }

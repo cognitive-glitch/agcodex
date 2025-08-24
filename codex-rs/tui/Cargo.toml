@@ -1,14 +1,14 @@
 [package]
-edition.workspace = true
-name = "agcodex-tui"
-version = { workspace = true }
-description = "Terminal User Interface for AGCodex with mode switching support"
-homepage = "https://github.com/agcodex/agcodex"
-repository = "https://github.com/agcodex/agcodex"
-documentation = "https://docs.rs/agcodex-tui"
-keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
 categories = ["development-tools", "command-line-utilities"]
+description = "Terminal User Interface for AGCodex with mode switching support"
+documentation = "https://docs.rs/agcodex-tui"
+edition.workspace = true
+homepage = "https://github.com/agcodex/agcodex"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
 license = { workspace = true }
+name = "agcodex-tui"
+repository = "https://github.com/agcodex/agcodex"
+version = { workspace = true }
 
 [[bin]]
 name = "agcodex-tui"
@@ -28,12 +28,8 @@ debug-logs = []
 workspace = true
 
 [dependencies]
-anyhow = { workspace = true }
-base64 = { workspace = true }
-chrono = { workspace = true, features = ["serde"] }
-clap = { workspace = true, features = ["derive"] }
 agcodex-ansi-escape = { path = "../ansi-escape", version = "0.1.0" }
-agcodex-arg0 = { path = "../arg0" }
+agcodex-arg0 = { path = "../arg0", version = "0.1.0" }
 agcodex-common = { path = "../common", version = "0.1.0", features = [
     "cli",
     "elapsed",
@@ -42,18 +38,22 @@ agcodex-common = { path = "../common", version = "0.1.0", features = [
 agcodex-core = { path = "../core", version = "0.1.0" }
 agcodex-file-search = { path = "../file-search", version = "0.1.0" }
 agcodex-login = { path = "../login", version = "0.1.0" }
+agcodex-mcp-types = { path = "../mcp-types", version = "0.1.0" }
 agcodex-ollama = { path = "../ollama", version = "0.1.0" }
 agcodex-persistence = { path = "../persistence", version = "0.1.0" }
 agcodex-protocol = { path = "../protocol", version = "0.1.0" }
+anyhow = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+clap = { workspace = true, features = ["derive"] }
 color-eyre = { workspace = true }
 crossterm = { workspace = true, features = ["bracketed-paste"] }
+diffy = { workspace = true }
 dirs = { workspace = true }
 fuzzy-matcher = "0.3"
-nucleo-matcher = { workspace = true }
-diffy = { workspace = true }
 image = { workspace = true, features = ["jpeg"] }
 lazy_static = { workspace = true }
-agcodex-mcp-types = { path = "../mcp-types", version = "0.1.0" }
+nucleo-matcher = { workspace = true }
 once_cell = { workspace = true }
 path-clean = { workspace = true }
 rand = { workspace = true }
