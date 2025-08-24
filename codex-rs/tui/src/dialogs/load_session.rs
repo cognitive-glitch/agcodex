@@ -667,7 +667,7 @@ impl<'a> LoadSessionBrowser<'a> {
                 ));
 
                 let style = if is_selected {
-                    Style::default().bg(Color::Rgb(40, 40, 40))
+                    Style::default().bg(Color::DarkGray)
                 } else {
                     Style::default()
                 };
@@ -762,8 +762,8 @@ impl<'a> WidgetRef for LoadSessionBrowser<'a> {
         Clear.render(area, buf);
 
         // Calculate dialog size
-        let width = area.width.min(100).max(60);
-        let height = area.height.min(30).max(15);
+        let width = area.width.clamp(60, 100);
+        let height = area.height.clamp(15, 30);
         let x = (area.width.saturating_sub(width)) / 2;
         let y = (area.height.saturating_sub(height)) / 2;
         let dialog_area = Rect::new(x, y, width, height);

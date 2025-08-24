@@ -121,9 +121,11 @@ impl WorktreeManager {
                 "add",
                 "-b",
                 &branch_name,
-                worktree_path.to_str().ok_or_else(|| SubagentError::PathConversion { 
-                    path: worktree_path.to_string_lossy().to_string() 
-                })?,
+                worktree_path
+                    .to_str()
+                    .ok_or_else(|| SubagentError::PathConversion {
+                        path: worktree_path.to_string_lossy().to_string(),
+                    })?,
                 &base_branch,
             ])
             .current_dir(&self.base_repo)
@@ -172,9 +174,16 @@ impl WorktreeManager {
 
         // Remove the worktree
         let output = Command::new("git")
-            .args(["worktree", "remove", worktree.path.to_str().ok_or_else(|| SubagentError::PathConversion { 
-                path: worktree.path.to_string_lossy().to_string() 
-            })?])
+            .args([
+                "worktree",
+                "remove",
+                worktree
+                    .path
+                    .to_str()
+                    .ok_or_else(|| SubagentError::PathConversion {
+                        path: worktree.path.to_string_lossy().to_string(),
+                    })?,
+            ])
             .current_dir(&self.base_repo)
             .output()
             .await
@@ -191,9 +200,12 @@ impl WorktreeManager {
                     "worktree",
                     "remove",
                     "--force",
-                    worktree.path.to_str().ok_or_else(|| SubagentError::PathConversion { 
-                        path: worktree.path.to_string_lossy().to_string() 
-                    })?,
+                    worktree
+                        .path
+                        .to_str()
+                        .ok_or_else(|| SubagentError::PathConversion {
+                            path: worktree.path.to_string_lossy().to_string(),
+                        })?,
                 ])
                 .current_dir(&self.base_repo)
                 .output()

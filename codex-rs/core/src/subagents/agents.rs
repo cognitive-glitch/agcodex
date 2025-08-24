@@ -665,7 +665,11 @@ impl Subagent for RefactorerAgent {
                                 "similarity_score".to_string(),
                                 serde_json::Value::Number(
                                     serde_json::Number::from_f64(dup_group.similarity as f64)
-                                        .ok_or_else(|| SubagentError::ExecutionFailed("Invalid complexity value".to_string()))?,
+                                        .ok_or_else(|| {
+                                            SubagentError::ExecutionFailed(
+                                                "Invalid complexity value".to_string(),
+                                            )
+                                        })?,
                                 ),
                             ),
                         ]),

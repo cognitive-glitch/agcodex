@@ -577,7 +577,9 @@ impl FdFind {
 
         // Extract final results
         // Use clone and lock instead of try_unwrap to avoid Arc reference issues
-        let mut results = search_state.results.lock()
+        let mut results = search_state
+            .results
+            .lock()
             .map_err(|_| ToolError::InvalidQuery("Search results mutex was poisoned".to_string()))?
             .clone();
 

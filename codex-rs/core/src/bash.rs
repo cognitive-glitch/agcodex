@@ -141,12 +141,16 @@ impl CommandValidator {
     pub fn new() -> Result<Self, BashParseError> {
         let dangerous_patterns = vec![
             // Command injection patterns
-            Regex::new(r"[;&|`$(){}\[\]<>]").map_err(|e| BashParseError::RegexError(e.to_string()))?,
+            Regex::new(r"[;&|`$(){}\[\]<>]")
+                .map_err(|e| BashParseError::RegexError(e.to_string()))?,
             // Suspicious command sequences
-            Regex::new(r"(rm|del|delete).*-r").map_err(|e| BashParseError::RegexError(e.to_string()))?,
-            Regex::new(r"(chmod|chown).*777").map_err(|e| BashParseError::RegexError(e.to_string()))?,
+            Regex::new(r"(rm|del|delete).*-r")
+                .map_err(|e| BashParseError::RegexError(e.to_string()))?,
+            Regex::new(r"(chmod|chown).*777")
+                .map_err(|e| BashParseError::RegexError(e.to_string()))?,
             // Network operations
-            Regex::new(r"(curl|wget|nc|netcat).*\|").map_err(|e| BashParseError::RegexError(e.to_string()))?,
+            Regex::new(r"(curl|wget|nc|netcat).*\|")
+                .map_err(|e| BashParseError::RegexError(e.to_string()))?,
             // System manipulation
             Regex::new(r"(sudo|su)\s").map_err(|e| BashParseError::RegexError(e.to_string()))?,
             // File system traversal
@@ -556,12 +560,15 @@ impl EnhancedBashParser {
 impl Default for EnhancedBashParser {
     fn default() -> Self {
         Self::new().unwrap_or_else(|e| {
-            tracing::error!("Warning: Failed to create EnhancedBashParser with full functionality: {}", e);
+            tracing::error!(
+                "Warning: Failed to create EnhancedBashParser with full functionality: {}",
+                e
+            );
             // Create a minimal parser without full validation
             let lang = BASH.into();
             let mut parser = Parser::new();
             let _ = parser.set_language(&lang);
-            
+
             Self {
                 parser: Arc::new(std::sync::Mutex::new(parser)),
                 validator: CommandValidator {
@@ -904,11 +911,8 @@ mod tests {
                     report.confidence_score > 0.5,
                     "Should have reasonable confidence"
                 );
-                // Relaxed timing check - validation time might be 0 on very fast systems
-                assert!(
-                    report.validation_time_ms >= 0,
-                    "Should have non-negative validation time"
-                );
+                // Note: validation_time_ms is u64, so it's always non-negative
+                // It might be 0 on very fast systems, which is valid
             }
             Err(BashParseError::ForbiddenCommand { .. }) => {
                 // find might not be in allowed commands list

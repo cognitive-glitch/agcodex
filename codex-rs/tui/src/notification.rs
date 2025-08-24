@@ -122,20 +122,20 @@ impl NotificationSystem {
         match level {
             NotificationLevel::TaskComplete => {
                 // Single bell for successful task completion
-                print!("\x07");
+                io::stdout().write_all(b"\x07")?;
                 io::stdout().flush()?;
             }
             NotificationLevel::Error => {
                 // Double bell with delay for errors
-                print!("\x07");
+                io::stdout().write_all(b"\x07")?;
                 io::stdout().flush()?;
                 thread::sleep(Duration::from_millis(150));
-                print!("\x07");
+                io::stdout().write_all(b"\x07")?;
                 io::stdout().flush()?;
             }
             NotificationLevel::Warning => {
                 // Single bell for warnings
-                print!("\x07");
+                io::stdout().write_all(b"\x07")?;
                 io::stdout().flush()?;
             }
             NotificationLevel::Info => {
@@ -155,10 +155,10 @@ impl NotificationSystem {
 
         // Visual bell using reverse video flash
         // This is handled by the terminal - send the visual bell sequence
-        print!("\x1B[?5h"); // Turn on reverse video
+        io::stdout().write_all(b"\x1B[?5h")?; // Turn on reverse video
         io::stdout().flush()?;
         thread::sleep(Duration::from_millis(50));
-        print!("\x1B[?5l"); // Turn off reverse video  
+        io::stdout().write_all(b"\x1B[?5l")?; // Turn off reverse video  
         io::stdout().flush()?;
 
         Ok(())

@@ -151,10 +151,14 @@ impl TreeSitterTool {
         Self {
             engine: Arc::new(AstEngine::new(CompressionLevel::Medium)),
             registry: registry.clone(),
-            runtime: Arc::new(Runtime::new().map_err(|e| {
-                tracing::error!("Failed to create tokio runtime: {}", e);
-                std::process::exit(1);
-            }).unwrap()),
+            runtime: Arc::new(
+                Runtime::new()
+                    .map_err(|e| {
+                        tracing::error!("Failed to create tokio runtime: {}", e);
+                        std::process::exit(1);
+                    })
+                    .unwrap(),
+            ),
             query_engine: Arc::new(QueryEngine::new(registry)),
             query_library,
         }

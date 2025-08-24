@@ -591,8 +591,10 @@ impl McpAgentToolProvider {
                 .to_string();
 
             let orchestrator = self.orchestrator.clone();
-            let permit = semaphore.clone().acquire_owned().await
-                .map_err(|e| SubagentError::ExecutionFailed(format!("Semaphore error: {}", e)))?;
+            let permit =
+                semaphore.clone().acquire_owned().await.map_err(|e| {
+                    SubagentError::ExecutionFailed(format!("Semaphore error: {}", e))
+                })?;
 
             let handle = tokio::spawn(async move {
                 let invocation = AgentInvocation {

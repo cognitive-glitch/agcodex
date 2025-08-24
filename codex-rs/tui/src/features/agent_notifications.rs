@@ -358,7 +358,7 @@ impl NotificationManager {
 
     /// Ring the terminal bell
     fn ring_bell(&self) {
-        print!("\x07");
+        let _ = io::stdout().write_all(b"\x07");
         let _ = io::stdout().flush();
     }
 
@@ -370,12 +370,12 @@ impl NotificationManager {
 
         // This would typically be handled by the terminal emulator
         // or by temporarily inverting colors in the TUI
-        print!("\x1B[?5h"); // Reverse video on
+        let _ = io::stdout().write_all(b"\x1B[?5h"); // Reverse video on
         let _ = io::stdout().flush();
 
         std::thread::spawn(|| {
             std::thread::sleep(Duration::from_millis(100));
-            print!("\x1B[?5l"); // Reverse video off
+            let _ = io::stdout().write_all(b"\x1B[?5l"); // Reverse video off
             let _ = io::stdout().flush();
         });
     }

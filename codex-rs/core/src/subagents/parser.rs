@@ -35,7 +35,8 @@ impl AgentParser {
     /// Create parser with registry for validation
     pub fn with_registry(registry: Arc<SubagentRegistry>) -> Self {
         Self {
-            base_parser: InvocationParser::with_registry(registry.clone()).expect("Failed to create InvocationParser with registry"),
+            base_parser: InvocationParser::with_registry(registry.clone())
+                .expect("Failed to create InvocationParser with registry"),
             _registry: Some(registry),
             default_mode: OperatingMode::Build,
         }

@@ -150,7 +150,7 @@ impl SubagentRegistry {
             agents: Arc::new(Mutex::new(HashMap::new())),
             executable_agents: Arc::new(Mutex::new(HashMap::new())),
             templates: Arc::new(Mutex::new(HashMap::new())),
-            _watch_enabled: false,  // Disable watching for tests
+            _watch_enabled: false, // Disable watching for tests
             last_scan: Arc::new(Mutex::new(SystemTime::UNIX_EPOCH)),
         };
 
@@ -191,14 +191,26 @@ impl SubagentRegistry {
         self.load_templates()?;
         self.load_agents()?;
 
-        *self.last_scan.lock().map_err(|e| SubagentRegistryError::LoadError { path: PathBuf::from("memory"), error: format!("Poison error on last_scan mutex: {}", e) })? = SystemTime::now();
+        *self
+            .last_scan
+            .lock()
+            .map_err(|e| SubagentRegistryError::LoadError {
+                path: PathBuf::from("memory"),
+                error: format!("Poison error on last_scan mutex: {}", e),
+            })? = SystemTime::now();
 
         Ok(())
     }
 
     /// Load all templates from the templates directory
     fn load_templates(&self) -> RegistryResult<()> {
-        let mut templates = self.templates.lock().map_err(|e| SubagentRegistryError::LoadError { path: PathBuf::from("memory"), error: format!("Poison error on templates mutex: {}", e) })?;
+        let mut templates =
+            self.templates
+                .lock()
+                .map_err(|e| SubagentRegistryError::LoadError {
+                    path: PathBuf::from("memory"),
+                    error: format!("Poison error on templates mutex: {}", e),
+                })?;
         templates.clear();
 
         if !self.templates_dir.exists() {
@@ -254,10 +266,13 @@ impl SubagentRegistry {
 
     /// Load all agent configurations
     fn load_agents(&self) -> RegistryResult<()> {
-        let mut agents = self.agents.lock().map_err(|_| SubagentRegistryError::LoadError { 
-            path: PathBuf::from("memory"), 
-            error: "Poison error on agents mutex".to_string() 
-        })?;
+        let mut agents = self
+            .agents
+            .lock()
+            .map_err(|_| SubagentRegistryError::LoadError {
+                path: PathBuf::from("memory"),
+                error: "Poison error on agents mutex".to_string(),
+            })?;
         agents.clear();
 
         // Load global agents
@@ -348,7 +363,13 @@ impl SubagentRegistry {
         &self,
         agents: &mut HashMap<String, AgentInfo>,
     ) -> RegistryResult<()> {
-        let templates = self.templates.lock().map_err(|e| SubagentRegistryError::LoadError { path: PathBuf::from("memory"), error: format!("Poison error on templates mutex: {}", e) })?;
+        let templates = self
+            .templates
+            .lock()
+            .map_err(|e| SubagentRegistryError::LoadError {
+                path: PathBuf::from("memory"),
+                error: format!("Poison error on templates mutex: {}", e),
+            })?;
 
         for agent_info in agents.values_mut() {
             if let Some(ref template_name) = agent_info.config.template {
@@ -453,7 +474,11 @@ impl SubagentRegistry {
     }
 
     /// Register an agent programmatically (for built-in agents)
-    pub fn register(&self, name: &str, agent: Arc<dyn super::agents::Subagent>) -> RegistryResult<()> {
+    pub fn register(
+        &self,
+        name: &str,
+        agent: Arc<dyn super::agents::Subagent>,
+    ) -> RegistryResult<()> {
         // Create a minimal SubagentConfig for built-in agents
         let config = SubagentConfig {
             name: name.to_string(),
@@ -480,14 +505,23 @@ impl SubagentRegistry {
         };
 
         // Store both configuration and executable agent
-        let mut agents = self.agents.lock().map_err(|_| SubagentRegistryError::LoadError { 
-            path: PathBuf::from("memory"), 
-            error: "Poison error on agents mutex".to_string() 
-        })?;
+        let mut agents = self
+            .agents
+            .lock()
+            .map_err(|_| SubagentRegistryError::LoadError {
+                path: PathBuf::from("memory"),
+                error: "Poison error on agents mutex".to_string(),
+            })?;
         agents.insert(name.to_string(), info);
         drop(agents);
 
-        let mut executable_agents = self.executable_agents.lock().map_err(|e| SubagentRegistryError::LoadError { path: PathBuf::from("memory"), error: format!("Poison error on executable_agents mutex: {}", e) })?;
+        let mut executable_agents =
+            self.executable_agents
+                .lock()
+                .map_err(|e| SubagentRegistryError::LoadError {
+                    path: PathBuf::from("memory"),
+                    error: format!("Poison error on executable_agents mutex: {}", e),
+                })?;
         executable_agents.insert(name.to_string(), agent);
         Ok(())
     }
@@ -529,10 +563,13 @@ impl SubagentRegistry {
 
         // Check templates
         {
-            let templates = self.templates.lock().map_err(|_| SubagentRegistryError::LoadError { 
-                path: PathBuf::from("memory"), 
-                error: "Poison error on templates mutex".to_string() 
-            })?;
+            let templates =
+                self.templates
+                    .lock()
+                    .map_err(|_| SubagentRegistryError::LoadError {
+                        path: PathBuf::from("memory"),
+                        error: "Poison error on templates mutex".to_string(),
+                    })?;
             for template_info in templates.values() {
                 if let Ok(metadata) = std::fs::metadata(&template_info.template_path)
                     && let Ok(modified) = metadata.modified()
@@ -546,10 +583,13 @@ impl SubagentRegistry {
 
         // Check agents
         if !updated {
-            let agents = self.agents.lock().map_err(|_| SubagentRegistryError::LoadError { 
-                path: PathBuf::from("memory"), 
-                error: "Poison error on agents mutex".to_string() 
-            })?;
+            let agents = self
+                .agents
+                .lock()
+                .map_err(|_| SubagentRegistryError::LoadError {
+                    path: PathBuf::from("memory"),
+                    error: "Poison error on agents mutex".to_string(),
+                })?;
             for agent_info in agents.values() {
                 if let Ok(metadata) = std::fs::metadata(&agent_info.config_path)
                     && let Ok(modified) = metadata.modified()
@@ -574,10 +614,13 @@ impl SubagentRegistry {
         self.agents
             .lock()
             .ok()
-            .map(|agents| agents.values()
-                .filter(|agent| agent.config.matches_file(file_path))
-                .cloned()
-                .collect())
+            .map(|agents| {
+                agents
+                    .values()
+                    .filter(|agent| agent.config.matches_file(file_path))
+                    .cloned()
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
@@ -586,10 +629,13 @@ impl SubagentRegistry {
         self.agents
             .lock()
             .ok()
-            .map(|agents| agents.values()
-                .filter(|agent| tags.iter().any(|tag| agent.config.tags.contains(tag)))
-                .cloned()
-                .collect())
+            .map(|agents| {
+                agents
+                    .values()
+                    .filter(|agent| tags.iter().any(|tag| agent.config.tags.contains(tag)))
+                    .cloned()
+                    .collect()
+            })
             .unwrap_or_default()
     }
 

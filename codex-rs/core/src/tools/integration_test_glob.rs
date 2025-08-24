@@ -75,8 +75,8 @@ mod tests {
         assert!(!result.result.is_empty());
         assert!(result.summary.contains("Found"));
         assert!(result.metadata.operation == "file_discovery");
-        // Relaxed timing check - execution time might be 0 on very fast systems
-        assert!(result.performance.execution_time.as_millis() >= 0);
+        // Note: execution_time is always non-negative (Duration type)
+        // It might be 0 on very fast systems, which is valid
     }
 
     #[test]
@@ -192,9 +192,8 @@ mod tests {
         assert_eq!(parallel_result.result.len(), sequential_result.result.len());
 
         // Both should complete successfully with different execution characteristics
-        // Relaxed timing check - execution times might be 0 on very fast systems
-        assert!(parallel_result.performance.execution_time.as_millis() >= 0);
-        assert!(sequential_result.performance.execution_time.as_millis() >= 0);
+        // Note: execution times are always non-negative (Duration type)
+        // They might be 0 on very fast systems, which is valid
     }
 
     #[test]
@@ -235,7 +234,7 @@ mod tests {
         // Verify metadata completeness
         assert_eq!(result.metadata.operation, "file_discovery");
         assert!(result.performance.io_stats.read_ops > 0);
-        // Relaxed timing check - execution time might be 0 on very fast systems
-        assert!(result.performance.execution_time.as_millis() >= 0);
+        // Note: execution_time is always non-negative (Duration type)
+        // It might be 0 on very fast systems, which is valid
     }
 }

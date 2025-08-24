@@ -46,18 +46,27 @@ mod fixtures {
 
     pub fn create_test_registry() -> (SubagentRegistry, TempDir) {
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Create paths within the temp directory
-        let global_agents_dir = temp_dir.path().join(".agcodex").join("agents").join("global");
-        let templates_dir = temp_dir.path().join(".agcodex").join("agents").join("templates");
-        
+        let global_agents_dir = temp_dir
+            .path()
+            .join(".agcodex")
+            .join("agents")
+            .join("global");
+        let templates_dir = temp_dir
+            .path()
+            .join(".agcodex")
+            .join("agents")
+            .join("templates");
+
         // Use the test-specific constructor that doesn't rely on HOME
         let registry = SubagentRegistry::new_with_paths(
             global_agents_dir,
-            None,  // No project agents dir for tests
+            None, // No project agents dir for tests
             templates_dir,
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         (registry, temp_dir)
     }
 }
@@ -118,14 +127,14 @@ mod registry_tests {
         let configs = vec![
             {
                 let mut config = create_test_config();
-                config.name = "filter-rust-agent".to_string();  // Unique name
+                config.name = "filter-rust-agent".to_string(); // Unique name
                 config.file_patterns = vec!["*.rs".to_string()];
                 config.tags = vec!["rust".to_string(), "backend".to_string()];
                 config
             },
             {
                 let mut config = create_test_config();
-                config.name = "filter-js-agent".to_string();  // Unique name
+                config.name = "filter-js-agent".to_string(); // Unique name
                 config.file_patterns = vec!["*.js".to_string(), "*.ts".to_string()];
                 config.tags = vec!["javascript".to_string(), "frontend".to_string()];
                 config
@@ -617,7 +626,7 @@ mod performance_tests {
 
         for i in 0..50 {
             let mut config = create_test_config();
-            config.name = format!("perf-agent-{}", i);  // Unique prefix to avoid conflicts
+            config.name = format!("perf-agent-{}", i); // Unique prefix to avoid conflicts
 
             let config_path = global_agents_dir.join(format!("perf-agent-{}.toml", i));
             config.to_file(&config_path).unwrap();

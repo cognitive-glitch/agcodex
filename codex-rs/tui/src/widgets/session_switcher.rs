@@ -379,7 +379,7 @@ impl<'a> SessionSwitcher<'a> {
             .highlight_style(
                 Style::default()
                     .fg(Color::White)
-                    .bg(Color::Rgb(40, 40, 40))
+                    .bg(Color::DarkGray)
                     .add_modifier(Modifier::BOLD),
             )
             .divider(" │ ");
@@ -504,7 +504,7 @@ impl<'a> WidgetRef for SessionSwitcherPopup<'a> {
             );
 
             let style = if is_selected {
-                Style::default().bg(Color::Rgb(40, 40, 40)).fg(Color::White)
+                Style::default().bg(Color::DarkGray).fg(Color::White)
             } else if is_active {
                 Style::default().fg(Color::Cyan)
             } else {

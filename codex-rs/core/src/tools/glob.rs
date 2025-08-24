@@ -1226,7 +1226,7 @@ impl Default for FileExtensionClassifier {
 
         // Test file patterns (regex for flexibility)
         let mut test_patterns = Vec::new();
-        
+
         // Only add patterns that compile successfully
         if let Ok(regex) = Regex::new(r"(?i)test") {
             test_patterns.push(regex);

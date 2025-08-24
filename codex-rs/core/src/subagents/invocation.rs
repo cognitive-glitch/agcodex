@@ -160,8 +160,8 @@ impl InvocationParser {
             Regex::new(r"@([a-zA-Z0-9_-]+)(?:\s+([^@→+\n]*?))?\s+if\s+([^@→+\n]+)")
                 .map_err(|e| super::SubagentError::RegexError(e.to_string()))?;
 
-        let simple_agent_pattern =
-            Regex::new(r"@[a-zA-Z0-9_-]+").map_err(|e| super::SubagentError::RegexError(e.to_string()))?;
+        let simple_agent_pattern = Regex::new(r"@[a-zA-Z0-9_-]+")
+            .map_err(|e| super::SubagentError::RegexError(e.to_string()))?;
 
         let multiple_spaces_pattern =
             Regex::new(r"\s+").map_err(|e| super::SubagentError::RegexError(e.to_string()))?;
@@ -178,7 +178,9 @@ impl InvocationParser {
     }
 
     /// Create a new invocation parser with registry validation
-    pub fn with_registry(registry: std::sync::Arc<super::SubagentRegistry>) -> Result<Self, super::SubagentError> {
+    pub fn with_registry(
+        registry: std::sync::Arc<super::SubagentRegistry>,
+    ) -> Result<Self, super::SubagentError> {
         let mut parser = Self::new()?;
         parser.registry = Some(registry);
         Ok(parser)
@@ -225,8 +227,18 @@ impl InvocationParser {
         let mut invocations = Vec::new();
 
         for captures in self.agent_pattern.captures_iter(input) {
-            let full_match = captures.get(0).ok_or_else(|| super::SubagentError::MissingField { field: "match".to_string() })?;
-            let agent_name = captures.get(1).ok_or_else(|| super::SubagentError::MissingField { field: "agent_name".to_string() })?.as_str().to_string();
+            let full_match = captures
+                .get(0)
+                .ok_or_else(|| super::SubagentError::MissingField {
+                    field: "match".to_string(),
+                })?;
+            let agent_name = captures
+                .get(1)
+                .ok_or_else(|| super::SubagentError::MissingField {
+                    field: "agent_name".to_string(),
+                })?
+                .as_str()
+                .to_string();
             let raw_parameters = captures
                 .get(2)
                 .map(|m| m.as_str().trim().to_string())
@@ -350,7 +362,9 @@ impl InvocationParser {
 
         if invocations.len() == 1 {
             return Ok(ExecutionPlan::Single(
-                invocations.into_iter().next().ok_or_else(|| super::SubagentError::ExecutionFailed("Empty invocations list".to_string()))?,
+                invocations.into_iter().next().ok_or_else(|| {
+                    super::SubagentError::ExecutionFailed("Empty invocations list".to_string())
+                })?,
             ));
         }
 
@@ -397,7 +411,13 @@ impl InvocationParser {
                 // This is the end of a parallel group
                 current_parallel.push(invocation);
                 if current_parallel.len() == 1 {
-                    steps.push(ExecutionStep::Single(current_parallel.pop().ok_or_else(|| super::SubagentError::ExecutionFailed("Empty parallel group".to_string()))?));
+                    steps.push(ExecutionStep::Single(current_parallel.pop().ok_or_else(
+                        || {
+                            super::SubagentError::ExecutionFailed(
+                                "Empty parallel group".to_string(),
+                            )
+                        },
+                    )?));
                 } else {
                     steps.push(ExecutionStep::Parallel(current_parallel.clone()));
                 }
@@ -411,7 +431,9 @@ impl InvocationParser {
         // Handle remaining parallel group
         if !current_parallel.is_empty() {
             if current_parallel.len() == 1 {
-                steps.push(ExecutionStep::Single(current_parallel.pop().ok_or_else(|| super::SubagentError::ExecutionFailed("Empty parallel group".to_string()))?));
+                steps.push(ExecutionStep::Single(current_parallel.pop().ok_or_else(
+                    || super::SubagentError::ExecutionFailed("Empty parallel group".to_string()),
+                )?));
             } else {
                 steps.push(ExecutionStep::Parallel(current_parallel));
             }
@@ -432,12 +454,24 @@ impl InvocationParser {
 
         // Parse conditional invocations
         for captures in self.conditional_pattern.captures_iter(input) {
-            let agent_name = captures.get(1).ok_or_else(|| super::SubagentError::MissingField { field: "agent_name".to_string() })?.as_str().to_string();
+            let agent_name = captures
+                .get(1)
+                .ok_or_else(|| super::SubagentError::MissingField {
+                    field: "agent_name".to_string(),
+                })?
+                .as_str()
+                .to_string();
             let raw_parameters = captures
                 .get(2)
                 .map(|m| m.as_str().trim().to_string())
                 .unwrap_or_default();
-            let condition_text = captures.get(3).ok_or_else(|| super::SubagentError::MissingField { field: "condition".to_string() })?.as_str().trim();
+            let condition_text = captures
+                .get(3)
+                .ok_or_else(|| super::SubagentError::MissingField {
+                    field: "condition".to_string(),
+                })?
+                .as_str()
+                .trim();
 
             let parameters = self.parse_parameters(&raw_parameters)?;
 
@@ -450,7 +484,12 @@ impl InvocationParser {
                 agent_name,
                 parameters,
                 raw_parameters,
-                position: captures.get(0).ok_or_else(|| super::SubagentError::MissingField { field: "match".to_string() })?.start(),
+                position: captures
+                    .get(0)
+                    .ok_or_else(|| super::SubagentError::MissingField {
+                        field: "match".to_string(),
+                    })?
+                    .start(),
                 mode_override: None,
                 intelligence_override: None,
             });
@@ -476,7 +515,9 @@ impl InvocationParser {
     ) -> Result<ExecutionPlan, super::SubagentError> {
         if invocations.len() == 1 {
             return Ok(ExecutionPlan::Single(
-                invocations.into_iter().next().ok_or_else(|| super::SubagentError::ExecutionFailed("Empty invocations list".to_string()))?,
+                invocations.into_iter().next().ok_or_else(|| {
+                    super::SubagentError::ExecutionFailed("Empty invocations list".to_string())
+                })?,
             ));
         }
 

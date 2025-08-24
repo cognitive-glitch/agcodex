@@ -112,7 +112,7 @@ impl ThoughtData {
 
     /// Set the confidence level for this thought
     pub const fn with_confidence(mut self, confidence: f32) -> Self {
-        self.confidence = confidence.max(0.0).min(1.0);
+        self.confidence = confidence.clamp(0.0, 1.0);
         self
     }
 }
@@ -764,7 +764,7 @@ impl ThinkTool {
         }
 
         // Ensure confidence stays within bounds
-        confidence.max(0.1).min(0.95)
+        confidence.clamp(0.1, 0.95)
     }
 
     // Code-specific helper methods
@@ -1556,7 +1556,7 @@ impl ThinkTool {
             confidence -= 0.2;
         }
 
-        confidence.max(0.1).min(0.95)
+        confidence.clamp(0.1, 0.95)
     }
 
     fn determine_recommended_action(problem_type: &CodeProblemType, _problem: &str) -> String {

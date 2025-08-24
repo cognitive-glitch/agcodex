@@ -478,7 +478,8 @@ impl MultiLayerSearchEngine {
 
         // Sort by score
         matches.sort_by(|a, b| {
-            b.score.partial_cmp(&a.score)
+            b.score
+                .partial_cmp(&a.score)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
@@ -520,7 +521,8 @@ impl MultiLayerSearchEngine {
 
         // Sort by score
         matches.sort_by(|a, b| {
-            b.score.partial_cmp(&a.score)
+            b.score
+                .partial_cmp(&a.score)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
@@ -636,7 +638,9 @@ impl MultiLayerSearchEngine {
         if !all_matches.is_empty() {
             all_matches.sort_by(|a, b| {
                 // First by score, then by file + line for stability
-                match b.score.partial_cmp(&a.score)
+                match b
+                    .score
+                    .partial_cmp(&a.score)
                     .unwrap_or(std::cmp::Ordering::Equal)
                 {
                     std::cmp::Ordering::Equal => match a.file.cmp(&b.file) {
