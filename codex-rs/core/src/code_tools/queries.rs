@@ -28,6 +28,7 @@ use dashmap::DashMap;
 use std::collections::HashMap;
 use std::sync::Arc;
 use thiserror::Error;
+use tracing;
 use tree_sitter::Query;
 
 /// Errors specific to query operations
@@ -1004,8 +1005,8 @@ impl QueryLibrary {
                 Ok(_) => compiled_count += 1,
                 Err(e) => {
                     // Log warning but continue with other queries
-                    eprintln!(
-                        "Warning: Failed to precompile {:?} for {}: {}",
+                    tracing::error!(
+                        "Failed to precompile {:?} for {}: {}",
                         query_type,
                         language.name(),
                         e
@@ -1026,8 +1027,8 @@ impl QueryLibrary {
             match self.precompile_language(language) {
                 Ok(count) => total_compiled += count,
                 Err(e) => {
-                    eprintln!(
-                        "Warning: Failed to precompile queries for {}: {}",
+                    tracing::error!(
+                        "Failed to precompile queries for {}: {}",
                         language.name(),
                         e
                     );

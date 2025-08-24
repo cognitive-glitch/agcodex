@@ -15,6 +15,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
+use tracing;
 use tree_sitter::Query;
 use tree_sitter::QueryCursor;
 use tree_sitter::StreamingIterator;
@@ -144,13 +145,16 @@ impl TreeSitterTool {
 
         // Precompile common queries for better performance
         if let Err(e) = query_library.precompile_all() {
-            eprintln!("Warning: Failed to precompile queries: {}", e);
+            tracing::error!("Failed to precompile queries: {}", e);
         }
 
         Self {
             engine: Arc::new(AstEngine::new(CompressionLevel::Medium)),
             registry: registry.clone(),
-            runtime: Arc::new(Runtime::new().expect("Failed to create tokio runtime")),
+            runtime: Arc::new(Runtime::new().map_err(|e| {
+                tracing::error!("Failed to create tokio runtime: {}", e);
+                std::process::exit(1);
+            }).unwrap()),
             query_engine: Arc::new(QueryEngine::new(registry)),
             query_library,
         }

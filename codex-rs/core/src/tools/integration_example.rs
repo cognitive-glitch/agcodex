@@ -7,21 +7,21 @@ use crate::tools::plan::PlanTool;
 
 /// Example usage of the simplified planning tool
 pub async fn example_usage() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🎯 AGCodex Double-Planning Strategy Tool Example");
-    println!("=================================================");
+    tracing::info!("🎯 AGCodex Double-Planning Strategy Tool Example");
+    tracing::info!("=================================================");
 
     // Initialize the planning tool
     let plan_tool = PlanTool::new();
 
     // Example 1: Simple Feature Addition
-    println!("\n📋 Example 1: Adding a Dark Mode Toggle");
-    println!("-----------------------------------------");
+    tracing::info!("\n📋 Example 1: Adding a Dark Mode Toggle");
+    tracing::info!("-----------------------------------------");
 
     let goal = "Add dark mode toggle to the application settings with persistent user preferences";
 
     // Step 1: Create simple plan
     let plan_result = plan_tool.plan(goal)?;
-    println!("✅ Plan Created with {} tasks", plan_result.tasks.len());
+    tracing::info!("✅ Plan Created with {} tasks", plan_result.tasks.len());
 
     // For demonstration purposes, create a simple meta task
     let meta_task = crate::tools::plan::MetaTask {
@@ -29,17 +29,17 @@ pub async fn example_usage() -> Result<(), Box<dyn std::error::Error>> {
         description: goal.to_string(),
     };
 
-    println!("✅ Meta Task Created:");
-    println!("   Name: {}", meta_task.name);
-    println!("   Description: {}", meta_task.description);
+    tracing::info!("✅ Meta Task Created:");
+    tracing::info!("   Name: {}", meta_task.name);
+    tracing::info!("   Description: {}", meta_task.description);
 
     // Step 2: Use the tasks from our plan result
     let sub_tasks = &plan_result.tasks;
 
-    println!("\n🔧 Sub-Tasks Generated ({}):", sub_tasks.len());
+    tracing::info!("\n🔧 Sub-Tasks Generated ({}):", sub_tasks.len());
     for (i, task) in sub_tasks.iter().enumerate() {
-        println!("   {}. {} [ID: {}]", i + 1, task.description, task.id);
-        println!(
+        tracing::info!("   {}. {} [ID: {}]", i + 1, task.description, task.id);
+        tracing::info!(
             "      Dependencies: {} | Parallelizable: {}",
             task.depends_on.len(),
             task.can_parallelize
@@ -49,49 +49,49 @@ pub async fn example_usage() -> Result<(), Box<dyn std::error::Error>> {
     // Step 3: Use parallelization from plan result
     let task_groups = &plan_result.parallel_groups;
 
-    println!(
+    tracing::info!(
         "\n⚡ Task Groups for Parallel Execution ({}):",
         task_groups.len()
     );
     for (i, group) in task_groups.iter().enumerate() {
-        println!("   Group {}: {} tasks", i + 1, group.len());
+        tracing::info!("   Group {}: {} tasks", i + 1, group.len());
         for task_id in group {
             if let Some(task) = sub_tasks.iter().find(|t| &t.id == task_id) {
-                println!("     - {}", task.description);
+                tracing::info!("     - {}", task.description);
             }
         }
     }
 
     // Step 4: Show execution summary
-    println!("\n🚀 Plan Summary:");
-    println!("   Total Tasks: {}", plan_result.tasks.len());
-    println!("   Complexity: {:?}", plan_result.estimated_complexity);
-    println!("   Parallel Groups: {}", plan_result.parallel_groups.len());
+    tracing::info!("\n🚀 Plan Summary:");
+    tracing::info!("   Total Tasks: {}", plan_result.tasks.len());
+    tracing::info!("   Complexity: {:?}", plan_result.estimated_complexity);
+    tracing::info!("   Parallel Groups: {}", plan_result.parallel_groups.len());
 
-    println!("\n🎉 Planning completed successfully!");
+    tracing::info!("\n🎉 Planning completed successfully!");
 
     // Example 2: Complex Refactoring
-    println!("\n\n📋 Example 2: Complex Refactoring Task");
-    println!("--------------------------------------");
+    tracing::info!("\n\n📋 Example 2: Complex Refactoring Task");
+    tracing::info!("--------------------------------------");
 
     let refactor_goal = "Refactor the authentication system to use async/await patterns and add comprehensive error handling";
 
     let refactor_result = plan_tool.plan(refactor_goal)?;
-    println!("✅ Refactoring Plan:");
-    println!("   Complexity: {:?}", refactor_result.estimated_complexity);
-    println!("   Tasks: {}", refactor_result.tasks.len());
-    println!(
+    tracing::info!("✅ Refactoring Plan:");
+    tracing::info!("   Complexity: {:?}", refactor_result.estimated_complexity);
+    tracing::info!("   Tasks: {}", refactor_result.tasks.len());
+    tracing::info!(
         "   Parallel Groups: {}",
         refactor_result.parallel_groups.len()
     );
 
     // Show refactoring tasks
-    println!("\n🔧 Refactoring Sub-Tasks:");
+    tracing::info!("\n🔧 Refactoring Sub-Tasks:");
     for (i, task) in refactor_result.tasks.iter().enumerate() {
-        println!("   {}. {}", i + 1, task.description);
+        tracing::info!("   {}. {}", i + 1, task.description);
     }
 
-    println!("\n✨ All examples completed successfully!");
+    tracing::info!("\n✨ All examples completed successfully!");
 
     Ok(())
 }
@@ -107,8 +107,8 @@ fn create_example_context() -> crate::tools::plan::PlanContext {
 
 /// Simulate analysis functionality (simplified)
 pub async fn demonstrate_analysis_capabilities() -> Result<(), Box<dyn std::error::Error>> {
-    println!("\n🔍 AGCodex Analysis Capabilities");
-    println!("=================================");
+    tracing::info!("\n🔍 AGCodex Analysis Capabilities");
+    tracing::info!("=================================");
 
     let plan_tool = PlanTool::new();
 
@@ -122,18 +122,18 @@ pub async fn demonstrate_analysis_capabilities() -> Result<(), Box<dyn std::erro
     ];
 
     for goal in test_goals {
-        println!("\n🎯 Planning: {}", goal);
+        tracing::info!("\n🎯 Planning: {}", goal);
 
         let result = plan_tool.plan(goal)?;
-        println!("   Tasks: {}", result.tasks.len());
-        println!("   Complexity: {:?}", result.estimated_complexity);
-        println!("   Parallel Groups: {}", result.parallel_groups.len());
+        tracing::info!("   Tasks: {}", result.tasks.len());
+        tracing::info!("   Complexity: {:?}", result.estimated_complexity);
+        tracing::info!("   Parallel Groups: {}", result.parallel_groups.len());
 
         if !result.tasks.is_empty() {
-            println!("   First Task: {}", result.tasks[0].description);
+            tracing::info!("   First Task: {}", result.tasks[0].description);
         }
     }
 
-    println!("\n✅ Analysis demonstration completed!");
+    tracing::info!("\n✅ Analysis demonstration completed!");
     Ok(())
 }

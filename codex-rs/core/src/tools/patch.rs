@@ -329,8 +329,15 @@ impl PatchTool {
             if let Some(line) = lines.get_mut(line_idx) {
                 // Simple replacement - in practice would need more sophisticated handling
                 let old_pattern = format!(r"\b{}\b", regex::escape(old_name));
-                let re = regex::Regex::new(&old_pattern).unwrap();
-                *line = re.replace_all(line, new_name).to_string();
+                match regex::Regex::new(&old_pattern) {
+                    Ok(re) => {
+                        *line = re.replace_all(line, new_name).to_string();
+                    }
+                    Err(_) => {
+                        // Fallback to simple string replacement if regex fails
+                        *line = line.replace(old_name, new_name);
+                    }
+                }
             }
         }
 

@@ -552,7 +552,10 @@ impl FdFind {
 
                             // Add to results (thread-safe)
                             {
-                                let mut results = state.results.lock().unwrap();
+                                let mut results = match state.results.lock() {
+                                    Ok(results) => results,
+                                    Err(_) => return WalkState::Quit, // Poisoned mutex, abort search
+                                };
                                 results.push(result);
 
                                 // Check max results limit
@@ -574,7 +577,9 @@ impl FdFind {
 
         // Extract final results
         // Use clone and lock instead of try_unwrap to avoid Arc reference issues
-        let mut results = search_state.results.lock().unwrap().clone();
+        let mut results = search_state.results.lock()
+            .map_err(|_| ToolError::InvalidQuery("Search results mutex was poisoned".to_string()))?
+            .clone();
 
         // Enforce max_results limit (in case parallel threads added extra results)
         if query.max_results > 0 && results.len() > query.max_results {

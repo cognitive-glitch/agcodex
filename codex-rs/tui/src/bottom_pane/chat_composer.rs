@@ -103,7 +103,7 @@ impl ChatComposer {
             token_usage_info: None,
             has_focus: has_input_focus,
             placeholder_text,
-            invocation_parser: InvocationParser::new(),
+            invocation_parser: InvocationParser::new().expect("Failed to create InvocationParser"),
         }
     }
 

@@ -149,6 +149,24 @@ pub enum SubagentError {
 
     #[error("agent template not found: {name}")]
     TemplateNotFound { name: String },
+
+    #[error("regex compilation error: {0}")]
+    RegexError(String),
+
+    #[error("missing field in parsing: {field}")]
+    MissingField { field: String },
+
+    #[error("path conversion error: {path}")]
+    PathConversion { path: String },
+
+    #[error("parse error: {0}")]
+    ParseError(String),
+
+    #[error("poison error: {0}")]
+    PoisonError(String),
+
+    #[error("join error: {0}")]
+    JoinError(String),
 }
 
 /// Context passed to subagents during execution

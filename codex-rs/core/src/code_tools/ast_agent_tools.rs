@@ -12,7 +12,7 @@ use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tree_sitter::Node;
 use tree_sitter::Parser;
@@ -761,7 +761,7 @@ impl ASTAgentTools {
     const fn find_call_sites(
         &self,
         _function_name: &str,
-        _directory: &PathBuf,
+        _directory: &Path,
     ) -> Result<Vec<Location>, ToolError> {
         // Stub implementation - would use AST to find function calls
         let call_sites = Vec::new();
@@ -788,7 +788,7 @@ impl ASTAgentTools {
     /// Extract code into a new method
     fn extract_method(
         &self,
-        _file: &PathBuf,
+        _file: &Path,
         _start_line: usize,
         _end_line: usize,
         method_name: &str,
@@ -810,7 +810,7 @@ impl ASTAgentTools {
     /// Detect duplicate code blocks
     const fn detect_duplication(
         &self,
-        _directory: &PathBuf,
+        _directory: &Path,
         _min_lines: usize,
     ) -> Result<Vec<DuplicateBlock>, ToolError> {
         // Stub implementation
@@ -818,7 +818,7 @@ impl ASTAgentTools {
     }
 
     /// Generate unit tests for a function
-    fn generate_tests(&self, _file: &PathBuf, function_name: &str) -> Result<String, ToolError> {
+    fn generate_tests(&self, _file: &Path, function_name: &str) -> Result<String, ToolError> {
         // Stub implementation
         Ok(format!(
             "def test_{}():\n    # Generated test",
@@ -933,7 +933,7 @@ impl ASTAgentTools {
     }
 
     /// Perform security analysis
-    const fn security_scan(&self, _directory: &PathBuf) -> Result<SecurityReport, ToolError> {
+    const fn security_scan(&self, _directory: &Path) -> Result<SecurityReport, ToolError> {
         // Stub implementation
         Ok(SecurityReport {
             vulnerabilities: Vec::new(),
@@ -943,7 +943,7 @@ impl ASTAgentTools {
     }
 
     /// Perform performance analysis
-    const fn performance_scan(&self, _directory: &PathBuf) -> Result<PerformanceReport, ToolError> {
+    const fn performance_scan(&self, _directory: &Path) -> Result<PerformanceReport, ToolError> {
         // Stub implementation
         Ok(PerformanceReport {
             issues: Vec::new(),
@@ -955,7 +955,7 @@ impl ASTAgentTools {
     /// Generate documentation
     fn generate_documentation(
         &self,
-        _file: &PathBuf,
+        _file: &Path,
         function_name: Option<&str>,
     ) -> Result<String, ToolError> {
         // Stub implementation
@@ -1149,7 +1149,7 @@ impl ASTAgentTools {
     /// Suggest improvements based on focus area
     const fn suggest_improvements(
         &self,
-        file: &PathBuf,
+        file: &Path,
         focus: &ImprovementFocus,
     ) -> Result<Vec<Improvement>, ToolError> {
         // Stub implementation - would analyze code for specific improvements

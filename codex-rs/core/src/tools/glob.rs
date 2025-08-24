@@ -875,7 +875,10 @@ impl GlobTool {
 
                         // Update statistics
                         {
-                            let mut stats = stats.lock().unwrap();
+                            let mut stats = match stats.lock() {
+                                Ok(guard) => guard,
+                                Err(_) => return WalkState::Quit,
+                            };
                             if entry.file_type().is_some_and(|ft| ft.is_dir()) {
                                 stats.directories_traversed += 1;
                                 return WalkState::Continue;
@@ -889,7 +892,10 @@ impl GlobTool {
                             Self::create_file_match(&entry, &classifier, &base_dir)
                         {
                             if filters.matches(&file_match) {
-                                let mut matches = matches.lock().unwrap();
+                                let mut matches = match matches.lock() {
+                                    Ok(guard) => guard,
+                                    Err(_) => return WalkState::Quit,
+                                };
 
                                 // Check max results limit
                                 if let Some(max) = max_results
@@ -900,14 +906,18 @@ impl GlobTool {
 
                                 matches.push(file_match);
                             } else {
-                                let mut stats = stats.lock().unwrap();
+                                let mut stats = match stats.lock() {
+                                    Ok(guard) => guard,
+                                    Err(_) => return WalkState::Quit,
+                                };
                                 stats.files_ignored += 1;
                             }
                         }
                     }
                     Err(_) => {
-                        let mut stats = stats.lock().unwrap();
-                        stats.files_ignored += 1;
+                        if let Ok(mut stats) = stats.lock() {
+                            stats.files_ignored += 1;
+                        }
                     }
                 }
                 WalkState::Continue
@@ -1215,13 +1225,24 @@ impl Default for FileExtensionClassifier {
         );
 
         // Test file patterns (regex for flexibility)
-        let test_patterns = vec![
-            Regex::new(r"(?i)test").unwrap(),
-            Regex::new(r"(?i)spec").unwrap(),
-            Regex::new(r"_test\.[^.]+$").unwrap(),
-            Regex::new(r"\.test\.[^.]+$").unwrap(),
-            Regex::new(r"\.spec\.[^.]+$").unwrap(),
-        ];
+        let mut test_patterns = Vec::new();
+        
+        // Only add patterns that compile successfully
+        if let Ok(regex) = Regex::new(r"(?i)test") {
+            test_patterns.push(regex);
+        }
+        if let Ok(regex) = Regex::new(r"(?i)spec") {
+            test_patterns.push(regex);
+        }
+        if let Ok(regex) = Regex::new(r"_test\.[^.]+$") {
+            test_patterns.push(regex);
+        }
+        if let Ok(regex) = Regex::new(r"\.test\.[^.]+$") {
+            test_patterns.push(regex);
+        }
+        if let Ok(regex) = Regex::new(r"\.spec\.[^.]+$") {
+            test_patterns.push(regex);
+        }
 
         Self {
             source_extensions,

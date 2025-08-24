@@ -82,12 +82,12 @@ where
     })
 }
 
-const ILLEGAL_ENV_VAR_PREFIX: &str = "CODEX_";
+const ILLEGAL_ENV_VAR_PREFIX: &str = "AGCODEX_";
 
 /// Load env vars from ~/.agcodex/.env and `$(pwd)/.env`.
 ///
 /// Security: Do not allow `.env` files to create or modify any variables
-/// with names starting with `CODEX_`.
+/// with names starting with `AGCODEX_`.
 fn load_dotenv() {
     if let Ok(codex_home) = agcodex_core::config::find_agcodex_home()
         && let Ok(iter) = dotenvy::from_path_iter(codex_home.join(".env"))

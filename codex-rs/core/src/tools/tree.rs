@@ -967,12 +967,21 @@ impl TreeTool {
     /// Create a new enhanced tree tool instance
     pub fn new(intelligence_level: IntelligenceLevel) -> TreeResult<Self> {
         let (cache_size, cache_ttl) = match intelligence_level {
-            IntelligenceLevel::Light => (NonZeroUsize::new(100).unwrap(), Duration::from_secs(300)), // 5 minutes
+            IntelligenceLevel::Light => (
+                NonZeroUsize::new(100).ok_or_else(|| TreeError::CacheFailed { reason: "Invalid cache size".to_string() })?,
+                Duration::from_secs(300)
+            ), // 5 minutes
             IntelligenceLevel::Medium => {
-                (NonZeroUsize::new(500).unwrap(), Duration::from_secs(900))
+                (
+                    NonZeroUsize::new(500).ok_or_else(|| TreeError::CacheFailed { reason: "Invalid cache size".to_string() })?,
+                    Duration::from_secs(900)
+                )
             } // 15 minutes
             IntelligenceLevel::Hard => {
-                (NonZeroUsize::new(2000).unwrap(), Duration::from_secs(1800))
+                (
+                    NonZeroUsize::new(2000).ok_or_else(|| TreeError::CacheFailed { reason: "Invalid cache size".to_string() })?,
+                    Duration::from_secs(1800)
+                )
             } // 30 minutes
         };
 

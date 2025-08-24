@@ -32,61 +32,62 @@ pub fn register_built_in_agents(registry: &SubagentRegistry) {
     registry.register(
         "code-reviewer",
         Arc::new(CodeReviewerAgent::new()) as Arc<dyn Subagent>,
-    );
+    ).ok();
 
     // Register refactorer
     registry.register(
         "refactorer",
         Arc::new(RefactorerAgent::new()) as Arc<dyn Subagent>,
-    );
+    ).ok();
 
     // Register debugger
     registry.register(
         "debugger",
         Arc::new(DebuggerAgent::new()) as Arc<dyn Subagent>,
-    );
+    ).ok();
 
     // Register test writer
     registry.register(
         "test-writer",
         Arc::new(TestWriterAgent::new()) as Arc<dyn Subagent>,
-    );
+    ).ok();
 
     // Register performance optimizer
     registry.register(
         "performance",
         Arc::new(PerformanceAgent::new()) as Arc<dyn Subagent>,
-    );
+    ).ok();
 
     // Register aliases for common variations
     registry.register(
         "reviewer",
         Arc::new(CodeReviewerAgent::new()) as Arc<dyn Subagent>,
-    );
+    ).ok();
 
     registry.register(
         "refactor",
         Arc::new(RefactorerAgent::new()) as Arc<dyn Subagent>,
-    );
+    ).ok();
 
-    registry.register("debug", Arc::new(DebuggerAgent::new()) as Arc<dyn Subagent>);
+    registry.register("debug", Arc::new(DebuggerAgent::new()) as Arc<dyn Subagent>).ok();
 
     registry.register(
         "test",
         Arc::new(TestWriterAgent::new()) as Arc<dyn Subagent>,
-    );
+    ).ok();
 
     registry.register(
         "perf",
         Arc::new(PerformanceAgent::new()) as Arc<dyn Subagent>,
-    );
+    ).ok(); // Ignore errors for built-in registration
 }
 
 /// Create a registry with all built-in agents pre-registered
-pub fn create_default_registry() -> SubagentRegistry {
-    let registry = SubagentRegistry::new().expect("Failed to create registry");
+pub fn create_default_registry() -> Result<SubagentRegistry, std::io::Error> {
+    let registry = SubagentRegistry::new()
+        .map_err(|e| std::io::Error::other(format!("Failed to create registry: {}", e)))?;
     register_built_in_agents(&registry);
-    registry
+    Ok(registry)
 }
 
 /// Built-in agent descriptions for help text
@@ -147,7 +148,7 @@ mod tests {
 
     #[test]
     fn test_built_in_agents_registration() {
-        let registry = create_default_registry();
+        let registry = create_default_registry().expect("Failed to create registry");
 
         // Check that all main agents are registered
         assert!(registry.get_agent("code-reviewer").is_some());

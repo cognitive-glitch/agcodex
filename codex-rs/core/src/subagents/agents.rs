@@ -352,7 +352,7 @@ impl CodeReviewerAgent {
         Ok(findings)
     }
 
-    fn detect_language(&self, file: &PathBuf) -> String {
+    fn detect_language(&self, file: &std::path::Path) -> String {
         match file.extension().and_then(|ext| ext.to_str()) {
             Some("rs") => "rust".to_string(),
             Some("py") => "python".to_string(),
@@ -665,7 +665,7 @@ impl Subagent for RefactorerAgent {
                                 "similarity_score".to_string(),
                                 serde_json::Value::Number(
                                     serde_json::Number::from_f64(dup_group.similarity as f64)
-                                        .unwrap(),
+                                        .ok_or_else(|| SubagentError::ExecutionFailed("Invalid complexity value".to_string()))?,
                                 ),
                             ),
                         ]),
@@ -970,7 +970,7 @@ impl TestWriterAgent {
         Ok(files)
     }
 
-    fn detect_language(&self, file: &PathBuf) -> String {
+    fn detect_language(&self, file: &std::path::Path) -> String {
         match file.extension().and_then(|ext| ext.to_str()) {
             Some("rs") => "rust".to_string(),
             Some("py") => "python".to_string(),

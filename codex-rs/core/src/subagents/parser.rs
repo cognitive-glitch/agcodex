@@ -26,7 +26,7 @@ impl AgentParser {
     /// Create a new agent parser
     pub fn new() -> Self {
         Self {
-            base_parser: InvocationParser::new(),
+            base_parser: InvocationParser::new().expect("Failed to create InvocationParser"),
             _registry: None,
             default_mode: OperatingMode::Build,
         }
@@ -35,7 +35,7 @@ impl AgentParser {
     /// Create parser with registry for validation
     pub fn with_registry(registry: Arc<SubagentRegistry>) -> Self {
         Self {
-            base_parser: InvocationParser::with_registry(registry.clone()),
+            base_parser: InvocationParser::with_registry(registry.clone()).expect("Failed to create InvocationParser with registry"),
             _registry: Some(registry),
             default_mode: OperatingMode::Build,
         }
@@ -111,7 +111,10 @@ impl AgentParser {
         let mut context = input.to_string();
 
         // Remove agent invocations
-        let agent_pattern = regex_lite::Regex::new(r"@[a-zA-Z0-9_-]+").unwrap();
+        let agent_pattern = match regex_lite::Regex::new(r"@[a-zA-Z0-9_-]+") {
+            Ok(pattern) => pattern,
+            Err(_) => return input.to_string(), // Fallback to original input on regex error
+        };
         context = agent_pattern.replace_all(&context, "").to_string();
 
         // Remove operators

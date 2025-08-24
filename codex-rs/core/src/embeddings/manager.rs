@@ -51,7 +51,7 @@ impl EmbeddingsManager {
             return Self::disabled();
         }
 
-        let config = config.unwrap();
+        let config = config.expect("Config should be Some when calling this code path");
         if !config.enabled {
             info!("Embeddings explicitly disabled in config");
             return Self::disabled();

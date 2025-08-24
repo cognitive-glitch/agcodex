@@ -27,6 +27,9 @@ pub enum BashParseError {
 
     #[error("Rewriting failed: {reason}")]
     RewriteError { reason: String },
+
+    #[error("Regex error: {0}")]
+    RegexError(String),
 }
 
 /// Confidence levels for safety analysis
@@ -135,19 +138,19 @@ pub struct CommandValidator {
 }
 
 impl CommandValidator {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, BashParseError> {
         let dangerous_patterns = vec![
             // Command injection patterns
-            Regex::new(r"[;&|`$(){}\[\]<>]").unwrap(),
+            Regex::new(r"[;&|`$(){}\[\]<>]").map_err(|e| BashParseError::RegexError(e.to_string()))?,
             // Suspicious command sequences
-            Regex::new(r"(rm|del|delete).*-r").unwrap(),
-            Regex::new(r"(chmod|chown).*777").unwrap(),
+            Regex::new(r"(rm|del|delete).*-r").map_err(|e| BashParseError::RegexError(e.to_string()))?,
+            Regex::new(r"(chmod|chown).*777").map_err(|e| BashParseError::RegexError(e.to_string()))?,
             // Network operations
-            Regex::new(r"(curl|wget|nc|netcat).*\|").unwrap(),
+            Regex::new(r"(curl|wget|nc|netcat).*\|").map_err(|e| BashParseError::RegexError(e.to_string()))?,
             // System manipulation
-            Regex::new(r"(sudo|su)\s").unwrap(),
+            Regex::new(r"(sudo|su)\s").map_err(|e| BashParseError::RegexError(e.to_string()))?,
             // File system traversal
-            Regex::new(r"\.\./.*\.\./").unwrap(),
+            Regex::new(r"\.\./.*\.\./").map_err(|e| BashParseError::RegexError(e.to_string()))?,
         ];
 
         let allowed_commands = [
@@ -184,11 +187,11 @@ impl CommandValidator {
             },
         ];
 
-        Self {
+        Ok(Self {
             dangerous_patterns,
             allowed_commands,
             context_rules,
-        }
+        })
     }
 
     #[allow(dead_code)]
@@ -392,7 +395,7 @@ impl EnhancedBashParser {
 
         Ok(Self {
             parser: Arc::new(std::sync::Mutex::new(parser)),
-            validator: CommandValidator::new(),
+            validator: CommandValidator::new()?,
             sandbox_rules: SandboxRules::new(),
             rewriter: CommandRewriter::new(),
         })
@@ -552,7 +555,24 @@ impl EnhancedBashParser {
 
 impl Default for EnhancedBashParser {
     fn default() -> Self {
-        Self::new().expect("Failed to create default EnhancedBashParser")
+        Self::new().unwrap_or_else(|e| {
+            tracing::error!("Warning: Failed to create EnhancedBashParser with full functionality: {}", e);
+            // Create a minimal parser without full validation
+            let lang = BASH.into();
+            let mut parser = Parser::new();
+            let _ = parser.set_language(&lang);
+            
+            Self {
+                parser: Arc::new(std::sync::Mutex::new(parser)),
+                validator: CommandValidator {
+                    dangerous_patterns: Vec::new(),
+                    allowed_commands: std::collections::HashSet::new(),
+                    context_rules: Vec::new(),
+                },
+                sandbox_rules: SandboxRules::new(),
+                rewriter: CommandRewriter::new(),
+            }
+        })
     }
 }
 
@@ -929,7 +949,7 @@ mod tests {
 
     #[test]
     fn command_validator_creation() {
-        let validator = CommandValidator::new();
+        let validator = CommandValidator::new().expect("Failed to create validator");
 
         // Test that allowed commands are properly initialized
         let echo_analysis = validator.validate_command(&["echo".to_string(), "test".to_string()]);

@@ -83,6 +83,9 @@ pub enum IndexError {
 
     #[error("concurrent access error: {0}")]
     ConcurrentAccess(String),
+    
+    #[error("lock poisoned")]
+    LockPoisoned,
 
     #[error("document not found: {path}")]
     DocumentNotFound { path: PathBuf },
@@ -697,7 +700,7 @@ impl IndexTool {
     /// Initialize the index
     #[instrument(skip(self))]
     pub async fn initialize(&self) -> IndexResult<()> {
-        let config = self.config.read().unwrap().clone();
+        let config = self.config.read().map_err(|e| IndexError::ConcurrentAccess(format!("Config lock poisoned: {}", e)))?.clone();
 
         // Create index directory
         if !config.index_path.exists() {
@@ -724,17 +727,17 @@ impl IndexTool {
 
         // Store components
         {
-            let mut index_lock = self.index.write().unwrap();
+            let mut index_lock = self.index.write().map_err(|e| IndexError::ConcurrentAccess(format!("Index lock poisoned: {}", e)))?;
             *index_lock = Some(index);
         }
 
         {
-            let mut writer_lock = self.writer.lock().unwrap();
+            let mut writer_lock = self.writer.lock().map_err(|e| IndexError::ConcurrentAccess(format!("Writer lock poisoned: {}", e)))?;
             *writer_lock = Some(writer);
         }
 
         {
-            let mut reader_lock = self.reader.write().unwrap();
+            let mut reader_lock = self.reader.write().map_err(|e| IndexError::ConcurrentAccess(format!("Reader lock poisoned: {}", e)))?;
             *reader_lock = Some(reader);
         }
 
@@ -761,12 +764,12 @@ impl IndexTool {
 
         // Update configuration
         {
-            let mut config_lock = self.config.write().unwrap();
+            let mut config_lock = self.config.write().map_err(|e| IndexError::ConcurrentAccess(format!("Config lock poisoned: {}", e)))?;
             *config_lock = input.config.clone();
         }
 
         // Initialize if not already done
-        if self.index.read().unwrap().is_none() {
+        if self.index.read().map_err(|e| IndexError::ConcurrentAccess(format!("Index lock poisoned: {}", e)))?.is_none() {
             self.initialize().await?;
         }
 
@@ -846,12 +849,12 @@ impl IndexTool {
 
         // Update configuration
         {
-            let mut config_lock = self.config.write().unwrap();
+            let mut config_lock = self.config.write().map_err(|e| IndexError::ConcurrentAccess(format!("Config lock poisoned: {}", e)))?;
             *config_lock = input.config;
         }
 
         // Ensure index is initialized
-        if self.index.read().unwrap().is_none() {
+        if self.index.read().map_err(|e| IndexError::ConcurrentAccess(format!("Index lock poisoned: {}", e)))?.is_none() {
             return Err(IndexError::NotInitialized(
                 "Index must be built first".to_string(),
             ));
@@ -924,7 +927,7 @@ impl IndexTool {
     pub async fn optimize(&self) -> IndexResult<()> {
         info!("Optimizing index");
 
-        let mut writer_guard = self.writer.lock().unwrap();
+        let mut writer_guard = self.writer.lock().map_err(|e| IndexError::ConcurrentAccess(format!("Writer lock poisoned: {}", e)))?;
 
         // Take ownership of the writer temporarily
         let writer = writer_guard
@@ -991,7 +994,7 @@ impl IndexTool {
     /// Internal stats method without output wrapper
     async fn stats_internal(&self) -> IndexResult<IndexStats> {
         let (document_count, segment_count, searcher) = {
-            let reader_guard = self.reader.read().unwrap();
+            let reader_guard = self.reader.read().map_err(|e| IndexError::ConcurrentAccess(format!("Reader lock poisoned: {}", e)))?;
             let reader = reader_guard
                 .as_ref()
                 .ok_or_else(|| IndexError::NotInitialized("Reader not initialized".to_string()))?;
@@ -1009,7 +1012,7 @@ impl IndexTool {
 
         // Calculate index size on disk
         let size_bytes = {
-            let config = self.config.read().unwrap();
+            let config = self.config.read().map_err(|e| IndexError::ConcurrentAccess(format!("Config lock poisoned: {}", e)))?;
             self.calculate_index_size(&config.index_path)?
         }; // Drop config guard here
 
@@ -1024,7 +1027,7 @@ impl IndexTool {
             segment_count,
             last_updated: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .map_err(|e| IndexError::OperationFailed { operation: "timestamp".to_string(), reason: e.to_string() })?
                 .as_secs(),
             avg_document_size,
             language_stats,
@@ -1039,43 +1042,52 @@ impl IndexTool {
         input: SearchInput,
     ) -> IndexResult<ComprehensiveToolOutput<Vec<SearchResult>>> {
         let start_time = std::time::Instant::now();
-        let reader_guard = self.reader.read().unwrap();
-        let reader = reader_guard
-            .as_ref()
-            .ok_or_else(|| IndexError::NotInitialized("Reader not initialized".to_string()))?;
+        
+        // Collect documents while holding the lock, then process async after releasing
+        let docs_to_process: Vec<(tantivy::TantivyDocument, f32)> = {
+            let reader_guard = self.reader.read().map_err(|_| IndexError::LockPoisoned)?;
+            let reader = reader_guard
+                .as_ref()
+                .ok_or_else(|| IndexError::NotInitialized("Reader not initialized".to_string()))?;
 
-        let searcher = reader.searcher();
+            let searcher = reader.searcher();
 
-        // Build query
-        let query = self.build_query(&input.query)?;
+            // Build query
+            let query = self.build_query(&input.query)?;
 
-        // Execute search
-        let limit = input.query.limit.unwrap_or(50);
-        let top_docs = searcher.search(&query, &TopDocs::with_limit(limit))?;
+            // Execute search
+            let limit = input.query.limit.unwrap_or(50);
+            let top_docs = searcher.search(&query, &TopDocs::with_limit(limit))?;
 
-        // Convert to results with error recovery
-        let mut results = Vec::new();
-        for (score, doc_address) in top_docs {
-            if let Some(min_score) = input.query.min_score
-                && score < min_score
-            {
-                continue;
-            }
+            // Collect all documents before releasing the lock
+            let mut docs = Vec::new();
+            for (score, doc_address) in top_docs {
+                if let Some(min_score) = input.query.min_score
+                    && score < min_score
+                {
+                    continue;
+                }
 
-            // Safely handle document conversion errors
-            match searcher.doc(doc_address) {
-                Ok(doc) => {
-                    match self.doc_to_search_result(doc, score).await {
-                        Ok(result) => results.push(result),
-                        Err(e) => {
-                            debug!("Failed to convert document to result: {}", e);
-                            // Continue with other results instead of failing completely
-                        }
+                // Safely handle document retrieval errors
+                match searcher.doc(doc_address) {
+                    Ok(doc) => docs.push((doc, score)),
+                    Err(e) => {
+                        debug!("Failed to retrieve document: {}", e);
+                        // Continue with other results
                     }
                 }
+            }
+            docs
+        }; // Lock is released here
+        
+        // Now process documents asynchronously without holding the lock
+        let mut results = Vec::new();
+        for (doc, score) in docs_to_process {
+            match self.doc_to_search_result(doc, score).await {
+                Ok(result) => results.push(result),
                 Err(e) => {
-                    debug!("Failed to retrieve document: {}", e);
-                    // Continue with other results
+                    debug!("Failed to convert document to result: {}", e);
+                    // Continue with other results instead of failing completely
                 }
             }
         }
@@ -1127,7 +1139,7 @@ impl IndexTool {
     // Helper methods for internal operations
 
     async fn collect_files(&self, directory: &Path) -> IndexResult<Vec<PathBuf>> {
-        let config = self.config.read().unwrap();
+        let config = self.config.read().map_err(|_| IndexError::LockPoisoned)?;
         let extensions = &config.include_extensions;
         let max_size = config.max_file_size;
 
@@ -1180,7 +1192,7 @@ impl IndexTool {
         let modified = metadata
             .modified()?
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .map_err(|e| IndexError::OperationFailed { operation: "file_timestamp".to_string(), reason: e.to_string() })?
             .as_secs();
 
         // Calculate hash
@@ -1204,7 +1216,7 @@ impl IndexTool {
         })?;
 
         // Add to index
-        let mut writer_guard = self.writer.lock().unwrap();
+        let mut writer_guard = self.writer.lock().map_err(|e| IndexError::ConcurrentAccess(format!("Writer lock poisoned: {}", e)))?;
         let writer = writer_guard
             .as_mut()
             .ok_or_else(|| IndexError::NotInitialized("Writer not initialized".to_string()))?;
@@ -1227,7 +1239,7 @@ impl IndexTool {
     async fn remove_file(&self, file_path: &Path) -> IndexResult<()> {
         let path_str = file_path.to_string_lossy().to_string();
 
-        let mut writer_guard = self.writer.lock().unwrap();
+        let mut writer_guard = self.writer.lock().map_err(|e| IndexError::ConcurrentAccess(format!("Writer lock poisoned: {}", e)))?;
         let writer = writer_guard
             .as_mut()
             .ok_or_else(|| IndexError::NotInitialized("Writer not initialized".to_string()))?;
@@ -1239,7 +1251,7 @@ impl IndexTool {
     }
 
     async fn clear_index(&self) -> IndexResult<()> {
-        let mut writer_guard = self.writer.lock().unwrap();
+        let mut writer_guard = self.writer.lock().map_err(|e| IndexError::ConcurrentAccess(format!("Writer lock poisoned: {}", e)))?;
         let writer = writer_guard
             .as_mut()
             .ok_or_else(|| IndexError::NotInitialized("Writer not initialized".to_string()))?;
@@ -1249,7 +1261,7 @@ impl IndexTool {
     }
 
     async fn commit(&self) -> IndexResult<()> {
-        let mut writer_guard = self.writer.lock().unwrap();
+        let mut writer_guard = self.writer.lock().map_err(|e| IndexError::ConcurrentAccess(format!("Writer lock poisoned: {}", e)))?;
         let writer = writer_guard
             .as_mut()
             .ok_or_else(|| IndexError::NotInitialized("Writer not initialized".to_string()))?;
@@ -1405,7 +1417,7 @@ impl IndexTool {
         &self,
         search_query: &SearchQuery,
     ) -> IndexResult<Box<dyn tantivy::query::Query>> {
-        let index_guard = self.index.read().unwrap();
+        let index_guard = self.index.read().map_err(|e| IndexError::ConcurrentAccess(format!("Index lock poisoned: {}", e)))?;
         let index = index_guard
             .as_ref()
             .ok_or_else(|| IndexError::NotInitialized("Index not initialized".to_string()))?;
@@ -1737,7 +1749,7 @@ impl IndexTool {
 
         let search_input = SearchInput {
             query: search_query.clone(),
-            config: self.config.read().unwrap().clone(),
+            config: self.config.read().map_err(|e| IndexError::ConcurrentAccess(format!("Config lock poisoned: {}", e)))?.clone(),
         };
 
         match self.search(search_input).await {
@@ -1752,7 +1764,7 @@ impl IndexTool {
 
                 let fuzzy_input = SearchInput {
                     query: fuzzy_query,
-                    config: self.config.read().unwrap().clone(),
+                    config: self.config.read().map_err(|e| IndexError::ConcurrentAccess(format!("Config lock poisoned: {}", e)))?.clone(),
                 };
 
                 match self.search(fuzzy_input).await {
@@ -1822,7 +1834,7 @@ impl IndexTool {
         fuzzy: bool,
         min_score: Option<f32>,
     ) -> Result<Vec<SearchResult>, IndexError> {
-        if self.reader.read().unwrap().is_none() {
+        if self.reader.read().map_err(|e| IndexError::ConcurrentAccess(format!("Reader lock poisoned: {}", e)))?.is_none() {
             return Ok(vec![]);
         }
 
@@ -1838,7 +1850,7 @@ impl IndexTool {
 
         let search_input = SearchInput {
             query: search_query,
-            config: self.config.read().unwrap().clone(),
+            config: self.config.read().map_err(|e| IndexError::ConcurrentAccess(format!("Config lock poisoned: {}", e)))?.clone(),
         };
 
         match self.search(search_input).await {
@@ -2098,7 +2110,10 @@ impl IndexTool {
             let result_count = file_results.len();
 
             // Take the best result and merge information from others
-            let mut best_result = file_results.into_iter().next().unwrap();
+            let mut best_result = match file_results.into_iter().next() {
+                Some(result) => result,
+                None => continue, // Skip empty groups
+            };
 
             // Combine snippets from all results (deduplicated)
             let mut all_snippets: HashSet<String> = HashSet::new();

@@ -139,34 +139,34 @@ pub struct InvocationParser {
 
 impl Default for InvocationParser {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("Failed to create default InvocationParser")
     }
 }
 
 impl InvocationParser {
     /// Create a new invocation parser
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, super::SubagentError> {
         let agent_pattern =
             Regex::new(r"@([a-zA-Z0-9_-]+)(?:\s+([^@→+]*?))?(?:\s*[@→+]|\s*if\s|\s*$)")
-                .expect("Invalid agent pattern regex");
+                .map_err(|e| super::SubagentError::RegexError(e.to_string()))?;
 
         let chain_pattern = Regex::new(r"@[a-zA-Z0-9_-]+(?:\s+[^@→+\n]*?)?\s*→\s*")
-            .expect("Invalid chain pattern regex");
+            .map_err(|e| super::SubagentError::RegexError(e.to_string()))?;
 
         let parallel_pattern = Regex::new(r"@[a-zA-Z0-9_-]+(?:\s+[^@→+\n]*?)?\s*\+\s*")
-            .expect("Invalid parallel pattern regex");
+            .map_err(|e| super::SubagentError::RegexError(e.to_string()))?;
 
         let conditional_pattern =
             Regex::new(r"@([a-zA-Z0-9_-]+)(?:\s+([^@→+\n]*?))?\s+if\s+([^@→+\n]+)")
-                .expect("Invalid conditional pattern regex");
+                .map_err(|e| super::SubagentError::RegexError(e.to_string()))?;
 
         let simple_agent_pattern =
-            Regex::new(r"@[a-zA-Z0-9_-]+").expect("Invalid simple agent pattern regex");
+            Regex::new(r"@[a-zA-Z0-9_-]+").map_err(|e| super::SubagentError::RegexError(e.to_string()))?;
 
         let multiple_spaces_pattern =
-            Regex::new(r"\s+").expect("Invalid multiple spaces pattern regex");
+            Regex::new(r"\s+").map_err(|e| super::SubagentError::RegexError(e.to_string()))?;
 
-        Self {
+        Ok(Self {
             agent_pattern,
             chain_pattern,
             parallel_pattern,
@@ -174,14 +174,14 @@ impl InvocationParser {
             simple_agent_pattern,
             multiple_spaces_pattern,
             registry: None,
-        }
+        })
     }
 
     /// Create a new invocation parser with registry validation
-    pub fn with_registry(registry: std::sync::Arc<super::SubagentRegistry>) -> Self {
-        let mut parser = Self::new();
+    pub fn with_registry(registry: std::sync::Arc<super::SubagentRegistry>) -> Result<Self, super::SubagentError> {
+        let mut parser = Self::new()?;
         parser.registry = Some(registry);
-        parser
+        Ok(parser)
     }
 
     /// Parse user input for agent invocations
@@ -225,8 +225,8 @@ impl InvocationParser {
         let mut invocations = Vec::new();
 
         for captures in self.agent_pattern.captures_iter(input) {
-            let full_match = captures.get(0).unwrap();
-            let agent_name = captures.get(1).unwrap().as_str().to_string();
+            let full_match = captures.get(0).ok_or_else(|| super::SubagentError::MissingField { field: "match".to_string() })?;
+            let agent_name = captures.get(1).ok_or_else(|| super::SubagentError::MissingField { field: "agent_name".to_string() })?.as_str().to_string();
             let raw_parameters = captures
                 .get(2)
                 .map(|m| m.as_str().trim().to_string())
@@ -350,7 +350,7 @@ impl InvocationParser {
 
         if invocations.len() == 1 {
             return Ok(ExecutionPlan::Single(
-                invocations.into_iter().next().unwrap(),
+                invocations.into_iter().next().ok_or_else(|| super::SubagentError::ExecutionFailed("Empty invocations list".to_string()))?,
             ));
         }
 
@@ -397,7 +397,7 @@ impl InvocationParser {
                 // This is the end of a parallel group
                 current_parallel.push(invocation);
                 if current_parallel.len() == 1 {
-                    steps.push(ExecutionStep::Single(current_parallel.pop().unwrap()));
+                    steps.push(ExecutionStep::Single(current_parallel.pop().ok_or_else(|| super::SubagentError::ExecutionFailed("Empty parallel group".to_string()))?));
                 } else {
                     steps.push(ExecutionStep::Parallel(current_parallel.clone()));
                 }
@@ -411,7 +411,7 @@ impl InvocationParser {
         // Handle remaining parallel group
         if !current_parallel.is_empty() {
             if current_parallel.len() == 1 {
-                steps.push(ExecutionStep::Single(current_parallel.pop().unwrap()));
+                steps.push(ExecutionStep::Single(current_parallel.pop().ok_or_else(|| super::SubagentError::ExecutionFailed("Empty parallel group".to_string()))?));
             } else {
                 steps.push(ExecutionStep::Parallel(current_parallel));
             }
@@ -432,12 +432,12 @@ impl InvocationParser {
 
         // Parse conditional invocations
         for captures in self.conditional_pattern.captures_iter(input) {
-            let agent_name = captures.get(1).unwrap().as_str().to_string();
+            let agent_name = captures.get(1).ok_or_else(|| super::SubagentError::MissingField { field: "agent_name".to_string() })?.as_str().to_string();
             let raw_parameters = captures
                 .get(2)
                 .map(|m| m.as_str().trim().to_string())
                 .unwrap_or_default();
-            let condition_text = captures.get(3).unwrap().as_str().trim();
+            let condition_text = captures.get(3).ok_or_else(|| super::SubagentError::MissingField { field: "condition".to_string() })?.as_str().trim();
 
             let parameters = self.parse_parameters(&raw_parameters)?;
 
@@ -450,7 +450,7 @@ impl InvocationParser {
                 agent_name,
                 parameters,
                 raw_parameters,
-                position: captures.get(0).unwrap().start(),
+                position: captures.get(0).ok_or_else(|| super::SubagentError::MissingField { field: "match".to_string() })?.start(),
                 mode_override: None,
                 intelligence_override: None,
             });
@@ -476,7 +476,7 @@ impl InvocationParser {
     ) -> Result<ExecutionPlan, super::SubagentError> {
         if invocations.len() == 1 {
             return Ok(ExecutionPlan::Single(
-                invocations.into_iter().next().unwrap(),
+                invocations.into_iter().next().ok_or_else(|| super::SubagentError::ExecutionFailed("Empty invocations list".to_string()))?,
             ));
         }
 
@@ -653,7 +653,7 @@ mod tests {
 
     #[test]
     fn test_single_agent_parsing() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().expect("Failed to create parser in test");
         let result = parser
             .parse("@code-reviewer check this file")
             .unwrap()
@@ -670,7 +670,7 @@ mod tests {
 
     #[test]
     fn test_sequential_chain_parsing() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().expect("Failed to create parser in test");
         let result = parser
             .parse("@refactorer fix → @test-writer add tests")
             .unwrap()
@@ -689,7 +689,7 @@ mod tests {
 
     #[test]
     fn test_parallel_execution_parsing() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().expect("Failed to create parser in test");
         let result = parser
             .parse("@performance analyze + @security audit")
             .unwrap()
@@ -707,7 +707,7 @@ mod tests {
 
     #[test]
     fn test_parameter_parsing() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().expect("Failed to create parser in test");
 
         // Test key=value parameters
         let params = parser
@@ -731,7 +731,7 @@ mod tests {
 
     #[test]
     fn test_context_extraction() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().expect("Failed to create parser in test");
         let result = parser.parse("Please @code-reviewer this file and then @test-writer. Make sure everything works.").unwrap().unwrap();
 
         assert_eq!(
@@ -742,7 +742,7 @@ mod tests {
 
     #[test]
     fn test_no_agents() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().expect("Failed to create parser in test");
         let result = parser
             .parse("This is just regular text with no agents.")
             .unwrap();
@@ -751,7 +751,7 @@ mod tests {
 
     #[test]
     fn test_conditional_parsing() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().expect("Failed to create parser in test");
         let result = parser.parse("@debugger if errors").unwrap().unwrap();
 
         match result.execution_plan {
@@ -766,7 +766,7 @@ mod tests {
 
     #[test]
     fn test_file_pattern_conditional() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().expect("Failed to create parser in test");
         let result = parser.parse("@security-scanner if *.rs").unwrap().unwrap();
 
         match result.execution_plan {
@@ -787,7 +787,7 @@ mod tests {
 
     #[test]
     fn test_complex_conditional_parsing() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().expect("Failed to create parser in test");
         let result = parser
             .parse("@performance analyze → @debugger if errors → @refactorer")
             .unwrap()
@@ -806,7 +806,7 @@ mod tests {
 
     #[test]
     fn test_condition_parsing() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().expect("Failed to create parser in test");
 
         // Test error condition
         let (condition, _) = parser.parse_condition("errors").unwrap();
@@ -830,7 +830,7 @@ mod tests {
     fn test_registry_validation() {
         // This test would require a mock registry
         // For now, just test that validation passes without a registry
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().expect("Failed to create parser in test");
         let invocations = vec![AgentInvocation {
             agent_name: "test-agent".to_string(),
             parameters: HashMap::new(),
@@ -846,7 +846,7 @@ mod tests {
 
     #[test]
     fn test_circular_dependency_detection() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().expect("Failed to create parser in test");
         let chain = AgentChain {
             agents: vec![
                 AgentInvocation {

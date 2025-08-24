@@ -22,11 +22,11 @@ pub enum VoyageInputType {
     Query,
 }
 
-impl ToString for VoyageInputType {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for VoyageInputType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VoyageInputType::Document => "document".to_string(),
-            VoyageInputType::Query => "query".to_string(),
+            VoyageInputType::Document => write!(f, "document"),
+            VoyageInputType::Query => write!(f, "query"),
         }
     }
 }
@@ -118,7 +118,7 @@ struct VoyageErrorDetail {
 #[async_trait::async_trait]
 impl EmbeddingProvider for VoyageProvider {
     fn model_id(&self) -> String {
-        format!("voyage:{}:{}", self.model, self.input_type.to_string())
+        format!("voyage:{}:{}", self.model, self.input_type)
     }
 
     fn dimensions(&self) -> usize {

@@ -46,18 +46,18 @@ mod fixtures {
 
     pub fn create_test_registry() -> (SubagentRegistry, TempDir) {
         let temp_dir = TempDir::new().unwrap();
-        // Create a temporary HOME directory structure
-        let home_dir = temp_dir.path().join(".agcodex");
-        std::fs::create_dir_all(&home_dir).unwrap();
-
-        // Set HOME environment variable temporarily for this test
-        unsafe {
-            std::env::set_var("HOME", temp_dir.path());
-        }
-
-        // Use the public constructor
-        let registry = SubagentRegistry::new().unwrap();
-
+        
+        // Create paths within the temp directory
+        let global_agents_dir = temp_dir.path().join(".agcodex").join("agents").join("global");
+        let templates_dir = temp_dir.path().join(".agcodex").join("agents").join("templates");
+        
+        // Use the test-specific constructor that doesn't rely on HOME
+        let registry = SubagentRegistry::new_with_paths(
+            global_agents_dir,
+            None,  // No project agents dir for tests
+            templates_dir,
+        ).unwrap();
+        
         (registry, temp_dir)
     }
 }
@@ -118,14 +118,14 @@ mod registry_tests {
         let configs = vec![
             {
                 let mut config = create_test_config();
-                config.name = "rust-agent".to_string();
+                config.name = "filter-rust-agent".to_string();  // Unique name
                 config.file_patterns = vec!["*.rs".to_string()];
                 config.tags = vec!["rust".to_string(), "backend".to_string()];
                 config
             },
             {
                 let mut config = create_test_config();
-                config.name = "js-agent".to_string();
+                config.name = "filter-js-agent".to_string();  // Unique name
                 config.file_patterns = vec!["*.js".to_string(), "*.ts".to_string()];
                 config.tags = vec!["javascript".to_string(), "frontend".to_string()];
                 config
@@ -149,12 +149,12 @@ mod registry_tests {
         let rust_file = PathBuf::from("src/main.rs");
         let rust_agents = registry.get_agents_for_file(&rust_file);
         let rust_names: Vec<_> = rust_agents.iter().map(|a| &a.config.name).collect();
-        assert!(rust_names.contains(&&"rust-agent".to_string()));
+        assert!(rust_names.contains(&&"filter-rust-agent".to_string()));
 
         // Test tag filtering
         let backend_agents = registry.get_agents_with_tags(&["backend".to_string()]);
         assert_eq!(backend_agents.len(), 1);
-        assert_eq!(backend_agents[0].config.name, "rust-agent");
+        assert_eq!(backend_agents[0].config.name, "filter-rust-agent");
     }
 
     #[test]
@@ -195,7 +195,7 @@ mod invocation_tests {
 
     #[test]
     fn test_single_agent_parsing() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().unwrap();
 
         // Simple invocation
         let result = parser.parse("@code-reviewer").unwrap().unwrap();
@@ -223,7 +223,7 @@ mod invocation_tests {
 
     #[test]
     fn test_sequential_chain_parsing() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().unwrap();
 
         // Simple chain
         let result = parser.parse("@refactorer → @test-writer").unwrap().unwrap();
@@ -240,7 +240,7 @@ mod invocation_tests {
 
     #[test]
     fn test_parallel_execution_parsing() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().unwrap();
 
         // Simple parallel
         let result = parser.parse("@performance + @security").unwrap().unwrap();
@@ -256,7 +256,7 @@ mod invocation_tests {
 
     #[test]
     fn test_parameter_parsing_via_parse() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().unwrap();
 
         // Test parameters through the public parse API
         let result = parser
@@ -295,7 +295,7 @@ mod invocation_tests {
 
     #[test]
     fn test_context_extraction() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().unwrap();
         let result = parser
             .parse("Please @code-reviewer this file and make sure it's secure.")
             .unwrap()
@@ -309,7 +309,7 @@ mod invocation_tests {
 
     #[test]
     fn test_no_agents() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().unwrap();
         let result = parser
             .parse("This is just regular text with no agents.")
             .unwrap();
@@ -318,7 +318,7 @@ mod invocation_tests {
 
     #[test]
     fn test_circular_dependency_detection() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().unwrap();
         let chain = AgentChain {
             agents: vec![
                 AgentInvocation {
@@ -504,7 +504,7 @@ mod integration_tests {
         registry.load_all().unwrap();
 
         // Parse invocation
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().unwrap();
         let invocation = parser
             .parse("@test-agent check src/main.rs")
             .unwrap()
@@ -565,7 +565,7 @@ mod integration_tests {
         registry.load_all().unwrap();
 
         // Parse complex invocation
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().unwrap();
         let invocation = parser
             .parse("@code-reviewer → @refactorer → @test-writer")
             .unwrap()
@@ -617,9 +617,9 @@ mod performance_tests {
 
         for i in 0..50 {
             let mut config = create_test_config();
-            config.name = format!("agent-{}", i);
+            config.name = format!("perf-agent-{}", i);  // Unique prefix to avoid conflicts
 
-            let config_path = global_agents_dir.join(format!("agent-{}.toml", i));
+            let config_path = global_agents_dir.join(format!("perf-agent-{}.toml", i));
             config.to_file(&config_path).unwrap();
         }
 
@@ -641,7 +641,7 @@ mod performance_tests {
 
     #[test]
     fn test_complex_invocation_parsing_performance() {
-        let parser = InvocationParser::new();
+        let parser = InvocationParser::new().unwrap();
 
         // Create a complex invocation string
         let complex_input = "@agent1 param1=value1 → @agent2 + @agent3 file=test.rs → @agent4";
