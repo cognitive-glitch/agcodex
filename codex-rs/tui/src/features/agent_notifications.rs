@@ -166,7 +166,7 @@ impl Notification {
     }
 
     /// Format the notification for display
-    pub fn format(&self) -> Vec<Line> {
+    pub fn format(&self) -> Vec<Line<'_>> {
         let mut lines = Vec::new();
 
         // Header line with icon and agent name

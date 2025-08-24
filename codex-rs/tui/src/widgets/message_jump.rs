@@ -491,11 +491,9 @@ impl MessageJump {
 fn extract_text_content(content: &[ContentItem]) -> String {
     content
         .iter()
-        .filter_map(|item| match item {
-            ContentItem::InputText { text } | ContentItem::OutputText { text } => {
-                Some(text.as_str())
-            }
-            ContentItem::InputImage { .. } => Some("[Image]"),
+        .map(|item| match item {
+            ContentItem::InputText { text } | ContentItem::OutputText { text } => text.as_str(),
+            ContentItem::InputImage { .. } => "[Image]",
         })
         .collect::<Vec<_>>()
         .join(" ")
