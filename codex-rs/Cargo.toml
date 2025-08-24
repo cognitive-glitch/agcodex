@@ -190,7 +190,7 @@ ts-rs = "11"
 tui-input = "0.14.0"
 tui-markdown = "0.3.3"
 unicode-segmentation = "1.12.0"
-unicode-width = "0.1"
+unicode-width = "0.2"
 url = "2"
 urlencoding = "2.1"
 uuid = "1"
@@ -237,6 +237,6 @@ overflow-checks = true # CRITICAL: Enable overflow checks in development to catc
 # See: https://corrode.dev/blog/tips-for-faster-rust-compile-times/
 opt-level = 1
 
-[patch.crates-io]
-# ratatui = { path = "../../ratatui" }
-ratatui = { git = "https://github.com/nornagon/ratatui", branch = "nornagon-v0.29.0-patch" }
+# [patch.crates-io]
+# # ratatui = { path = "../../ratatui" }
+# ratatui = { git = "https://github.com/nornagon/ratatui", branch = "nornagon-v0.29.0-patch" }

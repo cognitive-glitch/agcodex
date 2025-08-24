@@ -81,7 +81,7 @@ tree-sitter-html = { workspace = true }
 tree-sitter-css = { workspace = true }
 tree-sitter-json = { workspace = true }
 tree-sitter-yaml = { workspace = true }
-tree-sitter-toml = { workspace = true }
+# tree-sitter-toml = { workspace = true } # Temporarily disabled - uses tree-sitter 0.20
 
 # Scripting languages
 tree-sitter-ruby = { workspace = true }
@@ -102,13 +102,13 @@ tree-sitter-kotlin-ng = { workspace = true }
 tree-sitter-objc = { workspace = true }
 
 # Config/Build languages
-tree-sitter-dockerfile = { workspace = true }
+# tree-sitter-dockerfile = { workspace = true } # Temporarily disabled - uses tree-sitter 0.20
 tree-sitter-hcl = { workspace = true }
 tree-sitter-nix = { workspace = true }
 tree-sitter-make = { workspace = true }
 
 # Documentation languages
-tree-sitter-markdown = { workspace = true }
+# tree-sitter-markdown = { workspace = true } # Temporarily disabled - uses tree-sitter 0.19
 # tree-sitter-latex = { workspace = true } # Disabled due to linking issues
 tree-sitter-rst = { workspace = true }
 rayon = { workspace = true }
