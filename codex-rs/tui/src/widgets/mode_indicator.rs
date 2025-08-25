@@ -145,9 +145,9 @@ impl ModeIndicator {
             let anim_chars = ["⬤", "◉", "◎", "○"];
             let index = ((1.0 - progress) * anim_chars.len() as f32) as usize;
             let anim = anim_chars.get(index).unwrap_or(&anim_chars[0]);
-            format!("{} {}", anim, visuals.indicator)
+            format!("{} {} MODE", anim, visuals.indicator)
         } else {
-            visuals.indicator.to_string()
+            format!("{} MODE", visuals.indicator)
         }
     }
 }
@@ -169,14 +169,12 @@ impl WidgetRef for ModeIndicator {
         let indicator_span = Span::styled(indicator_text, style);
         let indicator_line = Line::from(vec![indicator_span]);
 
-        // Create block with borders (use different border style during transition)
-        let borders = if self.transition_progress() < 1.0 {
-            Borders::ALL | Borders::NONE // This creates a visual flicker effect
-        } else {
-            Borders::ALL
-        };
-
-        let block = Block::default().borders(borders).border_style(border_style);
+        // Create block with thick borders and title
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(border_style)
+            .border_type(ratatui::widgets::BorderType::Thick)
+            .title(" Mode ");
 
         // If focused, show description below
         if self.focused && area.height > 3 {

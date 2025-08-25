@@ -34,7 +34,7 @@ struct PatchTestEnvironment {
 impl PatchTestEnvironment {
     async fn new() -> Self {
         let env = TestEnvironment::new();
-        let patch_tool = PatchTool::new();
+        let patch_tool = PatchTool::new().expect("Failed to create PatchTool");
         let project_files = Self::create_realistic_project(&env).await;
         
         Self {
@@ -2054,21 +2054,21 @@ struct B {
         // Test concurrent operations on different files
         let handles = vec![
             tokio::spawn({
-                let tool = PatchTool::new();
+                let tool = PatchTool::new().expect("Failed to create PatchTool");
                 let file = env.project_files["main.rs"].clone();
                 async move {
                     tool.rename_symbol("main", "main_function", RenameScope::File(file)).await
                 }
             }),
             tokio::spawn({
-                let tool = PatchTool::new();
+                let tool = PatchTool::new().expect("Failed to create PatchTool");
                 let file = env.project_files["user.rs"].clone();
                 async move {
                     tool.rename_symbol("User", "UserModel", RenameScope::File(file)).await
                 }
             }),
             tokio::spawn({
-                let tool = PatchTool::new();
+                let tool = PatchTool::new().expect("Failed to create PatchTool");
                 let file = env.project_files["database.rs"].clone();
                 async move {
                     tool.rename_symbol("DatabaseConnection", "DbConn", RenameScope::File(file)).await
@@ -2688,7 +2688,7 @@ impl UserService {
 #[tokio::test]
 async fn test_integration_with_test_helpers() {
     let env = TestEnvironment::new();
-    let patch_tool = PatchTool::new();
+    let patch_tool = PatchTool::new().expect("Failed to create PatchTool");
     
     // Create sample files using test helpers
     let files = env.create_sample_files();

@@ -95,6 +95,9 @@ pub(crate) enum AppEvent {
     /// Cycle to the next operating mode (Plan → Build → Review → Plan).
     CycleModes,
 
+    /// Clear the previous mode after transition animation completes.
+    ClearPreviousMode,
+
     /// Request to show the message jump popup.
     ShowMessageJump,
 

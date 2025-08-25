@@ -34,6 +34,7 @@ pub mod orchestrator;
 pub mod parser;
 pub mod registry;
 pub mod worktree;
+pub mod yaml_loader;
 
 // Re-export main types for convenience
 pub use agents::AgentRegistry;
@@ -316,3 +317,7 @@ mod basic_tests {
 // Include comprehensive test suite from tests.rs
 #[cfg(test)]
 mod tests;
+
+// Include YAML integration tests
+#[cfg(test)]
+mod test_yaml_integration;

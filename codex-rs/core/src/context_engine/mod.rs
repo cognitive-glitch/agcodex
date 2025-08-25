@@ -15,6 +15,8 @@ pub mod semantic_index;
 pub use ast_compactor::AstCompactor;
 pub use ast_compactor::CompactOptions;
 pub use ast_compactor::CompactResult;
+pub use ast_compactor::CompressionLevel;
+pub use ast_compactor::ThreadCompressionMetrics;
 pub use cache::Cache;
 pub use cache::InMemoryCache;
 pub use embeddings::EmbeddingError;

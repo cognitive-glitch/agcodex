@@ -46,16 +46,18 @@ pub struct EmbeddingsManager {
 impl EmbeddingsManager {
     /// Create a new embeddings manager
     pub fn new(config: Option<EmbeddingsConfig>) -> Self {
-        if config.is_none() {
-            info!("Embeddings disabled - zero overhead mode");
-            return Self::disabled();
-        }
-
-        let config = config.expect("Config should be Some when calling this code path");
-        if !config.enabled {
-            info!("Embeddings explicitly disabled in config");
-            return Self::disabled();
-        }
+        // Use pattern matching to handle the Option elegantly
+        let config = match config {
+            None => {
+                info!("Embeddings disabled - zero overhead mode");
+                return Self::disabled();
+            }
+            Some(cfg) if !cfg.enabled => {
+                info!("Embeddings explicitly disabled in config");
+                return Self::disabled();
+            }
+            Some(cfg) => cfg,
+        };
 
         info!("Initializing embeddings manager");
 

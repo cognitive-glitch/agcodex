@@ -720,8 +720,8 @@ impl MultiLayerSearchEngine {
 
         let mut matrix = vec![vec![0; b_len + 1]; a_len + 1];
 
-        for i in 0..=a_len {
-            matrix[i][0] = i;
+        for (i, row) in matrix.iter_mut().enumerate().take(a_len + 1) {
+            row[0] = i;
         }
         for j in 0..=b_len {
             matrix[0][j] = j;

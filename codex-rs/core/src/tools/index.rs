@@ -495,9 +495,10 @@ impl IndexTool {
                 } else {
                     output.push(format!("L{}: {}", i + 1, line.trim()));
                 }
-            } else if trimmed.starts_with("struct ") || trimmed.starts_with("pub struct ") {
-                output.push(format!("L{}: {}", i + 1, line.trim()));
-            } else if trimmed.starts_with("impl ") {
+            } else if trimmed.starts_with("struct ")
+                || trimmed.starts_with("pub struct ")
+                || trimmed.starts_with("impl ")
+            {
                 output.push(format!("L{}: {}", i + 1, line.trim()));
             } else if trimmed.starts_with("///") || trimmed.starts_with("//!") {
                 // Keep doc comments

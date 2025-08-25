@@ -24,22 +24,21 @@ pub struct AgentParser {
 
 impl AgentParser {
     /// Create a new agent parser
-    pub fn new() -> Self {
-        Self {
-            base_parser: InvocationParser::new().expect("Failed to create InvocationParser"),
+    pub fn new() -> Result<Self, SubagentError> {
+        Ok(Self {
+            base_parser: InvocationParser::new()?,
             _registry: None,
             default_mode: OperatingMode::Build,
-        }
+        })
     }
 
     /// Create parser with registry for validation
-    pub fn with_registry(registry: Arc<SubagentRegistry>) -> Self {
-        Self {
-            base_parser: InvocationParser::with_registry(registry.clone())
-                .expect("Failed to create InvocationParser with registry"),
+    pub fn with_registry(registry: Arc<SubagentRegistry>) -> Result<Self, SubagentError> {
+        Ok(Self {
+            base_parser: InvocationParser::with_registry(registry.clone())?,
             _registry: Some(registry),
             default_mode: OperatingMode::Build,
-        }
+        })
     }
 
     /// Set the default operating mode
@@ -232,11 +231,8 @@ pub enum ChainOperator {
     Mixed,
 }
 
-impl Default for AgentParser {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Note: No Default implementation since new() can fail.
+// Use AgentParser::new() explicitly to handle potential errors.
 
 #[cfg(test)]
 mod tests {
@@ -244,7 +240,7 @@ mod tests {
 
     #[test]
     fn test_parse_single_agent() {
-        let parser = AgentParser::new();
+        let parser = AgentParser::new().unwrap();
         let result = parser.parse("@agent-refactor clean up this code").unwrap();
 
         assert!(result.is_some());
@@ -254,7 +250,7 @@ mod tests {
 
     #[test]
     fn test_parse_sequential_chain() {
-        let parser = AgentParser::new();
+        let parser = AgentParser::new().unwrap();
         let result = parser
             .parse("@agent-refactor → @agent-test → @agent-document")
             .unwrap();
@@ -269,7 +265,7 @@ mod tests {
 
     #[test]
     fn test_parse_parallel_execution() {
-        let parser = AgentParser::new();
+        let parser = AgentParser::new().unwrap();
         let result = parser
             .parse("@agent-security + @agent-performance + @agent-docs")
             .unwrap();
@@ -281,7 +277,7 @@ mod tests {
 
     #[test]
     fn test_extract_parameters() {
-        let parser = AgentParser::new();
+        let parser = AgentParser::new().unwrap();
         let params = parser
             .extract_parameters("@agent-refactor --mode=review --intelligence=hard --timeout=300");
 
@@ -292,7 +288,7 @@ mod tests {
 
     #[test]
     fn test_extract_context() {
-        let parser = AgentParser::new();
+        let parser = AgentParser::new().unwrap();
         let context = parser
             .extract_context("Please @agent-refactor this code and then @agent-test it thoroughly");
 
@@ -301,7 +297,7 @@ mod tests {
 
     #[test]
     fn test_chain_operator_detection() {
-        let parser = AgentParser::new();
+        let parser = AgentParser::new().unwrap();
 
         assert_eq!(
             parser.parse_chain_operators("@agent-refactor"),
@@ -323,7 +319,7 @@ mod tests {
 
     #[test]
     fn test_circular_dependency_detection() {
-        let parser = AgentParser::new();
+        let parser = AgentParser::new().unwrap();
 
         // No circular dependency
         assert!(

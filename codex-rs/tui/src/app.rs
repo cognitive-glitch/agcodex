@@ -5,6 +5,7 @@ use crate::chatwidget::ChatWidget;
 use crate::file_search::FileSearchManager;
 use crate::get_git_diff::get_git_diff;
 use crate::get_login_status;
+use crate::notification::NotificationLevel;
 use crate::notification::NotificationSystem;
 use crate::onboarding::onboarding_screen::KeyboardHandler;
 use crate::onboarding::onboarding_screen::OnboardingScreen;
@@ -169,6 +170,9 @@ pub(crate) struct App<'a> {
 
     /// Mode manager for operating mode switching
     mode_manager: ModeManager,
+
+    /// Previous mode for transition animations
+    previous_mode: Option<OperatingMode>,
 
     /// Agent panel for subagent management
     agent_panel: AgentPanel,
@@ -380,6 +384,7 @@ impl App<'_> {
             commit_anim_running: Arc::new(AtomicBool::new(false)),
             frame_schedule_tx: frame_tx,
             mode_manager: ModeManager::new(OperatingMode::Build), // Default to Build mode
+            previous_mode: None,
             agent_panel: AgentPanel::new(),
             notification_system,
             session_manager,
@@ -415,6 +420,10 @@ impl App<'_> {
             match event {
                 AppEvent::InsertHistory(lines) => {
                     self.pending_history_lines.extend(lines);
+                    self.app_event_tx.send(AppEvent::RequestRedraw);
+                }
+                AppEvent::ClearPreviousMode => {
+                    self.previous_mode = None;
                     self.app_event_tx.send(AppEvent::RequestRedraw);
                 }
                 AppEvent::RequestRedraw => {
@@ -749,8 +758,20 @@ impl App<'_> {
                     }
                 }
                 AppEvent::CycleModes => {
+                    let current_mode = self.mode_manager.current_mode();
+                    self.previous_mode = Some(current_mode);
                     let new_mode = self.mode_manager.cycle();
-                    tracing::info!("Switched to {:?} mode", new_mode);
+                    tracing::info!("Switched to {:?} mode (from {:?})", new_mode, current_mode);
+
+                    // Send a notification about the mode change
+                    self.notification_system.notify_with_message(
+                        NotificationLevel::Info,
+                        &format!(
+                            "Mode: {} - {}",
+                            new_mode.visuals().indicator,
+                            new_mode.visuals().description
+                        ),
+                    );
 
                     // TODO: Update orchestrator operating mode when available
                     // In a real implementation, you'd want to recreate the orchestrator
@@ -1744,17 +1765,19 @@ impl App<'_> {
                 // Determine if agent panel is visible
                 let agent_panel_visible = self.agent_panel.is_visible();
 
-                // Create main layout
+                // Create main layout with status bar
                 let main_constraints = if agent_panel_visible {
                     vec![
                         Constraint::Length(3),  // Mode indicator height
                         Constraint::Min(0),     // Chat widget
                         Constraint::Length(15), // Agent panel height
+                        Constraint::Length(1),  // Status bar
                     ]
                 } else {
                     vec![
                         Constraint::Length(3), // Mode indicator height
                         Constraint::Min(0),    // Chat widget takes the rest
+                        Constraint::Length(1), // Status bar
                     ]
                 };
 
@@ -1768,12 +1791,16 @@ impl App<'_> {
                     .direction(Direction::Horizontal)
                     .constraints([
                         Constraint::Min(0),     // Empty space on the left
-                        Constraint::Length(15), // Mode indicator width
+                        Constraint::Length(25), // Mode indicator width (increased for better visibility)
                     ])
                     .split(main_layout[0]);
 
-                // Render mode indicator
-                let mode_indicator = ModeIndicator::new(current_mode);
+                // Render mode indicator with transition if we have a previous mode
+                let mode_indicator = if let Some(prev_mode) = self.previous_mode {
+                    ModeIndicator::with_transition(current_mode, prev_mode)
+                } else {
+                    ModeIndicator::new(current_mode)
+                };
                 frame.render_widget(mode_indicator, top_layout[1]);
 
                 // Render chat widget
@@ -1784,17 +1811,26 @@ impl App<'_> {
                 frame.render_widget_ref(&**widget, chat_area);
 
                 // Render agent panel if visible
-                if agent_panel_visible && main_layout.len() > 2 {
+                if agent_panel_visible && main_layout.len() > 3 {
                     frame.render_widget_ref(&self.agent_panel, main_layout[2]);
                 }
+
+                // Render status bar at the bottom
+                let status_area = if agent_panel_visible {
+                    main_layout[3]
+                } else {
+                    main_layout[2]
+                };
+                self.render_status_bar(frame, status_area, current_mode);
             }
             AppState::Onboarding { screen } => {
-                // For onboarding, still show mode indicator but simpler layout
+                // For onboarding, still show mode indicator and status bar
                 let layout = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([
                         Constraint::Length(3), // Mode indicator height
                         Constraint::Min(0),    // Onboarding screen takes the rest
+                        Constraint::Length(1), // Status bar
                     ])
                     .split(frame.area());
 
@@ -1802,19 +1838,124 @@ impl App<'_> {
                     .direction(Direction::Horizontal)
                     .constraints([
                         Constraint::Min(0),     // Empty space on the left
-                        Constraint::Length(15), // Mode indicator width
+                        Constraint::Length(25), // Mode indicator width (increased for better visibility)
                     ])
                     .split(layout[0]);
 
-                // Render mode indicator
-                let mode_indicator = ModeIndicator::new(current_mode);
+                // Render mode indicator with transition if we have a previous mode
+                let mode_indicator = if let Some(prev_mode) = self.previous_mode {
+                    ModeIndicator::with_transition(current_mode, prev_mode)
+                } else {
+                    ModeIndicator::new(current_mode)
+                };
                 frame.render_widget(mode_indicator, top_layout[1]);
 
                 // Render onboarding screen
                 frame.render_widget_ref(&*screen, layout[1]);
+
+                // Render status bar
+                self.render_status_bar(frame, layout[2], current_mode);
             }
         })?;
         Ok(())
+    }
+
+    /// Render the status bar with mode information and help text
+    fn render_status_bar(
+        &self,
+        frame: &mut crate::custom_terminal::Frame,
+        area: ratatui::layout::Rect,
+        mode: OperatingMode,
+    ) {
+        use ratatui::style::Color;
+        use ratatui::style::Modifier;
+        use ratatui::style::Style;
+        use ratatui::text::Line;
+        use ratatui::text::Span;
+        use ratatui::widgets::Paragraph;
+
+        let mode_visuals = mode.visuals();
+        let mode_color = match mode_visuals.color {
+            agcodex_core::modes::ModeColor::Blue => Color::Blue,
+            agcodex_core::modes::ModeColor::Green => Color::Green,
+            agcodex_core::modes::ModeColor::Yellow => Color::Yellow,
+        };
+
+        // Build status line with mode info and help text
+        let mut spans = vec![
+            Span::styled(
+                format!(" {} ", mode_visuals.indicator),
+                Style::default()
+                    .bg(mode_color)
+                    .fg(Color::Black)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" "),
+            Span::styled(mode_visuals.description, Style::default().fg(mode_color)),
+            Span::raw(" • "),
+            Span::styled(
+                "Shift+Tab: Switch Mode",
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::DIM),
+            ),
+            Span::raw(" • "),
+            Span::styled(
+                "Ctrl+S: Sessions",
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::DIM),
+            ),
+            Span::raw(" • "),
+            Span::styled(
+                "Ctrl+H: History",
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::DIM),
+            ),
+            Span::raw(" • "),
+            Span::styled(
+                "Ctrl+A: Agents",
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::DIM),
+            ),
+            Span::raw(" • "),
+            Span::styled(
+                "Ctrl+?: Help",
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::DIM),
+            ),
+        ];
+
+        // Add mode-specific restrictions if any
+        match mode {
+            OperatingMode::Plan => {
+                spans.push(Span::raw(" "));
+                spans.push(Span::styled(
+                    "[READ-ONLY]",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ));
+            }
+            OperatingMode::Review => {
+                spans.push(Span::raw(" "));
+                spans.push(Span::styled(
+                    "[LIMITED EDITS]",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::ITALIC),
+                ));
+            }
+            OperatingMode::Build => {
+                // No restrictions to show
+            }
+        }
+
+        let status_line = Line::from(spans);
+        let status = Paragraph::new(status_line).style(Style::default().bg(Color::Rgb(24, 24, 24)));
+
+        frame.render_widget(status, area);
     }
 
     /// Dispatch a KeyEvent to the current view and let it decide what to do

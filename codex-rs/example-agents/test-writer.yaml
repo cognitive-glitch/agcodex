@@ -1,0 +1,121 @@
+# Example YAML configuration for a test writer subagent
+# Place this file in ~/.agcodex/agents/ or ./.agcodex/agents/
+
+name: test-writer
+description: Generates comprehensive test suites for code
+mode_override: build  # Full access mode for creating test files
+intelligence: medium  # Balanced intelligence (85% compression)
+
+# Tool permissions
+tools:
+  - name: read
+    permission: allow
+  - name: write
+    permission: allow
+  - name: edit
+    permission: allow
+  - name: search
+    permission: allow
+  - name: tree
+    permission: allow
+  - name: bash
+    permission: restricted
+    restrictions:
+      allowed_commands: "cargo test,pytest,npm test,go test"
+      max_duration: "300"
+  - name: glob
+    permission: allow
+
+# Custom prompt for this agent
+prompt: |
+  You are an expert test engineer specializing in comprehensive test coverage.
+  
+  Your responsibilities:
+  - Analyze existing code to understand functionality
+  - Identify edge cases and boundary conditions
+  - Write unit tests with high coverage
+  - Create integration tests for component interactions
+  - Add property-based tests where appropriate
+  - Ensure tests are maintainable and well-documented
+  
+  Testing principles:
+  - Each test should have a single assertion focus
+  - Use descriptive test names that explain what is being tested
+  - Include both positive and negative test cases
+  - Mock external dependencies appropriately
+  - Ensure tests are deterministic and reproducible
+  
+  For each function/method, create tests that cover:
+  - Normal operation cases
+  - Edge cases and boundary values
+  - Error conditions and exceptions
+  - Performance characteristics (if relevant)
+
+# Parameters for customization
+parameters:
+  - name: test_framework
+    description: Testing framework to use
+    required: true
+    valid_values:
+      - pytest
+      - unittest
+      - jest
+      - mocha
+      - cargo
+      - go-test
+  
+  - name: coverage_target
+    description: Target test coverage percentage
+    required: false
+    default: "80"
+  
+  - name: test_style
+    description: Testing style preference
+    required: false
+    default: unit
+    valid_values:
+      - unit
+      - integration
+      - e2e
+      - property
+      - all
+  
+  - name: mock_strategy
+    description: How to handle external dependencies
+    required: false
+    default: auto
+    valid_values:
+      - auto
+      - manual
+      - none
+
+# Execution configuration
+timeout_seconds: 900  # 15 minutes
+chainable: true        # Can follow code-reviewer agent
+parallelizable: false  # Sequential execution preferred
+
+# Metadata
+metadata:
+  version: "1.0.0"
+  test_patterns:
+    python: "*_test.py,test_*.py"
+    javascript: "*.test.js,*.spec.js"
+    rust: "tests/*.rs,*_test.rs"
+    go: "*_test.go"
+
+# Specialized file patterns
+file_patterns:
+  - "*.py"
+  - "*.js"
+  - "*.ts"
+  - "*.rs"
+  - "*.go"
+  - "*.java"
+
+# Tags
+tags:
+  - testing
+  - quality-assurance
+  - automation
+  - coverage
+  - tdd

@@ -62,7 +62,7 @@ impl BugFixTestEnvironment {
         // Initialize tools
         let search_tool = SearchTool::new();
         let edit_tool = EditTool::new();
-        let patch_tool = PatchTool::new();
+        let patch_tool = PatchTool::new().expect("Failed to create PatchTool");
         
         let search_config = SearchConfig {
             max_cache_size: 100,

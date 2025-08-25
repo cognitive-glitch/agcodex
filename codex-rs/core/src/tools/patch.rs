@@ -79,11 +79,11 @@ pub struct PatchTool {
 
 impl PatchTool {
     /// Create a new simplified patch tool
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> PatchResult<Self> {
+        Ok(Self {
             _tree_tool: TreeTool::new(IntelligenceLevel::Medium)
-                .expect("Failed to initialize TreeTool"),
-        }
+                .map_err(|e| PatchError::TreeSitter(e.to_string()))?,
+        })
     }
 
     /// Rename a symbol across files with bulk efficiency
@@ -461,12 +461,6 @@ impl PatchTool {
     }
 }
 
-impl Default for PatchTool {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -480,7 +474,7 @@ mod tests {
 
         fs::write(&file_path, "fn old_name() {}\nlet x = old_name();").unwrap();
 
-        let tool = PatchTool::new();
+        let tool = PatchTool::new().unwrap();
         let stats = tool
             .rename_symbol("old_name", "new_name", RenameScope::File(file_path.clone()))
             .await
@@ -509,7 +503,7 @@ fn main() {
         )
         .unwrap();
 
-        let tool = PatchTool::new();
+        let tool = PatchTool::new().unwrap();
         let stats = tool
             .extract_function(file_path.to_str().unwrap(), 2, 4, "calculate_and_print")
             .await

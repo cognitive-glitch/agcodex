@@ -12,11 +12,18 @@ pub mod output;
 pub mod patch;
 pub mod plan;
 pub mod think;
+#[cfg(test)]
+mod think_intensity_test;
 pub mod tree;
 
 // Unified tool registry and adapters
 pub mod adapters;
 pub mod registry;
+
+// Re-export mode management functions from adapters
+pub use adapters::init_mode_manager;
+pub use adapters::set_mode_manager;
+pub use adapters::update_mode;
 
 #[cfg(test)]
 mod integration_test_glob;

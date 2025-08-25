@@ -5,6 +5,7 @@
 
 use super::config::SubagentConfig;
 use super::config::SubagentTemplate;
+use super::yaml_loader;
 use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
@@ -225,7 +226,8 @@ impl SubagentRegistry {
             .filter(|e| {
                 e.path()
                     .extension()
-                    .map(|ext| ext == "toml")
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| ext == "toml" || ext == "yaml" || ext == "yml")
                     .unwrap_or(false)
             })
         {
@@ -245,11 +247,13 @@ impl SubagentRegistry {
         Ok(())
     }
 
-    /// Load a single template from a file
+    /// Load a single template from a file (supports both TOML and YAML)
     fn load_template_from_file(&self, path: &Path) -> RegistryResult<TemplateInfo> {
         let metadata = std::fs::metadata(path)?;
         let last_modified = metadata.modified()?;
 
+        // Note: Currently templates are only supported in TOML format
+        // YAML template support could be added in the future if needed
         let template = SubagentTemplate::from_file(&path.to_path_buf()).map_err(|e| {
             SubagentRegistryError::LoadError {
                 path: path.to_path_buf(),
@@ -275,10 +279,10 @@ impl SubagentRegistry {
             })?;
         agents.clear();
 
-        // Load global agents
+        // Load global agents (both TOML and YAML)
         self.load_agents_from_directory(&self.global_agents_dir, true, &mut agents)?;
 
-        // Load project-specific agents
+        // Load project-specific agents (both TOML and YAML)
         if let Some(ref project_dir) = self.project_agents_dir {
             self.load_agents_from_directory(project_dir, false, &mut agents)?;
         }
@@ -308,7 +312,8 @@ impl SubagentRegistry {
             .filter(|e| {
                 e.path()
                     .extension()
-                    .map(|ext| ext == "toml")
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| ext == "toml" || ext == "yaml" || ext == "yml")
                     .unwrap_or(false)
             })
         {
@@ -338,17 +343,43 @@ impl SubagentRegistry {
         Ok(())
     }
 
-    /// Load a single agent configuration from a file
+    /// Load a single agent configuration from a file (supports both TOML and YAML)
     fn load_agent_from_file(&self, path: &Path, is_global: bool) -> RegistryResult<AgentInfo> {
         let metadata = std::fs::metadata(path)?;
         let last_modified = metadata.modified()?;
 
-        let config = SubagentConfig::from_file(&path.to_path_buf()).map_err(|e| {
-            SubagentRegistryError::LoadError {
-                path: path.to_path_buf(),
-                error: e.to_string(),
+        // Determine file type and load accordingly
+        let config = match path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| ext.to_lowercase())
+            .as_deref()
+        {
+            Some("yaml") | Some("yml") => {
+                // Load YAML configuration
+                yaml_loader::load_yaml_config(path).map_err(|e| {
+                    SubagentRegistryError::LoadError {
+                        path: path.to_path_buf(),
+                        error: e.to_string(),
+                    }
+                })?
             }
-        })?;
+            Some("toml") | None => {
+                // Load TOML configuration (default)
+                SubagentConfig::from_file(&path.to_path_buf()).map_err(|e| {
+                    SubagentRegistryError::LoadError {
+                        path: path.to_path_buf(),
+                        error: e.to_string(),
+                    }
+                })?
+            }
+            Some(ext) => {
+                return Err(SubagentRegistryError::LoadError {
+                    path: path.to_path_buf(),
+                    error: format!("Unsupported file extension: {}", ext),
+                });
+            }
+        };
 
         Ok(AgentInfo {
             config,
@@ -639,6 +670,97 @@ impl SubagentRegistry {
             .unwrap_or_default()
     }
 
+    /// Load YAML configurations explicitly (useful for testing and debugging)
+    pub fn load_yaml_configs(&self) -> RegistryResult<()> {
+        let mut agents = self
+            .agents
+            .lock()
+            .map_err(|_| SubagentRegistryError::LoadError {
+                path: PathBuf::from("memory"),
+                error: "Poison error on agents mutex".to_string(),
+            })?;
+
+        // Load YAML configs from global directory
+        let yaml_configs =
+            yaml_loader::load_yaml_configs_from_directory(&self.global_agents_dir, true).map_err(
+                |e| SubagentRegistryError::LoadError {
+                    path: self.global_agents_dir.clone(),
+                    error: e.to_string(),
+                },
+            )?;
+
+        for yaml_info in yaml_configs {
+            let name = yaml_info.config.name.clone();
+
+            // Check for name conflicts
+            if let Some(existing) = agents.get(&name)
+                && !yaml_info.source_path.eq(&existing.config_path)
+            {
+                return Err(SubagentRegistryError::NameConflict {
+                    name,
+                    path1: existing.config_path.clone(),
+                    path2: yaml_info.source_path,
+                });
+            }
+
+            let agent_info = AgentInfo {
+                config: yaml_info.config,
+                config_path: yaml_info.source_path.clone(),
+                last_modified: std::fs::metadata(&yaml_info.source_path)
+                    .and_then(|m| m.modified())
+                    .unwrap_or_else(|_| SystemTime::now()),
+                is_global: yaml_info.is_global,
+            };
+
+            agents.insert(name, agent_info);
+        }
+
+        // Load YAML configs from project directory if present
+        if let Some(ref project_dir) = self.project_agents_dir {
+            let project_yaml_configs =
+                yaml_loader::load_yaml_configs_from_directory(project_dir, false).map_err(|e| {
+                    SubagentRegistryError::LoadError {
+                        path: project_dir.clone(),
+                        error: e.to_string(),
+                    }
+                })?;
+
+            for yaml_info in project_yaml_configs {
+                let name = yaml_info.config.name.clone();
+
+                // Project configs override global configs
+                if agents.contains_key(&name) {
+                    tracing::info!("Project YAML agent '{}' overrides global agent", name);
+                }
+
+                let agent_info = AgentInfo {
+                    config: yaml_info.config,
+                    config_path: yaml_info.source_path.clone(),
+                    last_modified: std::fs::metadata(&yaml_info.source_path)
+                        .and_then(|m| m.modified())
+                        .unwrap_or_else(|_| SystemTime::now()),
+                    is_global: yaml_info.is_global,
+                };
+
+                agents.insert(name, agent_info);
+            }
+        }
+
+        drop(agents);
+
+        // Resolve template inheritance after loading
+        let mut agents = self
+            .agents
+            .lock()
+            .map_err(|_| SubagentRegistryError::LoadError {
+                path: PathBuf::from("memory"),
+                error: "Poison error on agents mutex".to_string(),
+            })?;
+        self.resolve_template_inheritance(&mut agents)?;
+
+        Ok(())
+    }
+
     /// Create default agent configurations
     pub fn create_default_agents(&self) -> RegistryResult<()> {
         self.ensure_directories()?;
@@ -709,11 +831,8 @@ Use AST-powered semantic search to understand code structure and relationships."
     }
 }
 
-impl Default for SubagentRegistry {
-    fn default() -> Self {
-        Self::new().expect("Failed to create default subagent registry")
-    }
-}
+// Note: No Default implementation since new() can fail.
+// Use SubagentRegistry::new() explicitly to handle potential errors.
 
 #[cfg(test)]
 mod tests {

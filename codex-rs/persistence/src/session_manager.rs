@@ -406,7 +406,13 @@ impl SessionManager {
             .join("checkpoints")
             .join(format!("{}_{}.ckpt", session_id, checkpoint_id));
 
-        tokio::fs::create_dir_all(checkpoint_path.parent().unwrap()).await?;
+        let parent_dir = checkpoint_path.parent().ok_or_else(|| {
+            PersistenceError::InvalidPath(format!(
+                "No parent directory for checkpoint path: {:?}",
+                checkpoint_path
+            ))
+        })?;
+        tokio::fs::create_dir_all(parent_dir).await?;
 
         let checkpoint_bytes =
             bincode::serde::encode_to_vec(&checkpoint, bincode::config::standard())?;

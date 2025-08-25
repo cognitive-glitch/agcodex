@@ -137,11 +137,8 @@ pub struct InvocationParser {
     registry: Option<std::sync::Arc<super::SubagentRegistry>>,
 }
 
-impl Default for InvocationParser {
-    fn default() -> Self {
-        Self::new().expect("Failed to create default InvocationParser")
-    }
-}
+// Note: No Default implementation since new() can fail.
+// Use InvocationParser::new() explicitly to handle potential errors.
 
 impl InvocationParser {
     /// Create a new invocation parser

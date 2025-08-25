@@ -99,4 +99,8 @@ pub enum PersistenceError {
     /// JSON serialization error
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
+
+    /// Invalid path encountered
+    #[error("Invalid path: {0}")]
+    InvalidPath(String),
 }

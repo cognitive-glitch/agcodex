@@ -24,6 +24,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::future::Future;
+use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -181,13 +182,13 @@ impl CodeReviewerAgent {
     async fn analyze_functions(
         &self,
         ast_tools: &mut ASTAgentTools,
-        file: &PathBuf,
+        file: &Path,
     ) -> SubagentResult<Vec<Finding>> {
         let mut findings = Vec::new();
 
         // Extract functions from file
         let result = ast_tools.execute(AgentToolOp::ExtractFunctions {
-            file: file.clone(),
+            file: file.to_path_buf(),
             language: self.detect_language(file),
         })?;
 
@@ -213,7 +214,7 @@ impl CodeReviewerAgent {
                             func.name, complexity.cyclomatic_complexity
                         ),
                         location: Some(Location {
-                            file: file.clone(),
+                            file: file.to_path_buf(),
                             line: func.start_line,
                             column: 0,
                             byte_offset: 0,
@@ -247,7 +248,7 @@ impl CodeReviewerAgent {
                             func.name, line_count
                         ),
                         location: Some(Location {
-                            file: file.clone(),
+                            file: file.to_path_buf(),
                             line: func.start_line,
                             column: 0,
                             byte_offset: 0,
@@ -272,7 +273,7 @@ impl CodeReviewerAgent {
                             func.parameters.len()
                         ),
                         location: Some(Location {
-                            file: file.clone(),
+                            file: file.to_path_buf(),
                             line: func.start_line,
                             column: 0,
                             byte_offset: 0,
@@ -471,7 +472,7 @@ impl Subagent for CodeReviewerAgent {
 }
 
 impl CodeReviewerAgent {
-    fn get_files_to_analyze(&self, working_dir: &PathBuf) -> SubagentResult<Vec<PathBuf>> {
+    fn get_files_to_analyze(&self, working_dir: &Path) -> SubagentResult<Vec<PathBuf>> {
         let mut files = Vec::new();
 
         // Walk directory and collect source files
@@ -955,7 +956,7 @@ impl Subagent for TestWriterAgent {
 }
 
 impl TestWriterAgent {
-    fn get_source_files(&self, working_dir: &PathBuf) -> SubagentResult<Vec<PathBuf>> {
+    fn get_source_files(&self, working_dir: &Path) -> SubagentResult<Vec<PathBuf>> {
         let mut files = Vec::new();
 
         for entry in WalkDir::new(working_dir).follow_links(false).max_depth(8) {

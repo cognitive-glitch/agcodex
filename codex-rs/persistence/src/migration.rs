@@ -143,7 +143,9 @@ impl MigrationManager {
 
             if path.extension().and_then(|ext| ext.to_str()) == Some("agcx") {
                 // Backup the file
-                let file_name = path.file_name().unwrap();
+                let file_name = path.file_name().ok_or_else(|| {
+                    PersistenceError::InvalidPath(format!("No filename in path: {:?}", path))
+                })?;
                 let backup_file = backup_path.join(file_name);
                 fs::copy(&path, &backup_file)?;
 
@@ -219,7 +221,9 @@ impl MigrationManager {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_file() {
-                let file_name = path.file_name().unwrap();
+                let file_name = path.file_name().ok_or_else(|| {
+                    PersistenceError::InvalidPath(format!("No filename in path: {:?}", path))
+                })?;
                 let backup_file = backup_path.join(file_name);
                 fs::copy(&path, &backup_file)?;
             }
@@ -251,7 +255,9 @@ impl MigrationManager {
         for entry in backup_entries.flatten() {
             let source = entry.path();
             if source.is_file() {
-                let file_name = source.file_name().unwrap();
+                let file_name = source.file_name().ok_or_else(|| {
+                    PersistenceError::InvalidPath(format!("No filename in path: {:?}", source))
+                })?;
                 let dest = self.base_path.join(file_name);
                 fs::copy(&source, &dest)?;
             }

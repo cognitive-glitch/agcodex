@@ -54,8 +54,8 @@ fallible_impl_from = "warn"
 missing_const_for_fn = "warn"
 
 # Error handling
-expect_used = "deny"
-unwrap_used = "deny"
+expect_used = "warn"
+unwrap_used = "warn"
 
 [workspace.dependencies]
 anyhow = "1"

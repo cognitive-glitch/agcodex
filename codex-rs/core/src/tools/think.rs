@@ -7,6 +7,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::fmt;
 use thiserror::Error;
 
 /// Tool recommendation for a thinking step
@@ -285,6 +286,9 @@ pub enum ThinkError {
 
     #[error("confidence calculation error: {0}")]
     ConfidenceError(String),
+
+    #[error("thinking strategy error: {0}")]
+    StrategyError(String),
 }
 
 /// A single step in the reasoning process
@@ -350,6 +354,330 @@ pub struct ThinkResult {
     pub confidence: f32,
     /// Thought data for sequential thinking
     pub thought_data: Option<ThoughtData>,
+    /// Thinking intensity used
+    pub intensity: Option<ThinkingIntensity>,
+    /// Progress indication
+    pub progress: Option<ThinkingProgress>,
+}
+
+/// Thinking intensity levels
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ThinkingIntensity {
+    /// Quick thinking (1x iterations)
+    Quick,
+    /// Deep thinking (2x iterations)
+    Deep,
+    /// Very deep thinking (3x iterations)
+    VeryDeep,
+}
+
+impl ThinkingIntensity {
+    /// Get the multiplier for iterations based on intensity
+    pub const fn multiplier(&self) -> usize {
+        match self {
+            Self::Quick => 1,
+            Self::Deep => 2,
+            Self::VeryDeep => 3,
+        }
+    }
+
+    /// Detect intensity from prompt keywords
+    pub fn from_prompt(prompt: &str) -> Self {
+        let prompt_lower = prompt.to_lowercase();
+
+        if prompt_lower.contains("think really hard")
+            || prompt_lower.contains("think very deeply")
+            || prompt_lower.contains("think extremely hard")
+            || prompt_lower.contains("maximum thinking")
+            || prompt_lower.contains("think very hard")
+        {
+            Self::VeryDeep
+        } else if prompt_lower.contains("think deeply")
+            || prompt_lower.contains("think hard")
+            || prompt_lower.contains("deep thinking")
+            || prompt_lower.contains("thorough thinking")
+        {
+            Self::Deep
+        } else {
+            Self::Quick
+        }
+    }
+}
+
+impl fmt::Display for ThinkingIntensity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Quick => write!(f, "Quick"),
+            Self::Deep => write!(f, "Deep"),
+            Self::VeryDeep => write!(f, "Very Deep"),
+        }
+    }
+}
+
+/// Progress tracking for thinking operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThinkingProgress {
+    /// Current step
+    pub current_step: usize,
+    /// Total steps
+    pub total_steps: usize,
+    /// Strategy being used
+    pub strategy: String,
+    /// Current phase description
+    pub phase: String,
+    /// Intensity level
+    pub intensity: ThinkingIntensity,
+}
+
+/// Sequential thinking strategy - iterative thought refinement
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SequentialThinking {
+    /// Maximum number of thoughts
+    pub max_thoughts: usize,
+    /// Current thoughts
+    pub thoughts: Vec<ThoughtData>,
+    /// Revision history
+    pub revisions: HashMap<usize, Vec<ThoughtData>>,
+    /// Branch points
+    pub branches: Vec<(usize, String)>,
+    /// Intensity level
+    pub intensity: ThinkingIntensity,
+}
+
+impl SequentialThinking {
+    /// Create new sequential thinking with intensity
+    pub fn new(base_thoughts: usize, intensity: ThinkingIntensity) -> Self {
+        Self {
+            max_thoughts: base_thoughts * intensity.multiplier(),
+            thoughts: Vec::new(),
+            revisions: HashMap::new(),
+            branches: Vec::new(),
+            intensity,
+        }
+    }
+
+    /// Add a thought to the sequence
+    pub fn add_thought(&mut self, thought: String) -> ThoughtData {
+        let thought_number = self.thoughts.len() + 1;
+        let thought_data = ThoughtData::new(thought, thought_number, self.max_thoughts);
+        self.thoughts.push(thought_data.clone());
+        thought_data
+    }
+
+    /// Check if more thoughts are needed
+    pub const fn needs_more_thoughts(&self) -> bool {
+        self.thoughts.len() < self.max_thoughts
+    }
+
+    /// Get progress
+    pub fn get_progress(&self) -> ThinkingProgress {
+        ThinkingProgress {
+            current_step: self.thoughts.len(),
+            total_steps: self.max_thoughts,
+            strategy: "Sequential Thinking".to_string(),
+            phase: if self.thoughts.is_empty() {
+                "Initializing".to_string()
+            } else if self.thoughts.len() < self.max_thoughts / 2 {
+                "Exploring".to_string()
+            } else if self.thoughts.len() < self.max_thoughts {
+                "Refining".to_string()
+            } else {
+                "Concluding".to_string()
+            },
+            intensity: self.intensity,
+        }
+    }
+}
+
+/// Shannon methodology - systematic problem solving
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShannonThinking {
+    /// Problem definition
+    pub problem_definition: Option<String>,
+    /// Constraints identified
+    pub constraints: Vec<String>,
+    /// Mathematical/theoretical model
+    pub model: Option<String>,
+    /// Validation/proof
+    pub proof: Option<String>,
+    /// Implementation notes
+    pub implementation: Vec<String>,
+    /// Current phase
+    pub current_phase: ShannonPhase,
+    /// Uncertainty exploration rounds
+    pub uncertainty_rounds: usize,
+    /// Intensity level
+    pub intensity: ThinkingIntensity,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub enum ShannonPhase {
+    Definition,
+    Constraints,
+    Modeling,
+    Validation,
+    Implementation,
+    Complete,
+}
+
+impl ShannonThinking {
+    /// Create new Shannon thinking with intensity
+    pub const fn new(intensity: ThinkingIntensity) -> Self {
+        Self {
+            problem_definition: None,
+            constraints: Vec::new(),
+            model: None,
+            proof: None,
+            implementation: Vec::new(),
+            current_phase: ShannonPhase::Definition,
+            uncertainty_rounds: 2 * intensity.multiplier(),
+            intensity,
+        }
+    }
+
+    /// Advance to next phase
+    pub const fn advance_phase(&mut self) {
+        self.current_phase = match self.current_phase {
+            ShannonPhase::Definition => ShannonPhase::Constraints,
+            ShannonPhase::Constraints => ShannonPhase::Modeling,
+            ShannonPhase::Modeling => ShannonPhase::Validation,
+            ShannonPhase::Validation => ShannonPhase::Implementation,
+            ShannonPhase::Implementation | ShannonPhase::Complete => ShannonPhase::Complete,
+        };
+    }
+
+    /// Get progress
+    pub fn get_progress(&self) -> ThinkingProgress {
+        let current_step = match self.current_phase {
+            ShannonPhase::Definition => 1,
+            ShannonPhase::Constraints => 2,
+            ShannonPhase::Modeling => 3,
+            ShannonPhase::Validation => 4,
+            ShannonPhase::Implementation => 5,
+            ShannonPhase::Complete => 6,
+        };
+
+        ThinkingProgress {
+            current_step,
+            total_steps: 6,
+            strategy: "Shannon Methodology".to_string(),
+            phase: format!("{:?}", self.current_phase),
+            intensity: self.intensity,
+        }
+    }
+}
+
+/// Actor-Critic thinking - dual perspective analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActorCriticThinking {
+    /// Actor (creative) thoughts
+    pub actor_thoughts: Vec<String>,
+    /// Critic (analytical) thoughts
+    pub critic_thoughts: Vec<String>,
+    /// Synthesis of perspectives
+    pub synthesis: Option<String>,
+    /// Number of rounds
+    pub max_rounds: usize,
+    /// Current round
+    pub current_round: usize,
+    /// Intensity level
+    pub intensity: ThinkingIntensity,
+}
+
+impl ActorCriticThinking {
+    /// Create new actor-critic thinking with intensity
+    pub const fn new(base_rounds: usize, intensity: ThinkingIntensity) -> Self {
+        Self {
+            actor_thoughts: Vec::new(),
+            critic_thoughts: Vec::new(),
+            synthesis: None,
+            max_rounds: base_rounds * intensity.multiplier(),
+            current_round: 0,
+            intensity,
+        }
+    }
+
+    /// Add actor thought
+    pub fn add_actor_thought(&mut self, thought: String) {
+        self.actor_thoughts.push(thought);
+    }
+
+    /// Add critic thought
+    pub fn add_critic_thought(&mut self, thought: String) {
+        self.critic_thoughts.push(thought);
+        self.current_round += 1;
+    }
+
+    /// Check if more rounds are needed
+    pub const fn needs_more_rounds(&self) -> bool {
+        self.current_round < self.max_rounds && self.synthesis.is_none()
+    }
+
+    /// Get progress
+    pub fn get_progress(&self) -> ThinkingProgress {
+        ThinkingProgress {
+            current_step: self.current_round,
+            total_steps: self.max_rounds,
+            strategy: "Actor-Critic".to_string(),
+            phase: if self.synthesis.is_some() {
+                "Synthesis".to_string()
+            } else if self.current_round == 0 {
+                "Initializing".to_string()
+            } else if self.current_round < self.max_rounds / 2 {
+                "Dialogue".to_string()
+            } else {
+                "Converging".to_string()
+            },
+            intensity: self.intensity,
+        }
+    }
+}
+
+/// Thinking strategy enum
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ThinkingStrategy {
+    Sequential(SequentialThinking),
+    Shannon(ShannonThinking),
+    ActorCritic(ActorCriticThinking),
+}
+
+impl ThinkingStrategy {
+    /// Get progress for any strategy
+    pub fn get_progress(&self) -> ThinkingProgress {
+        match self {
+            Self::Sequential(s) => s.get_progress(),
+            Self::Shannon(s) => s.get_progress(),
+            Self::ActorCritic(s) => s.get_progress(),
+        }
+    }
+
+    /// Select strategy based on problem type
+    pub fn select_for_problem(problem: &str, intensity: ThinkingIntensity) -> Self {
+        let problem_lower = problem.to_lowercase();
+
+        // Use Shannon for systematic/mathematical problems
+        if problem_lower.contains("prove")
+            || problem_lower.contains("mathematical")
+            || problem_lower.contains("algorithm")
+            || problem_lower.contains("systematic")
+            || problem_lower.contains("formal")
+        {
+            Self::Shannon(ShannonThinking::new(intensity))
+        }
+        // Use Actor-Critic for creative or evaluative problems
+        else if problem_lower.contains("evaluate")
+            || problem_lower.contains("creative")
+            || problem_lower.contains("pros and cons")
+            || problem_lower.contains("tradeoff")
+            || problem_lower.contains("perspective")
+        {
+            Self::ActorCritic(ActorCriticThinking::new(3, intensity))
+        }
+        // Default to Sequential for general problems
+        else {
+            Self::Sequential(SequentialThinking::new(5, intensity))
+        }
+    }
 }
 
 /// Simple think tool implementation
@@ -357,18 +685,32 @@ pub struct ThinkResult {
 pub struct ThinkTool {
     /// Optional session for maintaining thinking state
     pub session: Option<ThinkSession>,
+    /// Active thinking strategy
+    pub active_strategy: Option<ThinkingStrategy>,
 }
 
 impl ThinkTool {
     /// Create a new think tool instance
     pub const fn new() -> Self {
-        Self { session: None }
+        Self {
+            session: None,
+            active_strategy: None,
+        }
     }
 
     /// Create a new think tool with a session
     pub fn with_session(max_history_size: usize) -> Self {
         Self {
             session: Some(ThinkSession::new(max_history_size)),
+            active_strategy: None,
+        }
+    }
+
+    /// Create with a specific strategy and intensity
+    pub fn with_strategy(strategy: ThinkingStrategy) -> Self {
+        Self {
+            session: Some(ThinkSession::new(100)),
+            active_strategy: Some(strategy),
         }
     }
 
@@ -427,6 +769,8 @@ impl ThinkTool {
             conclusion,
             confidence: 0.7, // Default confidence
             thought_data: Some(thought_data),
+            intensity: None,
+            progress: None,
         })
     }
 
@@ -575,16 +919,173 @@ impl ThinkTool {
             return Err(ThinkError::EmptyProblem);
         }
 
-        let steps = Self::generate_reasoning_steps(question)?;
-        let conclusion = Self::generate_conclusion(question, &steps);
-        let confidence = Self::calculate_confidence(question, &steps);
+        // Detect intensity from the question
+        let intensity = ThinkingIntensity::from_prompt(question);
 
-        Ok(ThinkResult {
-            steps,
-            conclusion,
-            confidence,
-            thought_data: None,
-        })
+        // Create a temporary tool with strategy
+        let mut tool = Self::new();
+        let strategy = ThinkingStrategy::select_for_problem(question, intensity);
+        tool.active_strategy = Some(strategy);
+
+        // Use strategy-based thinking if available
+        if let Some(mut strategy) = tool.active_strategy.take() {
+            // Take ownership of the strategy temporarily to avoid borrow issues
+            let result = tool.think_with_strategy(question, &mut strategy, intensity);
+            tool.active_strategy = Some(strategy);
+            result
+        } else {
+            // Fallback to basic thinking
+            let steps = Self::generate_reasoning_steps(question)?;
+            let conclusion = Self::generate_conclusion(question, &steps);
+            let confidence = Self::calculate_confidence(question, &steps);
+
+            Ok(ThinkResult {
+                steps,
+                conclusion,
+                confidence,
+                thought_data: None,
+                intensity: Some(intensity),
+                progress: None,
+            })
+        }
+    }
+
+    /// Think with a specific strategy
+    fn think_with_strategy(
+        &mut self,
+        question: &str,
+        strategy: &mut ThinkingStrategy,
+        intensity: ThinkingIntensity,
+    ) -> Result<ThinkResult, ThinkError> {
+        let mut steps = Vec::new();
+        let _progress = strategy.get_progress();
+
+        match strategy {
+            ThinkingStrategy::Sequential(seq) => {
+                // Sequential thinking: iterative refinement
+                let base_steps = 3;
+                let total_steps = base_steps * intensity.multiplier();
+
+                for i in 1..=total_steps {
+                    let thought = format!(
+                        "[{} thinking, step {}/{}] Analyzing: {}",
+                        intensity, i, total_steps, question
+                    );
+
+                    seq.add_thought(thought.clone());
+
+                    steps.push(ThinkStep {
+                        step_number: i,
+                        thought: thought.clone(),
+                        reasoning: format!("Sequential analysis at {} intensity", intensity),
+                    });
+                }
+
+                let conclusion = format!(
+                    "Completed {} sequential thinking with {} iterations. The analysis reveals multiple perspectives and considerations.",
+                    intensity, total_steps
+                );
+
+                Ok(ThinkResult {
+                    steps,
+                    conclusion,
+                    confidence: 0.7 + (0.1 * intensity.multiplier() as f32).min(0.25),
+                    thought_data: None,
+                    intensity: Some(intensity),
+                    progress: Some(seq.get_progress()),
+                })
+            }
+            ThinkingStrategy::Shannon(shannon) => {
+                // Shannon methodology: systematic phases
+                let phases = [
+                    "Problem Definition",
+                    "Constraints Analysis",
+                    "Model Development",
+                    "Validation",
+                    "Implementation Planning",
+                ];
+
+                for (i, phase) in phases.iter().enumerate() {
+                    let thought = format!(
+                        "[Shannon {} thinking, phase: {}] {}",
+                        intensity, phase, question
+                    );
+
+                    steps.push(ThinkStep {
+                        step_number: i + 1,
+                        thought,
+                        reasoning: format!(
+                            "Shannon phase: {} with {} uncertainty rounds",
+                            phase, shannon.uncertainty_rounds
+                        ),
+                    });
+
+                    shannon.advance_phase();
+                }
+
+                let conclusion = format!(
+                    "Shannon methodology completed at {} intensity with {} uncertainty exploration rounds.",
+                    intensity, shannon.uncertainty_rounds
+                );
+
+                Ok(ThinkResult {
+                    steps,
+                    conclusion,
+                    confidence: 0.75 + (0.08 * intensity.multiplier() as f32).min(0.2),
+                    thought_data: None,
+                    intensity: Some(intensity),
+                    progress: Some(shannon.get_progress()),
+                })
+            }
+            ThinkingStrategy::ActorCritic(ac) => {
+                // Actor-Critic: dual perspective
+                for round in 1..=ac.max_rounds {
+                    // Actor perspective
+                    let actor_thought = format!(
+                        "[Actor-Critic {} thinking, round {}/{}] Actor perspective: Creative exploration of {}",
+                        intensity, round, ac.max_rounds, question
+                    );
+                    ac.add_actor_thought(actor_thought.clone());
+
+                    steps.push(ThinkStep {
+                        step_number: round * 2 - 1,
+                        thought: actor_thought,
+                        reasoning: "Actor: Optimistic, creative viewpoint".to_string(),
+                    });
+
+                    // Critic perspective
+                    let critic_thought = format!(
+                        "[Actor-Critic {} thinking, round {}/{}] Critic perspective: Analytical evaluation",
+                        intensity, round, ac.max_rounds
+                    );
+                    ac.add_critic_thought(critic_thought.clone());
+
+                    steps.push(ThinkStep {
+                        step_number: round * 2,
+                        thought: critic_thought,
+                        reasoning: "Critic: Cautious, analytical viewpoint".to_string(),
+                    });
+                }
+
+                // Synthesis
+                ac.synthesis = Some(format!(
+                    "Balanced synthesis after {} rounds of actor-critic dialogue at {} intensity",
+                    ac.max_rounds, intensity
+                ));
+
+                Ok(ThinkResult {
+                    steps,
+                    conclusion: ac
+                        .synthesis
+                        .clone()
+                        .unwrap_or_else(|| "Actor-Critic analysis complete".to_string()),
+                    confidence: 0.8 + (0.05 * intensity.multiplier() as f32).min(0.15),
+                    thought_data: None,
+                    intensity: Some(intensity),
+                    progress: Some(ac.get_progress()),
+                })
+            }
+        }
     }
 
     /// Enhanced thinking specifically for code problems
@@ -857,11 +1358,9 @@ impl ThinkTool {
                 || p_lower.contains("lint"))
         {
             CodeProblemType::CodeReview
-        // Catch any remaining auth-related tasks as implementation
-        } else if p_lower.contains("auth") && !p_lower.contains("secure") {
-            CodeProblemType::Implementation
+        // Default for all other cases including auth-related tasks
         } else {
-            CodeProblemType::Implementation // Default for ambiguous cases
+            CodeProblemType::Implementation
         }
     }
 
@@ -1017,14 +1516,14 @@ impl ThinkTool {
     }
 
     fn generate_error_analysis_steps(error_message: &str) -> Result<Vec<ThinkStep>, ThinkError> {
-        let mut steps = Vec::new();
-
-        // Step 1: Error message parsing
-        steps.push(ThinkStep {
-            step_number: 1,
-            thought: "Parsing error message for key information".to_string(),
-            reasoning: Self::parse_error_components(error_message),
-        });
+        let mut steps = vec![
+            // Step 1: Error message parsing
+            ThinkStep {
+                step_number: 1,
+                thought: "Parsing error message for key information".to_string(),
+                reasoning: Self::parse_error_components(error_message),
+            },
+        ];
 
         // Step 2: Root cause analysis
         steps.push(ThinkStep {
@@ -1046,14 +1545,14 @@ impl ThinkTool {
     }
 
     fn generate_refactoring_steps(code_smell: &str) -> Result<Vec<ThinkStep>, ThinkError> {
-        let mut steps = Vec::new();
-
-        // Step 1: Code smell analysis
-        steps.push(ThinkStep {
-            step_number: 1,
-            thought: "Analyzing code smell and its impact".to_string(),
-            reasoning: Self::analyze_code_smell(code_smell),
-        });
+        let mut steps = vec![
+            // Step 1: Code smell analysis
+            ThinkStep {
+                step_number: 1,
+                thought: "Analyzing code smell and its impact".to_string(),
+                reasoning: Self::analyze_code_smell(code_smell),
+            },
+        ];
 
         // Step 2: Refactoring strategy
         steps.push(ThinkStep {

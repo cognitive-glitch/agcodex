@@ -139,8 +139,11 @@ impl MessageBus {
 
 impl AgentManager {
     /// Create a new agent manager
-    pub fn new(registry: Arc<SubagentRegistry>, orchestrator_config: OrchestratorConfig) -> Self {
-        let parser = AgentParser::with_registry(registry.clone());
+    pub fn new(
+        registry: Arc<SubagentRegistry>,
+        orchestrator_config: OrchestratorConfig,
+    ) -> Result<Self, SubagentError> {
+        let parser = AgentParser::with_registry(registry.clone())?;
         let orchestrator = Arc::new(AgentOrchestrator::new(
             registry.clone(),
             orchestrator_config,
@@ -148,7 +151,7 @@ impl AgentManager {
         ));
         let ast_tools = Arc::new(RwLock::new(ASTAgentTools::new()));
 
-        Self {
+        Ok(Self {
             registry,
             _parser: parser,
             orchestrator,
@@ -157,7 +160,7 @@ impl AgentManager {
             global_cancel: Arc::new(AtomicBool::new(false)),
             stats: Arc::new(RwLock::new(HashMap::new())),
             ast_tools,
-        }
+        })
     }
 
     /// Spawn an agent from a parsed invocation
@@ -198,7 +201,7 @@ impl AgentManager {
             super::invocation::ExecutionPlan::Parallel(agents) => {
                 let mut tasks = Vec::new();
                 for agent_inv in agents {
-                    let manager = self.clone_for_async();
+                    let manager = self.clone_for_async()?;
                     let context = invocation.context.clone();
                     let mode = invocation.mode_override;
 
@@ -602,17 +605,17 @@ impl AgentManager {
     }
 
     /// Clone manager for async operations
-    fn clone_for_async(&self) -> Self {
-        Self {
+    fn clone_for_async(&self) -> Result<Self, SubagentError> {
+        Ok(Self {
             registry: self.registry.clone(),
-            _parser: AgentParser::with_registry(self.registry.clone()),
+            _parser: AgentParser::with_registry(self.registry.clone())?,
             orchestrator: self.orchestrator.clone(),
             active_agents: self.active_agents.clone(),
             message_bus: self.message_bus.clone(),
             global_cancel: self.global_cancel.clone(),
             stats: self.stats.clone(),
             ast_tools: self.ast_tools.clone(),
-        }
+        })
     }
 }
 
@@ -635,7 +638,7 @@ mod tests {
     async fn test_agent_manager_creation() {
         let registry = Arc::new(SubagentRegistry::new().unwrap());
         let config = OrchestratorConfig::default();
-        let manager = AgentManager::new(registry.clone(), config);
+        let manager = AgentManager::new(registry.clone(), config).unwrap();
 
         assert_eq!(manager.get_active_agents().len(), 0);
     }
@@ -667,7 +670,7 @@ mod tests {
     fn test_context_creation() {
         let registry = Arc::new(SubagentRegistry::new().unwrap());
         let config = OrchestratorConfig::default();
-        let manager = AgentManager::new(registry.clone(), config);
+        let manager = AgentManager::new(registry.clone(), config).unwrap();
 
         let context = manager.create_context("test context".to_string(), Some(OperatingMode::Plan));
 

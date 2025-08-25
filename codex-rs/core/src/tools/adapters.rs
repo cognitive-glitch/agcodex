@@ -5,11 +5,69 @@
 
 use super::registry::ToolError;
 use super::registry::ToolOutput;
+use crate::modes::ModeManager;
+use crate::modes::OperatingMode;
 use crate::subagents::IntelligenceLevel;
 use serde_json::Value;
 use serde_json::json;
+use std::cell::RefCell;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::Mutex;
 use tokio::runtime::Runtime;
+
+// Thread-local storage for the current ModeManager
+thread_local! {
+    static MODE_MANAGER: RefCell<Arc<Mutex<ModeManager>>> = RefCell::new(Arc::new(Mutex::new(ModeManager::new(OperatingMode::Build))));
+}
+
+/// Set the ModeManager for the current thread
+pub fn set_mode_manager(manager: Arc<Mutex<ModeManager>>) {
+    MODE_MANAGER.with(|m| {
+        *m.borrow_mut() = manager;
+    });
+}
+
+/// Initialize the mode manager with a specific operating mode
+pub fn init_mode_manager(mode: OperatingMode) {
+    let manager = Arc::new(Mutex::new(ModeManager::new(mode)));
+    set_mode_manager(manager);
+}
+
+/// Update the current mode in the thread-local ModeManager
+pub fn update_mode(mode: OperatingMode) {
+    MODE_MANAGER.with(|m| {
+        let arc = m.borrow();
+        if let Ok(mut guard) = arc.lock() {
+            guard.switch_mode(mode);
+        }
+    });
+}
+
+/// Get the current mode from thread-local storage
+fn get_current_mode() -> OperatingMode {
+    MODE_MANAGER.with(|m| {
+        m.borrow()
+            .lock()
+            .map(|guard| guard.current_mode())
+            .unwrap_or(OperatingMode::Build)
+    })
+}
+
+/// Get the ModeManager from thread-local storage
+fn with_mode_manager<F, R>(f: F) -> R
+where
+    F: FnOnce(&ModeManager) -> R,
+{
+    MODE_MANAGER.with(|m| {
+        let arc = m.borrow();
+        let guard = arc.lock().unwrap_or_else(|e| {
+            // If the lock is poisoned, recover by using the inner value
+            e.into_inner()
+        });
+        f(&guard)
+    })
+}
 
 // Import existing tools
 use super::glob::FileType;
@@ -26,6 +84,9 @@ pub fn adapt_think_tool(input: Value) -> Result<ToolOutput, ToolError> {
 
     let language = input["language"].as_str();
     let context = input["context"].as_str();
+
+    // Check for explicit intensity override in input
+    let _intensity_override = input["intensity"].as_str();
 
     // Use the code-specific version if language is provided
     let result = if language.is_some() || context.is_some() {
@@ -44,6 +105,7 @@ pub fn adapt_think_tool(input: Value) -> Result<ToolOutput, ToolError> {
             "confidence": code_result.confidence,
             "recommended_action": code_result.recommended_action,
             "affected_files": code_result.affected_files,
+            "intensity": format!("{}", super::think::ThinkingIntensity::from_prompt(problem)),
         })
     } else {
         // Use basic thinking
@@ -58,14 +120,35 @@ pub fn adapt_think_tool(input: Value) -> Result<ToolOutput, ToolError> {
             })).collect::<Vec<_>>(),
             "conclusion": basic_result.conclusion,
             "confidence": basic_result.confidence,
+            "intensity": basic_result.intensity.map(|i| format!("{}", i)),
+            "progress": basic_result.progress.as_ref().map(|p| json!({
+                "current_step": p.current_step,
+                "total_steps": p.total_steps,
+                "strategy": p.strategy,
+                "phase": p.phase,
+                "intensity": format!("{}", p.intensity),
+            })),
         })
     };
 
     let confidence = result["confidence"].as_f64().unwrap_or(0.0);
-    Ok(ToolOutput::success(
-        result,
-        format!("Analyzed problem with {:.2} confidence", confidence),
-    ))
+    let intensity = result["intensity"].as_str().unwrap_or("Quick");
+    let message = if let Some(progress) = result["progress"].as_object() {
+        format!(
+            "Analyzed with {} thinking ({}/{} steps) - {:.2} confidence",
+            intensity,
+            progress["current_step"].as_u64().unwrap_or(0),
+            progress["total_steps"].as_u64().unwrap_or(0),
+            confidence
+        )
+    } else {
+        format!(
+            "Analyzed problem with {} thinking - {:.2} confidence",
+            intensity, confidence
+        )
+    };
+
+    Ok(ToolOutput::success(result, message))
 }
 
 /// Adapter for the plan tool
@@ -293,8 +376,13 @@ pub fn adapt_edit_tool(input: Value) -> Result<ToolOutput, ToolError> {
         return Err(ToolError::InvalidInput("old_text not found in file".into()));
     }
 
-    // Replace text
+    // Calculate the size of the new content
     let new_content = content.replace(old_text, new_text);
+    let file_size = new_content.len();
+
+    // Validate file write operation with ModeManager
+    with_mode_manager(|manager| manager.validate_file_write(file, Some(file_size)))
+        .map_err(ToolError::InvalidInput)?;
 
     // Write file
     std::fs::write(file, &new_content).map_err(ToolError::Io)?;
@@ -315,6 +403,12 @@ pub fn adapt_patch_tool(input: Value) -> Result<ToolOutput, ToolError> {
     let operation = input["operation"]
         .as_str()
         .ok_or_else(|| ToolError::InvalidInput("missing 'operation' field".into()))?;
+
+    // Validate that patch operations (which modify files) are allowed
+    with_mode_manager(|manager| {
+        manager.validate_file_write(&format!("patch operation: {}", operation), None)
+    })
+    .map_err(ToolError::InvalidInput)?;
 
     match operation {
         "rename_symbol" => {
@@ -343,6 +437,17 @@ pub fn adapt_patch_tool(input: Value) -> Result<ToolOutput, ToolError> {
             let function_name = input["function_name"]
                 .as_str()
                 .ok_or_else(|| ToolError::InvalidInput("missing 'function_name'".into()))?;
+
+            // Additional validation for file operations in Review mode
+            // In a real implementation, we'd check the actual file size
+            if let OperatingMode::Review = get_current_mode() {
+                // For Review mode, we should check the actual operation size
+                // This is a placeholder that assumes extract_function creates small changes
+                with_mode_manager(|manager| {
+                    manager.validate_file_write(file, Some(5000)) // Assume 5KB for extraction
+                })
+                .map_err(ToolError::InvalidInput)?;
+            }
 
             Ok(ToolOutput::success(
                 json!({
@@ -391,14 +496,42 @@ pub fn adapt_bash_tool(input: Value) -> Result<ToolOutput, ToolError> {
         .as_str()
         .ok_or_else(|| ToolError::InvalidInput("missing 'command' field".into()))?;
 
-    // Safety check - only allow read-only commands in this adapter
-    let read_only_commands = ["ls", "pwd", "echo", "date", "whoami", "uname"];
+    // Validate command execution with ModeManager
+    with_mode_manager(|manager| manager.validate_command_execution(command))
+        .map_err(ToolError::InvalidInput)?;
+
+    // Additional safety check - even in Build mode, we maintain some restrictions
+    let read_only_commands = [
+        "ls", "pwd", "echo", "date", "whoami", "uname", "cat", "grep", "find", "which", "head",
+        "tail",
+    ];
+    let dangerous_commands = ["rm", "dd", "mkfs", "format"];
     let first_word = command.split_whitespace().next().unwrap_or("");
 
-    if !read_only_commands.contains(&first_word) {
+    // Check if it's a dangerous command that should always be blocked
+    if dangerous_commands.contains(&first_word) {
+        // Check for special dangerous patterns
+        if command.contains("rm -rf /") || command.contains("dd if=/dev/zero") {
+            return Err(ToolError::InvalidInput(format!(
+                "⛔ Dangerous command '{}' is blocked for safety. This command could cause system damage.",
+                command
+            )));
+        }
+    }
+
+    // In Plan and Review modes, only allow read-only commands
+    let current_mode = get_current_mode();
+    if matches!(current_mode, OperatingMode::Plan | OperatingMode::Review)
+        && !read_only_commands.contains(&first_word)
+    {
         return Err(ToolError::InvalidInput(format!(
-            "Command '{}' not allowed in safe mode",
-            first_word
+            "⛔ Command '{}' not allowed in {} mode. Only read-only commands are permitted. Press Shift+Tab to switch to Build mode.",
+            first_word,
+            match current_mode {
+                OperatingMode::Plan => "Plan",
+                OperatingMode::Review => "Review",
+                _ => "current",
+            }
         )));
     }
 
@@ -422,6 +555,12 @@ pub fn adapt_bash_tool(input: Value) -> Result<ToolOutput, ToolError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Helper to set mode for testing
+    fn set_test_mode(mode: OperatingMode) {
+        let manager = Arc::new(Mutex::new(ModeManager::new(mode)));
+        set_mode_manager(manager);
+    }
 
     #[test]
     fn test_adapt_think_basic() {
@@ -467,6 +606,9 @@ mod tests {
 
     #[test]
     fn test_adapt_bash_safe() {
+        // Build mode allows commands
+        set_test_mode(OperatingMode::Build);
+
         let input = json!({
             "command": "echo hello"
         });
@@ -489,9 +631,95 @@ mod tests {
         assert!(result.is_err());
 
         if let Err(ToolError::InvalidInput(msg)) = result {
-            assert!(msg.contains("not allowed"));
+            assert!(msg.contains("Dangerous command"));
         } else {
             panic!("Expected InvalidInput error");
         }
+    }
+
+    #[test]
+    fn test_edit_tool_plan_mode_blocked() {
+        // Set Plan mode - should block writes
+        set_test_mode(OperatingMode::Plan);
+
+        let input = json!({
+            "file": "test.txt",
+            "old_text": "foo",
+            "new_text": "bar"
+        });
+
+        let result = adapt_edit_tool(input);
+        assert!(result.is_err());
+
+        if let Err(ToolError::InvalidInput(msg)) = result {
+            assert!(msg.contains("Plan mode"));
+            assert!(msg.contains("read-only"));
+            assert!(msg.contains("Shift+Tab"));
+        } else {
+            panic!("Expected InvalidInput error with mode message");
+        }
+    }
+
+    #[test]
+    fn test_bash_tool_plan_mode_blocked() {
+        // Set Plan mode - should block non-read-only commands
+        set_test_mode(OperatingMode::Plan);
+
+        let input = json!({
+            "command": "touch newfile.txt"
+        });
+
+        let result = adapt_bash_tool(input);
+        assert!(result.is_err());
+
+        if let Err(ToolError::InvalidInput(msg)) = result {
+            assert!(msg.contains("not allowed"));
+            assert!(msg.contains("Plan mode"));
+        } else {
+            panic!("Expected InvalidInput error");
+        }
+    }
+
+    #[test]
+    fn test_bash_tool_plan_mode_allows_read() {
+        // Set Plan mode - should allow read-only commands
+        set_test_mode(OperatingMode::Plan);
+
+        let input = json!({
+            "command": "pwd"
+        });
+
+        let result = adapt_bash_tool(input);
+        // pwd should work in Plan mode
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_patch_tool_review_mode() {
+        // Set Review mode - should allow limited edits
+        set_test_mode(OperatingMode::Review);
+
+        let input = json!({
+            "operation": "extract_function",
+            "file": "small_file.rs",
+            "function_name": "helper"
+        });
+
+        // This should succeed as it's under the size limit (assumed 5KB)
+        let result = adapt_patch_tool(input);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_mode_switching() {
+        // Test that mode switching works correctly
+        set_test_mode(OperatingMode::Plan);
+        assert_eq!(get_current_mode(), OperatingMode::Plan);
+
+        set_test_mode(OperatingMode::Build);
+        assert_eq!(get_current_mode(), OperatingMode::Build);
+
+        set_test_mode(OperatingMode::Review);
+        assert_eq!(get_current_mode(), OperatingMode::Review);
     }
 }
