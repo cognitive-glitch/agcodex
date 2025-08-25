@@ -108,6 +108,31 @@ pub struct SubagentRegistry {
 }
 
 impl SubagentRegistry {
+    
+    /// Register an executable agent
+    pub fn register_executable_agent(
+        &self,
+        name: String,
+        agent: Arc<dyn super::agents::Subagent>,
+    ) -> RegistryResult<()> {
+        let mut agents = self.executable_agents.lock().map_err(|e| {
+            SubagentRegistryError::LoadError {
+                path: PathBuf::from("memory"),
+                error: format!("Poison error: {}", e),
+            }
+        })?;
+        agents.insert(name, agent);
+        Ok(())
+    }
+    
+    /// Get an agent configuration by name
+    pub fn get_agent_config(&self, name: &str) -> Option<SubagentConfig> {
+        self.agents
+            .lock()
+            .ok()
+            .and_then(|agents| agents.get(name).map(|info| info.config.clone()))
+    }
+    
     /// Create a new subagent registry
     pub fn new() -> RegistryResult<Self> {
         let home_dir = dirs::home_dir().ok_or_else(|| SubagentRegistryError::InvalidDirectory {
@@ -201,6 +226,30 @@ impl SubagentRegistry {
             })? = SystemTime::now();
 
         Ok(())
+    }
+    
+    /// Reload all agent configurations and templates
+    pub fn reload(&self) -> RegistryResult<()> {
+        // Clear existing agents (but keep executable agents as they're programmatically registered)
+        self.agents
+            .lock()
+            .map_err(|e| SubagentRegistryError::LoadError {
+                path: PathBuf::from("memory"),
+                error: format!("Poison error on agents mutex: {}", e),
+            })?
+            .clear();
+        
+        // Clear templates
+        self.templates
+            .lock()
+            .map_err(|e| SubagentRegistryError::LoadError {
+                path: PathBuf::from("memory"),
+                error: format!("Poison error on templates mutex: {}", e),
+            })?
+            .clear();
+        
+        // Reload everything
+        self.load_all()
     }
 
     /// Load all templates from the templates directory

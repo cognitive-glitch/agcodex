@@ -28,6 +28,7 @@ pub mod built_in;
 pub mod config;
 pub mod context;
 pub mod invocation;
+pub mod invocation_processor;
 pub mod manager;
 pub mod mcp_tools;
 pub mod orchestrator;
@@ -78,6 +79,7 @@ pub use invocation::ExecutionPlan;
 pub use invocation::ExecutionStep;
 pub use invocation::InvocationParser;
 pub use invocation::InvocationRequest;
+pub use invocation_processor::InvocationProcessor;
 pub use manager::AgentHandle;
 pub use manager::AgentManager;
 pub use manager::AgentStats;
@@ -124,8 +126,11 @@ pub enum SubagentError {
     #[error("circular dependency detected in agent chain: {chain:?}")]
     CircularDependency { chain: Vec<String> },
 
-    #[error("agent timeout: {name}")]
-    Timeout { name: String },
+    #[error("agent timeout: {agent} after {duration:?}")]
+    Timeout {
+        agent: String,
+        duration: std::time::Duration,
+    },
 
     #[error("tool permission denied: {tool} for agent {agent}")]
     ToolPermissionDenied { tool: String, agent: String },
@@ -193,6 +198,21 @@ pub struct SubagentContext {
 
     /// Agent-specific metadata
     pub metadata: HashMap<String, serde_json::Value>,
+}
+
+impl SubagentContext {
+    /// Create a new SubagentContext with given mode and parameters
+    pub fn new(mode: OperatingMode, parameters: HashMap<String, String>) -> Self {
+        Self {
+            execution_id: Uuid::new_v4(),
+            mode,
+            available_tools: Vec::new(),
+            conversation_context: String::new(),
+            working_directory: std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
+            parameters,
+            metadata: HashMap::new(),
+        }
+    }
 }
 
 /// Status of a subagent execution

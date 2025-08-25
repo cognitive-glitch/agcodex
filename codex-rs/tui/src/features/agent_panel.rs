@@ -32,6 +32,7 @@ use uuid::Uuid;
 
 /// Agent panel state with enhanced UI features
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct AgentPanel {
     /// Active agents with progress tracking
     agents: Arc<Mutex<HashMap<Uuid, AgentInfo>>>,

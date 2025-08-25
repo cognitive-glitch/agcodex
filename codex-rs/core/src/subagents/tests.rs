@@ -378,7 +378,8 @@ mod error_tests {
                 chain: vec!["a".to_string(), "b".to_string(), "a".to_string()],
             },
             SubagentError::Timeout {
-                name: "slow-agent".to_string(),
+                agent: "slow-agent".to_string(),
+                duration: std::time::Duration::from_secs(30),
             },
             SubagentError::ToolPermissionDenied {
                 tool: "write_file".to_string(),

@@ -70,6 +70,7 @@ pub struct AgentExecution {
 
 /// Progress information for streaming updates
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ProgressInfo {
     pub progress: f32,
     pub message: String,

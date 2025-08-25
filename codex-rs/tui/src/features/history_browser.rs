@@ -244,6 +244,7 @@ impl Default for ConversationTree {
 }
 
 /// History Browser widget for visual timeline navigation
+#[allow(dead_code)]
 pub struct HistoryBrowser {
     /// The conversation tree structure
     tree: ConversationTree,

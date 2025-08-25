@@ -764,7 +764,7 @@ impl App<'_> {
                     tracing::info!("Switched to {:?} mode (from {:?})", new_mode, current_mode);
 
                     // Send a notification about the mode change
-                    self.notification_system.notify_with_message(
+                    let _ = self.notification_system.notify_with_message(
                         NotificationLevel::Info,
                         &format!(
                             "Mode: {} - {}",
@@ -789,7 +789,7 @@ impl App<'_> {
                         widget.open_save_dialog();
                     }
                 }
-                AppEvent::SaveSession { name, description } => {
+                AppEvent::SaveSession { name, description: _ } => {
                     let app_event_tx = self.app_event_tx.clone();
                     let session_manager = self.session_manager.clone();
                     let current_session_id = self.current_session_id.clone();
@@ -1227,7 +1227,7 @@ impl App<'_> {
         );
 
         // Clone required data for the async task
-        let app_event_tx = self.app_event_tx.clone();
+        let _app_event_tx = self.app_event_tx.clone();
 
         // Parse the execution plan and spawn appropriate simulated agents
         match invocation_request.execution_plan {
@@ -1621,7 +1621,7 @@ impl App<'_> {
     async fn handle_save_session(
         &self,
         name: String,
-        description: Option<String>,
+        _description: Option<String>,
     ) -> Result<Uuid, String> {
         self.ensure_session_manager_initialized().await?;
 

@@ -75,6 +75,7 @@ pub enum FocusedPanel {
 
 /// Session browser widget state
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct SessionBrowser {
     /// Current view mode
     view_mode: ViewMode,

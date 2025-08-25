@@ -774,7 +774,8 @@ impl AgentOrchestrator {
                     }
 
                     return Err(SubagentError::Timeout {
-                        name: invocation.agent_name,
+                        agent: invocation.agent_name,
+                        duration: self.config.agent_timeout,
                     });
                 }
             }

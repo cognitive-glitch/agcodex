@@ -27,86 +27,92 @@ use crate::subagents::SubagentRegistry;
 use std::sync::Arc;
 
 /// Register all built-in agents with the registry
-pub fn register_built_in_agents(registry: &SubagentRegistry) {
+pub fn register_built_in_agents(registry: &SubagentRegistry) -> Result<(), crate::subagents::SubagentError> {
     // Register code reviewer
     registry
-        .register(
-            "code-reviewer",
+        .register_executable_agent(
+            "code-reviewer".to_string(),
             Arc::new(CodeReviewerAgent::new()) as Arc<dyn Subagent>,
         )
-        .ok();
+        .map_err(|e| crate::subagents::SubagentError::ExecutionFailed(e.to_string()))?;
 
     // Register refactorer
     registry
-        .register(
-            "refactorer",
+        .register_executable_agent(
+            "refactorer".to_string(),
             Arc::new(RefactorerAgent::new()) as Arc<dyn Subagent>,
         )
-        .ok();
+        .map_err(|e| crate::subagents::SubagentError::ExecutionFailed(e.to_string()))?;
 
     // Register debugger
     registry
-        .register(
-            "debugger",
+        .register_executable_agent(
+            "debugger".to_string(),
             Arc::new(DebuggerAgent::new()) as Arc<dyn Subagent>,
         )
-        .ok();
+        .map_err(|e| crate::subagents::SubagentError::ExecutionFailed(e.to_string()))?;
 
     // Register test writer
     registry
-        .register(
-            "test-writer",
+        .register_executable_agent(
+            "test-writer".to_string(),
             Arc::new(TestWriterAgent::new()) as Arc<dyn Subagent>,
         )
-        .ok();
+        .map_err(|e| crate::subagents::SubagentError::ExecutionFailed(e.to_string()))?;
 
     // Register performance optimizer
     registry
-        .register(
-            "performance",
+        .register_executable_agent(
+            "performance".to_string(),
             Arc::new(PerformanceAgent::new()) as Arc<dyn Subagent>,
         )
-        .ok();
+        .map_err(|e| crate::subagents::SubagentError::ExecutionFailed(e.to_string()))?;
 
     // Register aliases for common variations
     registry
-        .register(
-            "reviewer",
+        .register_executable_agent(
+            "reviewer".to_string(),
             Arc::new(CodeReviewerAgent::new()) as Arc<dyn Subagent>,
         )
-        .ok();
+        .map_err(|e| crate::subagents::SubagentError::ExecutionFailed(e.to_string()))?;
 
     registry
-        .register(
-            "refactor",
+        .register_executable_agent(
+            "refactor".to_string(),
             Arc::new(RefactorerAgent::new()) as Arc<dyn Subagent>,
         )
-        .ok();
+        .map_err(|e| crate::subagents::SubagentError::ExecutionFailed(e.to_string()))?;
 
     registry
-        .register("debug", Arc::new(DebuggerAgent::new()) as Arc<dyn Subagent>)
-        .ok();
+        .register_executable_agent(
+            "debug".to_string(), 
+            Arc::new(DebuggerAgent::new()) as Arc<dyn Subagent>
+        )
+        .map_err(|e| crate::subagents::SubagentError::ExecutionFailed(e.to_string()))?;
 
     registry
-        .register(
-            "test",
+        .register_executable_agent(
+            "test".to_string(),
             Arc::new(TestWriterAgent::new()) as Arc<dyn Subagent>,
         )
-        .ok();
+        .map_err(|e| crate::subagents::SubagentError::ExecutionFailed(e.to_string()))?;
 
     registry
-        .register(
-            "perf",
+        .register_executable_agent(
+            "perf".to_string(),
             Arc::new(PerformanceAgent::new()) as Arc<dyn Subagent>,
         )
-        .ok(); // Ignore errors for built-in registration
+        .map_err(|e| crate::subagents::SubagentError::ExecutionFailed(e.to_string()))?;
+    
+    Ok(())
 }
 
 /// Create a registry with all built-in agents pre-registered
 pub fn create_default_registry() -> Result<SubagentRegistry, std::io::Error> {
     let registry = SubagentRegistry::new()
         .map_err(|e| std::io::Error::other(format!("Failed to create registry: {}", e)))?;
-    register_built_in_agents(&registry);
+    register_built_in_agents(&registry)
+        .map_err(|e| std::io::Error::other(format!("Failed to register agents: {}", e)))?;
     Ok(registry)
 }
 
@@ -170,19 +176,19 @@ mod tests {
     fn test_built_in_agents_registration() {
         let registry = create_default_registry().expect("Failed to create registry");
 
-        // Check that all main agents are registered
-        assert!(registry.get_agent("code-reviewer").is_some());
-        assert!(registry.get_agent("refactorer").is_some());
-        assert!(registry.get_agent("debugger").is_some());
-        assert!(registry.get_agent("test-writer").is_some());
-        assert!(registry.get_agent("performance").is_some());
+        // Check that all main agents are registered as executable agents
+        assert!(registry.get_executable_agent("code-reviewer").is_some());
+        assert!(registry.get_executable_agent("refactorer").is_some());
+        assert!(registry.get_executable_agent("debugger").is_some());
+        assert!(registry.get_executable_agent("test-writer").is_some());
+        assert!(registry.get_executable_agent("performance").is_some());
 
         // Check aliases
-        assert!(registry.get_agent("reviewer").is_some());
-        assert!(registry.get_agent("refactor").is_some());
-        assert!(registry.get_agent("debug").is_some());
-        assert!(registry.get_agent("test").is_some());
-        assert!(registry.get_agent("perf").is_some());
+        assert!(registry.get_executable_agent("reviewer").is_some());
+        assert!(registry.get_executable_agent("refactor").is_some());
+        assert!(registry.get_executable_agent("debug").is_some());
+        assert!(registry.get_executable_agent("test").is_some());
+        assert!(registry.get_executable_agent("perf").is_some());
     }
 
     #[test]

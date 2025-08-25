@@ -35,8 +35,6 @@ pub struct NotificationSystem {
     visual_enabled: bool,
 }
 
-/// Legacy alias for backward compatibility
-pub type NotificationManager = NotificationSystem;
 
 impl NotificationSystem {
     /// Create a new notification system with the given configuration
