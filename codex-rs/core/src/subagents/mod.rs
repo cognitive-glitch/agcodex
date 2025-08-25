@@ -208,7 +208,8 @@ impl SubagentContext {
             mode,
             available_tools: Vec::new(),
             conversation_context: String::new(),
-            working_directory: std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
+            working_directory: std::env::current_dir()
+                .unwrap_or_else(|_| std::path::PathBuf::from(".")),
             parameters,
             metadata: HashMap::new(),
         }

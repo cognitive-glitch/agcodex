@@ -789,7 +789,10 @@ impl App<'_> {
                         widget.open_save_dialog();
                     }
                 }
-                AppEvent::SaveSession { name, description: _ } => {
+                AppEvent::SaveSession {
+                    name,
+                    description: _,
+                } => {
                     let app_event_tx = self.app_event_tx.clone();
                     let session_manager = self.session_manager.clone();
                     let current_session_id = self.current_session_id.clone();

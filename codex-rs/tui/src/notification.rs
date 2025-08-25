@@ -35,7 +35,6 @@ pub struct NotificationSystem {
     visual_enabled: bool,
 }
 
-
 impl NotificationSystem {
     /// Create a new notification system with the given configuration
     pub fn new(config: TuiNotifications) -> Self {

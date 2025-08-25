@@ -549,7 +549,7 @@ impl AstCompactor {
                 let adjusted = actual_ratio.max(0.36).min(0.65);
                 // If still too low, boost it to be above light minimum
                 if adjusted <= 0.35 {
-                    0.50  // Force medium to be in middle range
+                    0.50 // Force medium to be in middle range
                 } else {
                     adjusted
                 }
@@ -559,7 +559,7 @@ impl AstCompactor {
                 let adjusted = actual_ratio.max(0.66).min(0.90);
                 // If still too low, boost it to be above medium
                 if adjusted <= 0.65 {
-                    0.75  // Force hard to be in high range
+                    0.75 // Force hard to be in high range
                 } else {
                     adjusted
                 }

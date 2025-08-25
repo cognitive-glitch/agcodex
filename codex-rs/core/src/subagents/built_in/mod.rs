@@ -27,7 +27,9 @@ use crate::subagents::SubagentRegistry;
 use std::sync::Arc;
 
 /// Register all built-in agents with the registry
-pub fn register_built_in_agents(registry: &SubagentRegistry) -> Result<(), crate::subagents::SubagentError> {
+pub fn register_built_in_agents(
+    registry: &SubagentRegistry,
+) -> Result<(), crate::subagents::SubagentError> {
     // Register code reviewer
     registry
         .register_executable_agent(
@@ -85,8 +87,8 @@ pub fn register_built_in_agents(registry: &SubagentRegistry) -> Result<(), crate
 
     registry
         .register_executable_agent(
-            "debug".to_string(), 
-            Arc::new(DebuggerAgent::new()) as Arc<dyn Subagent>
+            "debug".to_string(),
+            Arc::new(DebuggerAgent::new()) as Arc<dyn Subagent>,
         )
         .map_err(|e| crate::subagents::SubagentError::ExecutionFailed(e.to_string()))?;
 
@@ -103,7 +105,7 @@ pub fn register_built_in_agents(registry: &SubagentRegistry) -> Result<(), crate
             Arc::new(PerformanceAgent::new()) as Arc<dyn Subagent>,
         )
         .map_err(|e| crate::subagents::SubagentError::ExecutionFailed(e.to_string()))?;
-    
+
     Ok(())
 }
 
