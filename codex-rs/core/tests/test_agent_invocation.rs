@@ -112,9 +112,11 @@ async fn test_agent_aliases() {
 #[tokio::test]
 async fn test_context_preservation() {
     let manager = ConversationManagerExt::new_basic();
-    let mut context = MessageContext::default();
-    context.cwd = PathBuf::from("/test/project");
-    context.mode = OperatingMode::Review;
+    let context = MessageContext {
+        cwd: PathBuf::from("/test/project"),
+        mode: OperatingMode::Review,
+        ..Default::default()
+    };
 
     // Test that context is preserved through agent invocations
     let message = "@code-reviewer analyze the changes";
@@ -127,10 +129,12 @@ async fn test_context_preservation() {
 #[tokio::test]
 async fn test_error_handling() {
     let manager = ConversationManagerExt::new_basic();
-    let mut context = MessageContext::default();
+    let mut context = MessageContext {
+        fail_on_agent_error: false,
+        ..Default::default()
+    };
 
     // Test with fail_on_agent_error = false (should not propagate errors)
-    context.fail_on_agent_error = false;
     let message = "@nonexistent-agent do something";
     let result = manager.intercept_message(message, context.clone()).await;
 
@@ -147,10 +151,12 @@ async fn test_error_handling() {
 #[tokio::test]
 async fn test_result_merging() {
     let manager = ConversationManagerExt::new_basic();
-    let mut context = MessageContext::default();
+    let mut context = MessageContext {
+        should_merge_results: true,
+        ..Default::default()
+    };
 
     // Test with should_merge_results = true
-    context.should_merge_results = true;
     let message = "@code-reviewer check this + @security audit";
     let result = manager.intercept_message(message, context.clone()).await;
 

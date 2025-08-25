@@ -5,6 +5,7 @@ members = [
     "ansi-escape",
     "apply-patch",
     "arg0",
+    "benches",
     "chatgpt",
     "cli",
     "common",
@@ -98,7 +99,7 @@ pretty_assertions = "1.4.1"
 rand = "0.9"
 ratatui = "0.29.0"
 rayon = "1.10"
-ratatui-image = "8.0.0"
+ratatui-image = "8.0"
 regex = "1.11"
 regex-lite = "0.1.6"
 reqwest = "0.12"
@@ -236,6 +237,13 @@ overflow-checks = true # CRITICAL: Enable overflow checks in development to catc
 # Helps with compile times for macro-heavy code
 # See: https://corrode.dev/blog/tips-for-faster-rust-compile-times/
 opt-level = 1
+
+
+[profile.bench]
+opt-level = 3
+debug = false
+lto = true
+codegen-units = 1
 
 # [patch.crates-io]
 # # ratatui = { path = "../../ratatui" }

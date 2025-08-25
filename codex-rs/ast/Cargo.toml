@@ -1,14 +1,14 @@
 [package]
-name = "agcodex-ast"
-version.workspace = true
-description = "Abstract Syntax Tree parsing and analysis with tree-sitter"
-homepage = "https://github.com/agcodex/agcodex"
-repository = "https://github.com/agcodex/agcodex"
-documentation = "https://docs.rs/agcodex-ast"
-keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
 categories = ["development-tools", "command-line-utilities"]
+description = "Abstract Syntax Tree parsing and analysis with tree-sitter"
+documentation = "https://docs.rs/agcodex-ast"
 edition.workspace = true
+homepage = "https://github.com/agcodex/agcodex"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
 license.workspace = true
+name = "agcodex-ast"
+repository = "https://github.com/agcodex/agcodex"
+version.workspace = true
 
 [lints]
 workspace = true
@@ -20,57 +20,57 @@ tree-sitter-highlight = "0.25"
 tree-sitter-tags = "0.25"
 
 # Language parsers - Core languages
-tree-sitter-rust = { workspace = true }
-tree-sitter-python = { workspace = true }
-tree-sitter-javascript = { workspace = true }
-tree-sitter-typescript = { workspace = true }
+tree-sitter-c = { workspace = true }
+tree-sitter-c-sharp = { workspace = true }
+tree-sitter-cpp = { workspace = true }
 tree-sitter-go = { workspace = true }
 tree-sitter-java = { workspace = true }
-tree-sitter-c = { workspace = true }
-tree-sitter-cpp = { workspace = true }
-tree-sitter-c-sharp = { workspace = true }
+tree-sitter-javascript = { workspace = true }
+tree-sitter-python = { workspace = true }
+tree-sitter-rust = { workspace = true }
+tree-sitter-typescript = { workspace = true }
 
 # Note: Web/config languages (HTML, CSS, JSON, YAML, TOML) removed
 # These should use patch-based editing, not AST operations
 
 # Scripting languages
 tree-sitter-bash = { workspace = true }
-tree-sitter-ruby = { workspace = true }
-tree-sitter-php = { workspace = true }
 tree-sitter-lua = { workspace = true }
+tree-sitter-php = { workspace = true }
+tree-sitter-ruby = { workspace = true }
 
 # Functional languages
-tree-sitter-haskell = { workspace = true }
-tree-sitter-elixir = { workspace = true }
-tree-sitter-scala = { workspace = true }
-tree-sitter-ocaml = { workspace = true }
 tree-sitter-clojure = { workspace = true }
+tree-sitter-elixir = { workspace = true }
+tree-sitter-haskell = { workspace = true }
+tree-sitter-ocaml = { workspace = true }
+tree-sitter-scala = { workspace = true }
 
 # Systems languages
-tree-sitter-zig = { workspace = true }
-tree-sitter-swift = { workspace = true }
 tree-sitter-kotlin-ng = { workspace = true } # Compatible version for tree-sitter 0.25
 tree-sitter-objc = { workspace = true }
+tree-sitter-swift = { workspace = true }
+tree-sitter-zig = { workspace = true }
 
 # Note: Config/documentation languages removed
 # Use patch-based editing for these file types
 
 # Utility dependencies from workspace
-lru = { workspace = true }
+ahash = "0.8"
+bytes = { workspace = true }
 dashmap = { workspace = true }
+lru = { workspace = true }
+memmap2 = "0.9"
+once_cell = { workspace = true }
 rayon = "1.10"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-once_cell = { workspace = true }
-ahash = "0.8"
-bytes = { workspace = true }
-memmap2 = "0.9"
 
 # Compression for AI Distiller
-flate2 = "1.0"
 bincode = { workspace = true }
+flate2 = "1.0"
 
 # Path handling
 camino = "1.1"
@@ -84,7 +84,7 @@ ast-grep-language = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 
 [dev-dependencies]
-criterion = "0.7"
-tempfile = { workspace = true }
-pretty_assertions = { workspace = true }
+criterion = { workspace = true, features = ["html_reports"] }
 insta = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

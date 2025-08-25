@@ -50,9 +50,21 @@ mod tests {
         let medium_result = compactor.compact_source(code, &medium_opts);
         let hard_result = compactor.compact_source(code, &hard_opts);
 
+        // Validate compression levels produce expected ordering
+
         // Verify compression increases with level
-        assert!(light_result.compression_ratio < medium_result.compression_ratio);
-        assert!(medium_result.compression_ratio < hard_result.compression_ratio);
+        assert!(
+            light_result.compression_ratio < medium_result.compression_ratio,
+            "Light ratio ({}) should be < Medium ratio ({})",
+            light_result.compression_ratio,
+            medium_result.compression_ratio
+        );
+        assert!(
+            medium_result.compression_ratio < hard_result.compression_ratio,
+            "Medium ratio ({}) should be < Hard ratio ({})",
+            medium_result.compression_ratio,
+            hard_result.compression_ratio
+        );
 
         // Verify token counts decrease with higher compression
         assert!(light_result.compressed_tokens > medium_result.compressed_tokens);

@@ -1,0 +1,47 @@
+# AGCodex Minimal Configuration
+# Quick start configuration with essential settings only
+# Place this file at ~/.agcodex/config.toml
+
+# Model provider configuration
+[model]
+provider = "openai"  # Options: openai, anthropic, ollama
+model = "gpt-4"      # Specific model to use
+
+# API Configuration (choose one)
+# Option 1: API Key
+api_key = "${OPENAI_API_KEY}"  # Set via environment variable
+
+# Option 2: ChatGPT Login (no API key needed)
+# use_chatgpt_login = true
+
+# Basic settings
+[settings]
+# Operating mode on startup
+default_mode = "build"  # Options: plan, build, review
+
+# Auto-save sessions
+auto_save = true
+auto_save_interval = 300  # seconds (5 minutes)
+
+# Basic safety
+require_approval = true  # Ask before file modifications
+
+# Workspace
+[workspace]
+# Trust current directory automatically
+auto_trust = false
+
+# Path to store sessions
+session_path = "~/.agcodex/sessions"
+
+# Simple context engine
+[context_engine]
+# Intelligence mode affects compression and analysis depth
+intelligence_mode = "medium"  # Options: light, medium, hard
+
+# Cache for better performance
+cache_enabled = true
+cache_size = "500MB"
+
+# That's it! This minimal config gets you started.
+# Run: agcodex

@@ -379,7 +379,7 @@ impl WidgetRef for MessageJump {
 
         // Render filter indicator
         let filter_text = format!(
-            "Filter: {} | {} messages | Use Tab to cycle filters, Enter to jump, Esc to cancel",
+            "Filter: {} | {} messages | Tab: cycle filters | ↑/k ↓/j: navigate | Enter: jump | Esc: cancel",
             self.role_filter.display_name(),
             self.filtered_messages.len()
         );

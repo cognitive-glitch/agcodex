@@ -321,7 +321,7 @@ impl PlanTool {
     /// Check for circular dependencies
     fn check_circular_dependencies(&self, tasks: &[Task]) -> PlanResult<()> {
         for task in tasks {
-            if self.has_circular_dependency(task, tasks, &mut std::collections::HashSet::new())? {
+            if Self::has_circular_dependency(task, tasks, &mut std::collections::HashSet::new())? {
                 return Err(PlanError::CircularDependency {
                     chain: vec![format!("Task: {}", task.description)],
                 });
@@ -332,7 +332,6 @@ impl PlanTool {
 
     /// DFS check for circular dependencies
     fn has_circular_dependency(
-        &self,
         task: &Task,
         all_tasks: &[Task],
         visited: &mut std::collections::HashSet<TaskId>,
@@ -345,7 +344,7 @@ impl PlanTool {
 
         for &dep_id in &task.depends_on {
             if let Some(dep_task) = all_tasks.iter().find(|t| t.id == dep_id)
-                && self.has_circular_dependency(dep_task, all_tasks, visited)?
+                && Self::has_circular_dependency(dep_task, all_tasks, visited)?
             {
                 return Ok(true);
             }

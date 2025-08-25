@@ -106,6 +106,10 @@ pub(crate) struct ChatWidget<'a> {
     save_dialog_state: Option<SaveDialogState>,
     // Message jump popup state
     message_jump: MessageJump,
+    // Conversation history for message jump
+    conversation_history: Vec<agcodex_core::models::ResponseItem>,
+    // Current message index for scrolling
+    current_message_index: Option<usize>,
 }
 
 struct UserMessage {
@@ -154,6 +158,16 @@ impl ChatWidget<'_> {
     }
 
     fn on_agent_message(&mut self, message: String) {
+        // Store the message in conversation history
+        self.conversation_history
+            .push(agcodex_core::models::ResponseItem::Message {
+                id: None,
+                role: "assistant".to_string(),
+                content: vec![agcodex_core::models::ContentItem::OutputText {
+                    text: message.clone(),
+                }],
+            });
+
         let sink = AppEventHistorySink(self.app_event_tx.clone());
         let finished = self.stream.apply_final_answer(&message, &sink);
         self.last_stream_kind = Some(StreamKind::Answer);
@@ -170,6 +184,17 @@ impl ChatWidget<'_> {
     }
 
     fn on_agent_reasoning_final(&mut self, text: String) {
+        // Store reasoning in conversation history
+        self.conversation_history
+            .push(agcodex_core::models::ResponseItem::Reasoning {
+                id: uuid::Uuid::new_v4().to_string(),
+                summary: vec![],
+                content: Some(vec![agcodex_core::models::ReasoningItemContent::Text {
+                    text: text.clone(),
+                }]),
+                encrypted_content: None,
+            });
+
         let sink = AppEventHistorySink(self.app_event_tx.clone());
         let finished = self.stream.apply_final_reasoning(&text, &sink);
         self.last_stream_kind = Some(StreamKind::Reasoning);
@@ -248,6 +273,23 @@ impl ChatWidget<'_> {
     }
 
     fn on_exec_command_begin(&mut self, ev: ExecCommandBeginEvent) {
+        // Store shell command in conversation history
+        self.conversation_history
+            .push(agcodex_core::models::ResponseItem::LocalShellCall {
+                id: None,
+                call_id: Some(ev.call_id.clone()),
+                status: agcodex_core::models::LocalShellStatus::InProgress,
+                action: agcodex_core::models::LocalShellAction::Exec(
+                    agcodex_core::models::LocalShellExecAction {
+                        command: ev.command.clone(),
+                        timeout_ms: None,
+                        working_directory: ev.cwd.to_str().map(|s| s.to_string()),
+                        env: None,
+                        user: None,
+                    },
+                ),
+            });
+
         self.flush_answer_stream_with_separator();
         let ev2 = ev.clone();
         self.defer_or_handle(|q| q.push_exec_begin(ev), |s| s.handle_exec_begin_now(ev2));
@@ -283,6 +325,20 @@ impl ChatWidget<'_> {
     }
 
     fn on_mcp_tool_call_begin(&mut self, ev: McpToolCallBeginEvent) {
+        // Store function call in conversation history
+        self.conversation_history
+            .push(agcodex_core::models::ResponseItem::FunctionCall {
+                id: None,
+                name: ev.invocation.tool.clone(),
+                arguments: ev
+                    .invocation
+                    .arguments
+                    .as_ref()
+                    .and_then(|v| serde_json::to_string(v).ok())
+                    .unwrap_or_default(),
+                call_id: ev.call_id.clone(),
+            });
+
         let ev2 = ev.clone();
         self.defer_or_handle(|q| q.push_mcp_begin(ev), |s| s.handle_mcp_begin_now(ev2));
     }
@@ -544,6 +600,8 @@ impl ChatWidget<'_> {
             session_id: None,
             save_dialog_state: None,
             message_jump: MessageJump::new(),
+            conversation_history: Vec::new(),
+            current_message_index: None,
         }
     }
 
@@ -618,6 +676,31 @@ impl ChatWidget<'_> {
 
     fn submit_user_message(&mut self, user_message: UserMessage) {
         let UserMessage { text, image_paths } = user_message;
+
+        // Store user message in conversation history
+        let mut content_items = vec![];
+        if !text.is_empty() {
+            content_items.push(agcodex_core::models::ContentItem::InputText { text: text.clone() });
+        }
+
+        // Add image items if present
+        for path in &image_paths {
+            if let Some(path_str) = path.to_str() {
+                content_items.push(agcodex_core::models::ContentItem::InputImage {
+                    image_url: format!("file://{}", path_str),
+                });
+            }
+        }
+
+        if !content_items.is_empty() {
+            self.conversation_history
+                .push(agcodex_core::models::ResponseItem::Message {
+                    id: None,
+                    role: "user".to_string(),
+                    content: content_items,
+                });
+        }
+
         let mut items: Vec<InputItem> = Vec::new();
 
         if !text.is_empty() {
@@ -951,12 +1034,37 @@ impl ChatWidget<'_> {
     }
 
     /// Jump to a specific message index
-    pub(crate) fn jump_to_message(&mut self, _index: usize) {
-        // TODO: Implement context restoration
-        // For now, just hide the popup
+    pub(crate) fn jump_to_message(&mut self, index: usize) {
+        // Store the current message index
+        self.current_message_index = Some(index);
+
+        // Hide the popup
         self.hide_message_jump();
-        // TODO: Scroll to the message at the given index
-        // TODO: Update conversation state to that point
+
+        // Clear the current display and rebuild up to the selected message
+        // This simulates scrolling to that point in the conversation
+        self.flush_active_exec_cell();
+
+        // TODO: In a real implementation, we would need to:
+        // 1. Clear the terminal or scroll to the appropriate position
+        // 2. Re-render messages from the beginning up to the selected index
+        // 3. Possibly maintain a scrollback buffer position
+        // For now, we'll just mark that we need a redraw
+        self.mark_needs_redraw();
+
+        // Notify the user of the jump
+        let message_info = if let Some(msg) = self.conversation_history.get(index) {
+            match msg {
+                agcodex_core::models::ResponseItem::Message { role, .. } => {
+                    format!("Jumped to message #{} ({})", index + 1, role)
+                }
+                _ => format!("Jumped to item #{}", index + 1),
+            }
+        } else {
+            "Invalid message index".to_string()
+        };
+
+        tracing::info!("{}", message_info);
     }
 
     /// Update search query in message jump popup
@@ -972,10 +1080,9 @@ impl ChatWidget<'_> {
     }
 
     /// Get conversation history as ResponseItems for message jump
-    const fn get_conversation_history(&self) -> Vec<agcodex_core::models::ResponseItem> {
-        // TODO: Extract conversation history from the stream controller or other source
-        // For now, return empty vector as placeholder
-        Vec::new()
+    fn get_conversation_history(&self) -> Vec<agcodex_core::models::ResponseItem> {
+        // Return a clone of the stored conversation history
+        self.conversation_history.clone()
     }
 
     /// Handle key events when message jump popup is visible
@@ -996,11 +1103,11 @@ impl ChatWidget<'_> {
                         .send(AppEvent::JumpToMessage(selected.index));
                 }
             }
-            KeyCode::Up => {
+            KeyCode::Up | KeyCode::Char('k') => {
                 self.message_jump.move_up();
                 self.mark_needs_redraw();
             }
-            KeyCode::Down => {
+            KeyCode::Down | KeyCode::Char('j') => {
                 self.message_jump.move_down();
                 self.mark_needs_redraw();
             }

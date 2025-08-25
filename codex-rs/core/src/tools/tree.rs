@@ -422,17 +422,17 @@ impl ParsedAst {
     /// Get all error nodes
     pub fn error_nodes(&self) -> Vec<Node<'_>> {
         let mut errors = Vec::new();
-        self.collect_error_nodes(self.root_node(), &mut errors);
+        Self::collect_error_nodes(self.root_node(), &mut errors);
         errors
     }
 
-    fn collect_error_nodes<'a>(&self, node: Node<'a>, errors: &mut Vec<Node<'a>>) {
+    fn collect_error_nodes<'a>(node: Node<'a>, errors: &mut Vec<Node<'a>>) {
         if node.is_error() || node.is_missing() {
             errors.push(node);
         }
         for i in 0..node.child_count() {
             if let Some(child) = node.child(i) {
-                self.collect_error_nodes(child, errors);
+                Self::collect_error_nodes(child, errors);
             }
         }
     }
@@ -945,12 +945,15 @@ impl QueryLibrary {
     }
 }
 
+/// Type alias for AST cache entry: (AST, timestamp)
+type AstCacheEntry = (Arc<ParsedAst>, Instant);
+
 /// Enhanced tree-sitter tool with comprehensive language support
 pub struct TreeTool {
     /// Thread-safe parsers for all supported languages
     parsers: Arc<DashMap<SupportedLanguage, ThreadSafeParser>>,
     /// AST cache with timed eviction
-    ast_cache: Arc<Mutex<LruCache<CacheKey, (Arc<ParsedAst>, Instant)>>>,
+    ast_cache: Arc<Mutex<LruCache<CacheKey, AstCacheEntry>>>,
     /// Semantic diff engine
     _diff_engine: SemanticDiffEngine,
     /// Query library for common patterns
@@ -1081,7 +1084,7 @@ impl TreeTool {
         let tree = parser_ref.parse(&code)?;
 
         let parse_time = start_time.elapsed();
-        let node_count = self.count_nodes(tree.root_node());
+        let node_count = Self::count_nodes(tree.root_node());
 
         let parsed_ast = Arc::new(ParsedAst {
             tree,
@@ -1418,11 +1421,11 @@ impl TreeTool {
     }
 
     /// Count total nodes in AST
-    fn count_nodes(&self, node: Node) -> usize {
+    fn count_nodes(node: Node) -> usize {
         let mut count = 1; // Count this node
         for i in 0..node.child_count() {
             if let Some(child) = node.child(i) {
-                count += self.count_nodes(child);
+                count += Self::count_nodes(child);
             }
         }
         count

@@ -7,19 +7,21 @@ use agcodex_core::ConversationManagerExt;
 use agcodex_core::InterceptResult;
 use agcodex_core::MessageContext;
 use agcodex_core::config::Config;
+use agcodex_core::config::ConfigOverrides;
 use agcodex_core::modes::OperatingMode;
 use std::path::PathBuf;
-use tracing::Level;
 use tracing::info;
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
-    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+    // tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
     // Load configuration
-    let config = Config::default();
+    // Note: In a real application, Config would be loaded from config.toml
+    // For this example, we use a minimal config load
+    let config = Config::load_with_cli_overrides(vec![], ConfigOverrides::default())
+        .expect("Failed to load config");
 
     // Create conversation manager with agent support
     let manager = ConversationManagerExt::new(&config)?;
@@ -181,7 +183,8 @@ async fn demonstrate_conversation_flow(
     info!("\n=== Full Conversation Flow ===");
 
     // Create a new conversation
-    let config = Config::default();
+    let config = Config::load_with_cli_overrides(vec![], ConfigOverrides::default())
+        .expect("Failed to load config");
     let new_conv = manager.inner().new_conversation(config).await?;
 
     info!("Created conversation: {}", new_conv.conversation_id);

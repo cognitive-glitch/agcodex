@@ -282,4 +282,15 @@ pub(crate) enum AppEvent {
         agent_id: Uuid,
         chunk: String,
     },
+
+    // ===== Context Visualizer Events =====
+    /// Toggle context visualizer visibility (Ctrl+T)
+    ToggleContextVisualizer,
+
+    /// Update context window information
+    UpdateContextWindow {
+        token_usage: agcodex_core::protocol::TokenUsage,
+        context_breakdown: Option<crate::context_visualizer::ContextBreakdown>,
+        compression_metrics: Option<crate::context_visualizer::CompressionMetrics>,
+    },
 }

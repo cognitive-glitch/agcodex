@@ -397,11 +397,8 @@ impl ThinkingIntensity {
             || prompt_lower.contains("think hard")
             || prompt_lower.contains("deep thinking")
             || prompt_lower.contains("thorough thinking")
-        {
-            Self::Deep
-        }
-        // Complex problem indicators
-        else if prompt_lower.contains("complex")
+            // Complex problem indicators
+            || prompt_lower.contains("complex")
             || prompt_lower.contains("comprehensive")
             || prompt_lower.contains("multi-step")
             || prompt_lower.contains("distributed")

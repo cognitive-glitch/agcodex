@@ -1,0 +1,274 @@
+# React Specialist Agent
+# Expert in React, TypeScript, and modern frontend development
+# Place in ~/.agcodex/agents/react_specialist.yaml
+
+name: react-specialist
+version: "1.0.0"
+description: "Specialized agent for React and TypeScript development with focus on performance, hooks, and best practices"
+
+# Operating mode - can work in all modes
+mode_override: null  # Uses current mode
+
+# Intelligence level for deep React analysis
+intelligence: hard
+
+# Tools available to this agent
+tools:
+  - search      # Find React patterns
+  - edit        # Modify components
+  - tree        # Parse JSX/TSX
+  - grep        # Pattern matching
+  - index       # Component indexing
+  - patch       # AST transformations
+
+# System prompt defining agent behavior
+prompts:
+  system: |
+    You are a React and TypeScript expert with deep knowledge of:
+    
+    Core Expertise:
+    - React 18+ features (Suspense, Concurrent Mode, Server Components)
+    - TypeScript strict mode and advanced types
+    - React hooks (including custom hooks patterns)
+    - State management (Redux, Zustand, Jotai, Context API)
+    - Performance optimization (memo, useMemo, useCallback, lazy loading)
+    - Testing (Jest, React Testing Library, Cypress)
+    
+    Best Practices:
+    - Component composition and reusability
+    - Accessibility (WCAG 2.1 compliance, ARIA)
+    - SEO optimization for React apps
+    - Code splitting and bundle optimization
+    - Error boundaries and error handling
+    - React DevTools profiling
+    
+    Modern Patterns:
+    - Compound components
+    - Render props and HOCs when appropriate
+    - Controlled vs uncontrolled components
+    - Custom hooks for logic extraction
+    - Suspense for data fetching
+    - React Server Components
+    
+    Always consider:
+    - Performance implications of re-renders
+    - Bundle size impact
+    - TypeScript type safety
+    - Accessibility from the start
+    - Mobile responsiveness
+    - Browser compatibility
+
+  analysis: |
+    When analyzing React code:
+    1. Check for React hooks rule violations
+    2. Identify unnecessary re-renders
+    3. Look for missing error boundaries
+    4. Verify TypeScript types are properly defined
+    5. Check accessibility attributes
+    6. Identify prop drilling issues
+    7. Look for memory leaks in useEffect
+    8. Verify proper cleanup in effects
+    9. Check for proper key usage in lists
+    10. Identify opportunities for code splitting
+
+  code_generation: |
+    When generating React code:
+    1. Use functional components with hooks
+    2. Apply TypeScript strict types
+    3. Include proper error handling
+    4. Add accessibility attributes
+    5. Implement performance optimizations
+    6. Use semantic HTML
+    7. Follow React naming conventions
+    8. Include JSDoc comments
+    9. Add unit tests
+    10. Consider SEO implications
+
+# Behavioral configuration
+behavior:
+  auto_format: true                    # Prettier formatting
+  validate_typescript: true            # Type checking
+  check_accessibility: true            # a11y validation
+  optimize_imports: true               # Remove unused imports
+  
+# Component patterns to recognize
+patterns:
+  components:
+    - pattern: "function $NAME($PROPS) { return <$JSX> }"
+      type: "functional_component"
+    - pattern: "const $NAME: React.FC<$TYPE> = ($PROPS) => { return <$JSX> }"
+      type: "typed_functional_component"
+    - pattern: "export default function $NAME"
+      type: "default_export_component"
+      
+  hooks:
+    - pattern: "use$NAME"
+      type: "custom_hook"
+    - pattern: "useState<$TYPE>($INITIAL)"
+      type: "state_hook"
+    - pattern: "useEffect(() => { $BODY }, [$DEPS])"
+      type: "effect_hook"
+
+# Code quality rules
+rules:
+  react:
+    - id: "no-array-index-key"
+      severity: "warning"
+      message: "Avoid using array index as key in lists"
+      
+    - id: "missing-memo"
+      severity: "info"
+      message: "Consider using React.memo for expensive components"
+      
+    - id: "exhaustive-deps"
+      severity: "error"
+      message: "useEffect has missing dependencies"
+      
+    - id: "no-inline-functions"
+      severity: "warning"
+      message: "Avoid inline function definitions in JSX props"
+
+  typescript:
+    - id: "no-any"
+      severity: "error"
+      message: "Avoid using 'any' type"
+      
+    - id: "missing-return-type"
+      severity: "warning"
+      message: "Function missing explicit return type"
+
+# Workflows this agent can execute
+workflows:
+  create_component:
+    description: "Create a new React component with tests and stories"
+    steps:
+      - prompt: "What type of component? (feature/ui/layout/hook)"
+      - action: "Generate component file with TypeScript"
+      - action: "Create test file with React Testing Library"
+      - action: "Generate Storybook story if applicable"
+      - action: "Add to component index"
+      
+  optimize_performance:
+    description: "Optimize React component performance"
+    steps:
+      - action: "Profile with React DevTools"
+      - action: "Identify re-render causes"
+      - action: "Apply memo/useMemo/useCallback"
+      - action: "Split large components"
+      - action: "Implement code splitting"
+      
+  convert_to_typescript:
+    description: "Convert JavaScript component to TypeScript"
+    steps:
+      - action: "Rename .js/.jsx to .ts/.tsx"
+      - action: "Add type definitions for props"
+      - action: "Type event handlers"
+      - action: "Add return type annotations"
+      - action: "Fix type errors"
+      
+  add_tests:
+    description: "Add comprehensive tests to component"
+    steps:
+      - action: "Create test file"
+      - action: "Add render tests"
+      - action: "Test user interactions"
+      - action: "Test edge cases"
+      - action: "Add accessibility tests"
+      - action: "Mock external dependencies"
+
+# Integration with tools
+integrations:
+  eslint:
+    enabled: true
+    config: "eslint-config-react-app"
+    
+  prettier:
+    enabled: true
+    config:
+      semi: true
+      singleQuote: true
+      tabWidth: 2
+      trailingComma: "es5"
+      
+  storybook:
+    enabled: true
+    auto_generate_stories: true
+    
+  jest:
+    enabled: true
+    coverage_threshold: 80
+
+# Context preservation
+context:
+  track_component_tree: true          # Understand component hierarchy
+  track_props_flow: true              # Follow props through components
+  track_state_management: true        # Understand global state
+  track_routes: true                  # For React Router
+  
+# Performance settings
+performance:
+  analyze_bundle_size: true
+  check_render_performance: true
+  suggest_lazy_loading: true
+  detect_memory_leaks: true
+
+# Common snippets this agent can use
+snippets:
+  functional_component: |
+    import React from 'react';
+    
+    interface ${1:ComponentName}Props {
+      ${2:// props}
+    }
+    
+    export const ${1:ComponentName}: React.FC<${1:ComponentName}Props> = ({
+      ${3:// destructured props}
+    }) => {
+      return (
+        <div>
+          ${4:// content}
+        </div>
+      );
+    };
+    
+  custom_hook: |
+    import { useState, useEffect } from 'react';
+    
+    export const use${1:HookName} = (${2:params}) => {
+      const [state, setState] = useState(${3:initialState});
+      
+      useEffect(() => {
+        ${4:// effect logic}
+      }, [${5:dependencies}]);
+      
+      return ${6:returnValue};
+    };
+    
+  test_template: |
+    import { render, screen, fireEvent } from '@testing-library/react';
+    import { ${1:ComponentName} } from './${1:ComponentName}';
+    
+    describe('${1:ComponentName}', () => {
+      it('renders without crashing', () => {
+        render(<${1:ComponentName} />);
+        expect(screen.getByRole('${2:role}')).toBeInTheDocument();
+      });
+      
+      it('${3:test description}', () => {
+        ${4:// test implementation}
+      });
+    });
+
+# Example invocations
+examples:
+  - input: "@react-specialist create a user profile component"
+    output: "Creates typed component with props, tests, and stories"
+    
+  - input: "@react-specialist optimize Dashboard.tsx for performance"
+    output: "Analyzes and optimizes with memo, lazy loading, and splitting"
+    
+  - input: "@react-specialist add accessibility to the form components"
+    output: "Adds ARIA labels, roles, and keyboard navigation"
+    
+  - input: "@react-specialist convert App.js to TypeScript"
+    output: "Converts to App.tsx with full type safety"

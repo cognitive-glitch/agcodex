@@ -26,6 +26,9 @@ use std::time::Duration;
 use std::time::Instant;
 use uuid::Uuid;
 
+use crate::error::Result;
+use crate::error::TuiError;
+
 /// Notification types for different agent events
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NotificationType {
@@ -301,51 +304,55 @@ impl NotificationManager {
     }
 
     /// Add a new notification
-    pub fn notify(&self, notification: Notification) {
+    pub fn notify(&self, notification: Notification) -> Result<()> {
         // Play terminal bell if appropriate
         if self.bell_enabled && notification.notification_type.should_bell() {
             self.ring_bell();
         }
 
         // Add to queue
-        let mut notifications = self.notifications.lock().unwrap();
+        let mut notifications = self.notifications.lock().map_err(|e| {
+            TuiError::PoisonedMutex(format!("Failed to lock notifications queue: {}", e))
+        })?;
         notifications.push_back(notification);
 
         // Limit queue size (keep last N * 2 for history)
         while notifications.len() > self.max_visible * 2 {
             notifications.pop_front();
         }
+
+        Ok(())
     }
 
     /// Quick helper to notify agent started
-    pub fn agent_started(&self, agent_name: String) {
+    pub fn agent_started(&self, agent_name: String) -> Result<()> {
         self.notify(Notification::new(
             NotificationType::Started,
             agent_name.clone(),
             format!("Agent {} started", agent_name),
-        ));
+        ))
     }
 
     /// Quick helper to notify agent progress
-    pub fn agent_progress(&self, agent_name: String, progress: f32, message: String) {
+    pub fn agent_progress(&self, agent_name: String, progress: f32, message: String) -> Result<()> {
         self.notify(
             Notification::new(NotificationType::Progress, agent_name, message)
                 .with_progress(progress)
                 .with_duration(Duration::from_secs(2)),
-        );
+        )
     }
 
     /// Quick helper to notify agent completion
-    pub fn agent_completed(&self, agent_name: String, message: String) {
+    pub fn agent_completed(&self, agent_name: String, message: String) -> Result<()> {
         self.notify(Notification::new(
             NotificationType::Complete,
             agent_name.clone(),
             message,
-        ));
+        ))
     }
 
     /// Quick helper to notify agent failure
-    pub fn agent_failed(&self, agent_name: String, error: String) {
+    pub fn agent_failed(&self, agent_name: String, error: String) -> Result<()> {
         self.notify(
             Notification::new(
                 NotificationType::Failed,
@@ -353,7 +360,7 @@ impl NotificationManager {
                 "Agent failed".to_string(),
             )
             .with_details(error),
-        );
+        )
     }
 
     /// Ring the terminal bell
@@ -381,7 +388,7 @@ impl NotificationManager {
     }
 
     /// Update animation and remove expired notifications
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self) -> Result<()> {
         // Update animation frame
         if self.last_update.elapsed() > Duration::from_millis(100) {
             self.animation_frame = (self.animation_frame + 1) % 8;
@@ -389,40 +396,70 @@ impl NotificationManager {
         }
 
         // Remove expired notifications
-        let mut notifications = self.notifications.lock().unwrap();
+        let mut notifications = self.notifications.lock().map_err(|e| {
+            TuiError::PoisonedMutex(format!("Failed to lock notifications for cleanup: {}", e))
+        })?;
         notifications.retain(|n| !n.should_dismiss());
+
+        Ok(())
     }
 
     /// Acknowledge a notification by ID
-    pub fn acknowledge(&self, id: Uuid) {
-        let mut notifications = self.notifications.lock().unwrap();
+    pub fn acknowledge(&self, id: Uuid) -> Result<()> {
+        let mut notifications = self.notifications.lock().map_err(|e| {
+            TuiError::PoisonedMutex(format!(
+                "Failed to lock notifications for acknowledgment: {}",
+                e
+            ))
+        })?;
         if let Some(notification) = notifications.iter_mut().find(|n| n.id == id) {
             notification.acknowledged = true;
         }
+
+        Ok(())
     }
 
     /// Clear all notifications
-    pub fn clear_all(&self) {
-        let mut notifications = self.notifications.lock().unwrap();
+    pub fn clear_all(&self) -> Result<()> {
+        let mut notifications = self.notifications.lock().map_err(|e| {
+            TuiError::PoisonedMutex(format!("Failed to lock notifications for clearing: {}", e))
+        })?;
         notifications.clear();
+
+        Ok(())
     }
 
     /// Get visible notifications
-    fn get_visible_notifications(&self) -> Vec<Notification> {
-        let notifications = self.notifications.lock().unwrap();
-        notifications
+    fn get_visible_notifications(&self) -> Result<Vec<Notification>> {
+        let notifications = self.notifications.lock().map_err(|e| {
+            TuiError::PoisonedMutex(format!(
+                "Failed to lock notifications for visibility check: {}",
+                e
+            ))
+        })?;
+
+        Ok(notifications
             .iter()
             .filter(|n| !n.should_dismiss())
             .take(self.max_visible)
             .cloned()
-            .collect()
+            .collect())
     }
 }
 
 /// Widget implementation for rendering notifications
 impl Widget for &NotificationManager {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let notifications = self.get_visible_notifications();
+        let notifications = match self.get_visible_notifications() {
+            Ok(notifications) => notifications,
+            Err(_) => {
+                // Log error but don't panic during rendering
+                #[cfg(debug_assertions)]
+                eprintln!("[WARNING] Failed to get visible notifications during rendering");
+                return;
+            }
+        };
+
         if notifications.is_empty() {
             return;
         }
@@ -611,11 +648,18 @@ mod tests {
         assert!(!manager.bell_enabled);
 
         // Add notifications
-        manager.agent_started("agent1".to_string());
-        manager.agent_progress("agent1".to_string(), 0.5, "Halfway done".to_string());
-        manager.agent_completed("agent1".to_string(), "Success!".to_string());
+        manager.agent_started("agent1".to_string()).unwrap();
+        manager
+            .agent_progress("agent1".to_string(), 0.5, "Halfway done".to_string())
+            .unwrap();
+        manager
+            .agent_completed("agent1".to_string(), "Success!".to_string())
+            .unwrap();
 
-        let notifications = manager.notifications.lock().unwrap();
+        let notifications = manager
+            .notifications
+            .lock()
+            .expect("Lock should not be poisoned in test");
         assert_eq!(notifications.len(), 3);
     }
 
@@ -625,10 +669,13 @@ mod tests {
 
         // Add more than max_visible * 2 notifications
         for i in 0..10 {
-            manager.agent_started(format!("agent{}", i));
+            manager.agent_started(format!("agent{}", i)).unwrap();
         }
 
-        let notifications = manager.notifications.lock().unwrap();
+        let notifications = manager
+            .notifications
+            .lock()
+            .expect("Lock should not be poisoned in test");
         assert!(notifications.len() <= manager.max_visible * 2);
     }
 

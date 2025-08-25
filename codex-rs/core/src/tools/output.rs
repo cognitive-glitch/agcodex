@@ -1644,29 +1644,41 @@ pub fn simple_error<T>(
         .build()
 }
 
+/// Parameters for a single file modification
+pub struct FileModificationParams {
+    pub file_path: String,
+    pub line: usize,
+    pub column: usize,
+    pub old_content: String,
+    pub new_content: String,
+    pub reason: String,
+}
+
 /// Create an output with a single file modification
 pub fn single_file_modification<T>(
     result: T,
     tool: &'static str,
     operation: String,
-    file_path: &str,
-    line: usize,
-    column: usize,
-    old_content: String,
-    new_content: String,
-    reason: String,
+    params: FileModificationParams,
 ) -> ComprehensiveToolOutput<T> {
-    let location = SourceLocation::new(file_path, line, column, line, column, (0, 0));
+    let location = SourceLocation::new(
+        &params.file_path,
+        params.line,
+        params.column,
+        params.line,
+        params.column,
+        (0, 0),
+    );
     let change = ChangeBuilder::new(location.clone())
-        .old_content(old_content)
-        .new_content(new_content)
-        .modification(reason.clone(), ModificationType::Replacement);
+        .old_content(params.old_content)
+        .new_content(params.new_content)
+        .modification(params.reason.clone(), ModificationType::Replacement);
 
     OutputBuilder::new(result, tool, operation, location)
         .change(change)
         .summary(format!(
             "Modified {} at line {}: {}",
-            file_path, line, reason
+            params.file_path, params.line, params.reason
         ))
         .build()
 }

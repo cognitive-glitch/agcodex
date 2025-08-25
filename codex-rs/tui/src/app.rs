@@ -19,6 +19,7 @@ use agcodex_core::modes::ModeManager;
 use agcodex_core::modes::OperatingMode;
 use agcodex_core::protocol::Event;
 use agcodex_core::protocol::Op;
+use agcodex_core::protocol::TokenUsage;
 use agcodex_persistence::session_manager::SessionManager;
 use agcodex_persistence::session_manager::SessionManagerConfig;
 use agcodex_persistence::types::OperatingMode as PersistenceOperatingMode;
@@ -29,6 +30,8 @@ use agcodex_persistence::types::OperatingMode as PersistenceOperatingMode;
 // use agcodex_core::code_tools::ast_agent_tools::ASTAgentTools;
 use color_eyre::eyre::Result;
 // Use crossterm types re-exported by ratatui to avoid version conflicts
+use crate::context_visualizer::ContextBreakdown;
+use crate::context_visualizer::ContextVisualizer;
 use crate::widgets::AgentPanel;
 use crate::widgets::ModeIndicator;
 use ratatui::crossterm::event::KeyCode;
@@ -188,6 +191,12 @@ pub(crate) struct App<'a> {
 
     /// Auto-save timer handle
     auto_save_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
+
+    /// Context window visualizer
+    context_visualizer: ContextVisualizer,
+
+    /// Whether context visualizer is currently visible
+    context_visualizer_visible: bool,
     // Temporarily disabled until core compilation issues are fixed
     // /// Agent orchestrator for real execution
     // orchestrator: Arc<AgentOrchestrator>,
@@ -390,6 +399,8 @@ impl App<'_> {
             session_manager,
             current_session_id,
             auto_save_handle,
+            context_visualizer: ContextVisualizer::new(),
+            context_visualizer_visible: false,
             // Temporarily disabled:
             // orchestrator: orchestrator.clone(),
             // ast_tools,
@@ -519,6 +530,15 @@ impl App<'_> {
                         } => {
                             // Ctrl+A: Toggle agent panel
                             self.app_event_tx.send(AppEvent::ToggleAgentPanel);
+                        }
+                        KeyEvent {
+                            code: KeyCode::Char('t'),
+                            modifiers: ratatui::crossterm::event::KeyModifiers::CONTROL,
+                            kind: KeyEventKind::Press,
+                            ..
+                        } => {
+                            // Ctrl+T: Toggle context visualizer
+                            self.app_event_tx.send(AppEvent::ToggleContextVisualizer);
                         }
                         KeyEvent {
                             code: KeyCode::Char('z'),
@@ -1180,6 +1200,39 @@ impl App<'_> {
                     self.agent_panel.add_output_chunk(agent_id, chunk);
                     self.app_event_tx.send(AppEvent::RequestRedraw);
                 }
+
+                // ===== Context Visualizer Events =====
+                AppEvent::ToggleContextVisualizer => {
+                    self.context_visualizer_visible = !self.context_visualizer_visible;
+
+                    // Update with current token usage when toggling on
+                    if self.context_visualizer_visible {
+                        let token_usage = self.token_usage();
+                        self.update_context_visualizer_with_usage(token_usage);
+                    }
+
+                    self.app_event_tx.send(AppEvent::RequestRedraw);
+                }
+                AppEvent::UpdateContextWindow {
+                    token_usage,
+                    context_breakdown,
+                    compression_metrics,
+                } => {
+                    self.context_visualizer.update_token_usage(token_usage);
+
+                    if let Some(breakdown) = context_breakdown {
+                        self.context_visualizer.update_context_breakdown(breakdown);
+                    }
+
+                    if let Some(metrics) = compression_metrics {
+                        self.context_visualizer.update_compression_metrics(metrics);
+                    }
+
+                    // Only redraw if context visualizer is visible
+                    if self.context_visualizer_visible {
+                        self.app_event_tx.send(AppEvent::RequestRedraw);
+                    }
+                }
             }
         }
         terminal.clear()?;
@@ -1709,6 +1762,31 @@ impl App<'_> {
             .map_err(|e| color_eyre::eyre::eyre!("Notification test failed: {}", e))
     }
 
+    /// Update context visualizer with current token usage and estimate context breakdown
+    fn update_context_visualizer_with_usage(&mut self, token_usage: TokenUsage) {
+        // Estimate context breakdown from token usage
+        // This is a rough estimation - in a real implementation, you'd want
+        // more precise tracking of where tokens are being used
+        let mut breakdown = ContextBreakdown {
+            system_prompt_tokens: 1000, // Rough estimate for system prompt
+            message_history_tokens: token_usage.input_tokens.saturating_sub(1000),
+            tool_output_tokens: 500, // Rough estimate for tool descriptions
+            cached_tokens: token_usage.cached_input_tokens,
+            reasoning_tokens: token_usage.reasoning_output_tokens,
+            context_window_size: None,
+        };
+
+        // Try to get context window size from model info
+        // This is a simplified approach - in practice you'd get this from the current model
+        breakdown.context_window_size = Some(200_000); // Default to 200K for GPT-4 class models
+
+        self.context_visualizer.update_token_usage(token_usage);
+        self.context_visualizer.update_context_breakdown(breakdown);
+
+        // TODO: Update compression metrics from actual AST compaction results
+        // This would come from the context engine when compression is active
+    }
+
     fn draw_next_frame(&mut self, terminal: &mut tui::Tui) -> Result<()> {
         if matches!(self.app_state, AppState::Onboarding { .. }) {
             terminal.clear()?;
@@ -1765,24 +1843,35 @@ impl App<'_> {
 
         terminal.draw(|frame| match &mut self.app_state {
             AppState::Chat { widget } => {
-                // Determine if agent panel is visible
+                // Determine panel visibility
                 let agent_panel_visible = self.agent_panel.is_visible();
-
-                // Create main layout with status bar
-                let main_constraints = if agent_panel_visible {
-                    vec![
-                        Constraint::Length(3),  // Mode indicator height
-                        Constraint::Min(0),     // Chat widget
-                        Constraint::Length(15), // Agent panel height
-                        Constraint::Length(1),  // Status bar
-                    ]
+                let context_visualizer_visible = self.context_visualizer_visible;
+                let context_visualizer_height = if context_visualizer_visible {
+                    self.context_visualizer.required_height()
                 } else {
-                    vec![
-                        Constraint::Length(3), // Mode indicator height
-                        Constraint::Min(0),    // Chat widget takes the rest
-                        Constraint::Length(1), // Status bar
-                    ]
+                    0
                 };
+
+                // Create main layout with status bar and optional panels
+                let mut main_constraints = vec![
+                    Constraint::Length(3), // Mode indicator height
+                ];
+
+                // Add context visualizer if visible
+                if context_visualizer_visible {
+                    main_constraints.push(Constraint::Length(context_visualizer_height));
+                }
+
+                // Add chat widget (takes remaining space)
+                main_constraints.push(Constraint::Min(0));
+
+                // Add agent panel if visible
+                if agent_panel_visible {
+                    main_constraints.push(Constraint::Length(15)); // Agent panel height
+                }
+
+                // Add status bar
+                main_constraints.push(Constraint::Length(1));
 
                 let main_layout = Layout::default()
                     .direction(Direction::Vertical)
@@ -1806,25 +1895,40 @@ impl App<'_> {
                 };
                 frame.render_widget(mode_indicator, top_layout[1]);
 
-                // Render chat widget
-                let chat_area = main_layout[1];
-                if let Some((x, y)) = widget.cursor_pos(chat_area) {
-                    frame.set_cursor_position((x, y));
+                // Track layout index
+                let mut layout_idx = 1;
+
+                // Render context visualizer if visible
+                if context_visualizer_visible && layout_idx < main_layout.len() {
+                    frame.render_widget_ref(&self.context_visualizer, main_layout[layout_idx]);
+                    layout_idx += 1;
                 }
-                frame.render_widget_ref(&**widget, chat_area);
+
+                // Render chat widget
+                if layout_idx < main_layout.len() {
+                    let chat_area = main_layout[layout_idx];
+                    if let Some((x, y)) = widget.cursor_pos(chat_area) {
+                        frame.set_cursor_position((x, y));
+                    }
+                    frame.render_widget_ref(&**widget, chat_area);
+                    layout_idx += 1;
+                }
 
                 // Render agent panel if visible
-                if agent_panel_visible && main_layout.len() > 3 {
-                    frame.render_widget_ref(&self.agent_panel, main_layout[2]);
+                if agent_panel_visible && layout_idx < main_layout.len() {
+                    frame.render_widget_ref(&self.agent_panel, main_layout[layout_idx]);
+                    layout_idx += 1;
                 }
 
                 // Render status bar at the bottom
-                let status_area = if agent_panel_visible {
-                    main_layout[3]
-                } else {
-                    main_layout[2]
-                };
-                self.render_status_bar(frame, status_area, current_mode);
+                if layout_idx < main_layout.len() {
+                    let status_area = main_layout[layout_idx];
+                    self.render_status_bar(frame, status_area, current_mode);
+                } else if !main_layout.is_empty() {
+                    // Fallback to last layout area if indexing went wrong
+                    let status_area = main_layout[main_layout.len() - 1];
+                    self.render_status_bar(frame, status_area, current_mode);
+                }
             }
             AppState::Onboarding { screen } => {
                 // For onboarding, still show mode indicator and status bar
@@ -1919,6 +2023,13 @@ impl App<'_> {
             Span::raw(" • "),
             Span::styled(
                 "Ctrl+A: Agents",
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::DIM),
+            ),
+            Span::raw(" • "),
+            Span::styled(
+                "Ctrl+T: Context",
                 Style::default()
                     .fg(Color::DarkGray)
                     .add_modifier(Modifier::DIM),

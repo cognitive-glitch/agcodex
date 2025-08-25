@@ -72,6 +72,7 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 supports-color = { workspace = true }
 textwrap = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true, features = [
     "io-std",
     "macros",
