@@ -325,11 +325,19 @@ impl SubagentRegistry {
 
                     // Check for name conflicts
                     if let Some(existing) = agents.get(&name) {
-                        return Err(SubagentRegistryError::NameConflict {
-                            name,
-                            path1: existing.config_path.clone(),
-                            path2: path.to_path_buf(),
-                        });
+                        // Allow project configs to override global configs
+                        if is_global || !existing.is_global {
+                            // Error if:
+                            // 1. We're loading a global config and there's any conflict
+                            // 2. We're loading a project config and the existing is also project (not global)
+                            return Err(SubagentRegistryError::NameConflict {
+                                name,
+                                path1: existing.config_path.clone(),
+                                path2: path.to_path_buf(),
+                            });
+                        }
+                        // If we're loading a project config and existing is global, allow override
+                        tracing::info!("Project agent '{}' overrides global agent", name);
                     }
 
                     agents.insert(name, agent_info);

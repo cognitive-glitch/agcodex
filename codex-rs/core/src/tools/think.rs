@@ -385,6 +385,7 @@ impl ThinkingIntensity {
     pub fn from_prompt(prompt: &str) -> Self {
         let prompt_lower = prompt.to_lowercase();
 
+        // Explicit thinking instructions
         if prompt_lower.contains("think really hard")
             || prompt_lower.contains("think very deeply")
             || prompt_lower.contains("think extremely hard")
@@ -396,6 +397,19 @@ impl ThinkingIntensity {
             || prompt_lower.contains("think hard")
             || prompt_lower.contains("deep thinking")
             || prompt_lower.contains("thorough thinking")
+        {
+            Self::Deep
+        }
+        // Complex problem indicators
+        else if prompt_lower.contains("complex")
+            || prompt_lower.contains("comprehensive")
+            || prompt_lower.contains("multi-step")
+            || prompt_lower.contains("distributed")
+            || prompt_lower.contains("microservices")
+            || prompt_lower.contains("multiple")
+            || prompt_lower.contains("architecture")
+            || prompt_lower.contains("system")
+            || (prompt_lower.matches("and").count() > 2)
         {
             Self::Deep
         } else {
@@ -986,10 +1000,15 @@ impl ThinkTool {
                     intensity, total_steps
                 );
 
+                // Calculate confidence based on question characteristics, not just intensity
+                let base_confidence = Self::calculate_confidence(question, &steps);
+                let intensity_boost = (0.05 * intensity.multiplier() as f32).min(0.1);
+                let final_confidence = (base_confidence + intensity_boost).min(0.95);
+
                 Ok(ThinkResult {
                     steps,
                     conclusion,
-                    confidence: 0.7 + (0.1 * intensity.multiplier() as f32).min(0.25),
+                    confidence: final_confidence,
                     thought_data: None,
                     intensity: Some(intensity),
                     progress: Some(seq.get_progress()),
@@ -1028,10 +1047,15 @@ impl ThinkTool {
                     intensity, shannon.uncertainty_rounds
                 );
 
+                // Calculate confidence based on question characteristics, not just intensity
+                let base_confidence = Self::calculate_confidence(question, &steps);
+                let intensity_boost = (0.08 * intensity.multiplier() as f32).min(0.15);
+                let final_confidence = (base_confidence + intensity_boost).min(0.95);
+
                 Ok(ThinkResult {
                     steps,
                     conclusion,
-                    confidence: 0.75 + (0.08 * intensity.multiplier() as f32).min(0.2),
+                    confidence: final_confidence,
                     thought_data: None,
                     intensity: Some(intensity),
                     progress: Some(shannon.get_progress()),
@@ -1073,13 +1097,18 @@ impl ThinkTool {
                     ac.max_rounds, intensity
                 ));
 
+                // Calculate confidence based on question characteristics, not just intensity
+                let base_confidence = Self::calculate_confidence(question, &steps);
+                let intensity_boost = (0.03 * intensity.multiplier() as f32).min(0.1);
+                let final_confidence = (base_confidence + intensity_boost).min(0.95);
+
                 Ok(ThinkResult {
                     steps,
                     conclusion: ac
                         .synthesis
                         .clone()
                         .unwrap_or_else(|| "Actor-Critic analysis complete".to_string()),
-                    confidence: 0.8 + (0.05 * intensity.multiplier() as f32).min(0.15),
+                    confidence: final_confidence,
                     thought_data: None,
                     intensity: Some(intensity),
                     progress: Some(ac.get_progress()),
@@ -1761,6 +1790,11 @@ impl ThinkTool {
         let has_clear_intent = q_lower.starts_with("how to")
             || q_lower.starts_with("what is")
             || q_lower.starts_with("why does");
+
+        // Never consider vague questions as well-defined
+        if Self::is_vague_problem(question) {
+            return false;
+        }
 
         has_specifics || (has_context && has_clear_intent)
     }

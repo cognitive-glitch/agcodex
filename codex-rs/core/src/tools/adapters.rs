@@ -356,6 +356,14 @@ pub fn adapt_tree_tool(input: Value) -> Result<ToolOutput, ToolError> {
 
 /// Adapter for the edit tool (simple text replacement)
 pub fn adapt_edit_tool(input: Value) -> Result<ToolOutput, ToolError> {
+    // Check mode restriction first - Plan mode blocks all edits
+    let mode = get_current_mode();
+    if mode == OperatingMode::Plan {
+        return Err(ToolError::InvalidInput(
+            "⛔ Edit operations are not allowed in Plan mode (read-only). Press Shift+Tab to switch to Build mode.".into()
+        ));
+    }
+
     let file = input["file"]
         .as_str()
         .ok_or_else(|| ToolError::InvalidInput("missing 'file' field".into()))?;
@@ -496,17 +504,14 @@ pub fn adapt_bash_tool(input: Value) -> Result<ToolOutput, ToolError> {
         .as_str()
         .ok_or_else(|| ToolError::InvalidInput("missing 'command' field".into()))?;
 
-    // Validate command execution with ModeManager
-    with_mode_manager(|manager| manager.validate_command_execution(command))
-        .map_err(ToolError::InvalidInput)?;
-
-    // Additional safety check - even in Build mode, we maintain some restrictions
+    // Define read-only and dangerous commands
     let read_only_commands = [
         "ls", "pwd", "echo", "date", "whoami", "uname", "cat", "grep", "find", "which", "head",
         "tail",
     ];
     let dangerous_commands = ["rm", "dd", "mkfs", "format"];
-    let first_word = command.split_whitespace().next().unwrap_or("");
+    let cmd_parts: Vec<&str> = command.split_whitespace().collect();
+    let first_word = cmd_parts.first().copied().unwrap_or("");
 
     // Check if it's a dangerous command that should always be blocked
     if dangerous_commands.contains(&first_word) {
@@ -519,20 +524,30 @@ pub fn adapt_bash_tool(input: Value) -> Result<ToolOutput, ToolError> {
         }
     }
 
-    // In Plan and Review modes, only allow read-only commands
-    let current_mode = get_current_mode();
-    if matches!(current_mode, OperatingMode::Plan | OperatingMode::Review)
-        && !read_only_commands.contains(&first_word)
-    {
-        return Err(ToolError::InvalidInput(format!(
-            "⛔ Command '{}' not allowed in {} mode. Only read-only commands are permitted. Press Shift+Tab to switch to Build mode.",
-            first_word,
-            match current_mode {
-                OperatingMode::Plan => "Plan",
-                OperatingMode::Review => "Review",
-                _ => "current",
-            }
-        )));
+    // Mode-specific validation
+    let mode = get_current_mode();
+    if mode == OperatingMode::Plan {
+        // In Plan mode, only allow read-only commands
+        if !cmd_parts.is_empty() && !read_only_commands.contains(&first_word) {
+            return Err(ToolError::InvalidInput(format!(
+                "⛔ Command '{}' not allowed in Plan mode (read-only). Only read-only commands are permitted. Press Shift+Tab to switch to Build mode.",
+                first_word
+            )));
+        }
+        // Skip ModeManager validation for allowed read-only commands in Plan mode
+    } else if mode == OperatingMode::Review {
+        // In Review mode, also restrict to read-only commands
+        if !read_only_commands.contains(&first_word) {
+            return Err(ToolError::InvalidInput(format!(
+                "⛔ Command '{}' not allowed in Review mode. Only read-only commands are permitted. Press Shift+Tab to switch to Build mode.",
+                first_word
+            )));
+        }
+        // Skip ModeManager validation for allowed read-only commands in Review mode
+    } else {
+        // In Build mode, use ModeManager for validation
+        with_mode_manager(|manager| manager.validate_command_execution(command))
+            .map_err(ToolError::InvalidInput)?;
     }
 
     let output = std::process::Command::new("sh")

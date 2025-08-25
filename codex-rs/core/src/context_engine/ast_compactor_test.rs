@@ -77,13 +77,40 @@ mod tests {
         let code = "pub struct Test { pub field: String }";
         let result = compactor.compact_source(code, &opts);
 
-        assert!(result.semantic_weights.is_some());
+        assert!(
+            result.semantic_weights.is_some(),
+            "Expected semantic_weights to be Some when include_weights is true"
+        );
 
         if let Some(weights) = result.semantic_weights {
-            // Struct definitions should have high weight
-            assert!(weights.get("struct_item").copied().unwrap_or(0.0) > 0.8);
-            // Comments should have low weight
-            assert!(weights.get("line_comment").copied().unwrap_or(1.0) < 0.3);
+            // Debug: print available keys if test fails
+            let keys: Vec<String> = weights.keys().cloned().collect();
+
+            // Check for struct-related keys (struct_item exists in the implementation)
+            let struct_weight = weights.get("struct_item").copied();
+            assert!(
+                struct_weight.is_some(),
+                "Expected 'struct_item' key in weights. Available keys: {:?}",
+                keys
+            );
+            assert!(
+                struct_weight.unwrap() > 0.8,
+                "struct_item weight should be > 0.8, got {}",
+                struct_weight.unwrap()
+            );
+
+            // Check for comment-related keys (line_comment exists in the implementation)
+            let comment_weight = weights.get("line_comment").copied();
+            assert!(
+                comment_weight.is_some(),
+                "Expected 'line_comment' key in weights. Available keys: {:?}",
+                keys
+            );
+            assert!(
+                comment_weight.unwrap() < 0.3,
+                "line_comment weight should be < 0.3, got {}",
+                comment_weight.unwrap()
+            );
         }
     }
 
@@ -234,7 +261,7 @@ mod tests {
         assert_eq!(metrics.messages_processed, 1);
         assert_eq!(metrics.code_blocks_compressed, 2); // Two code blocks
         assert_eq!(metrics.compression_level, CompressionLevel::Medium);
-        assert!(metrics.time_ms >= 0);
+        // time_ms is u64, always >= 0
 
         // Verify the message structure is preserved
         assert_eq!(compressed.len(), 1);
