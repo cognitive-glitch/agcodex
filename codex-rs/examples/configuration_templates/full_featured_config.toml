@@ -1,0 +1,348 @@
+# AGCodex Full-Featured Configuration
+# Comprehensive configuration with all features enabled
+# Place this file at ~/.agcodex/config.toml
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Model Provider Configuration
+# ═══════════════════════════════════════════════════════════════════════════
+
+[model]
+provider = "openai"                    # Primary provider
+model = "gpt-4-turbo-preview"         # Latest model
+api_key = "${OPENAI_API_KEY}"         # From environment
+fallback_provider = "anthropic"        # Fallback option
+fallback_model = "claude-3-opus"      # Fallback model
+temperature = 0.7                      # Creativity level (0.0-1.0)
+max_tokens = 4096                     # Max response length
+stream = true                          # Enable streaming responses
+
+# Additional providers
+[model.providers.anthropic]
+api_key = "${ANTHROPIC_API_KEY}"
+model = "claude-3-opus-20240229"
+max_tokens = 4096
+
+[model.providers.ollama]
+base_url = "http://localhost:11434"
+model = "codellama:34b"
+timeout = 120  # seconds
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Operating Modes Configuration
+# ═══════════════════════════════════════════════════════════════════════════
+
+[modes]
+default = "build"                      # Startup mode
+auto_switch = true                     # Allow automatic mode switching
+switch_key = "shift+tab"              # Mode switch keybinding
+
+[modes.plan]
+description = "Read-only analysis and planning"
+allow_read = true
+allow_write = false
+allow_execute = false
+theme = "blue"                        # UI theme for this mode
+
+[modes.build]
+description = "Full development access"
+allow_read = true
+allow_write = true
+allow_execute = true
+theme = "green"
+max_file_size = 10485760              # 10MB limit per file
+
+[modes.review]
+description = "Quality-focused review mode"
+allow_read = true
+allow_write = true
+allow_execute = false
+max_edit_size = 10240                 # 10KB edit limit
+theme = "yellow"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Context Engine & AST Configuration
+# ═══════════════════════════════════════════════════════════════════════════
+
+[context_engine]
+intelligence_mode = "hard"             # Maximum analysis depth
+compression_level = 95                 # 95% compression
+chunk_size = 1024                     # Bytes per chunk
+overlap = 128                         # Chunk overlap for context
+indexing = "aggressive"               # Indexing strategy
+include_call_graph = true             # Build call relationships
+include_data_flow = true              # Track data flow
+include_type_info = true              # Include type information
+
+[context_engine.cache]
+enabled = true
+memory_limit = "2GB"
+disk_limit = "10GB"
+ttl = 7200                            # 2 hours
+strategy = "arc"                      # Adaptive Replacement Cache
+
+[context_engine.languages]
+# Supported languages with custom settings
+rust = { parser = "tree-sitter-rust", extensions = [".rs"] }
+python = { parser = "tree-sitter-python", extensions = [".py", ".pyi"] }
+typescript = { parser = "tree-sitter-typescript", extensions = [".ts", ".tsx"] }
+javascript = { parser = "tree-sitter-javascript", extensions = [".js", ".jsx"] }
+go = { parser = "tree-sitter-go", extensions = [".go"] }
+java = { parser = "tree-sitter-java", extensions = [".java"] }
+cpp = { parser = "tree-sitter-cpp", extensions = [".cpp", ".hpp", ".cc", ".h"] }
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Embeddings Configuration (Semantic Search)
+# ═══════════════════════════════════════════════════════════════════════════
+
+[embeddings]
+enabled = true
+default_provider = "openai"
+auto_index = true                     # Auto-index on startup
+update_on_save = true                 # Update embeddings on file save
+
+[embeddings.providers.openai]
+api_key = "${OPENAI_API_KEY}"
+model = "text-embedding-3-large"
+dimensions = 3072
+batch_size = 100
+max_retries = 3
+
+[embeddings.providers.gemini]
+api_key = "${GEMINI_API_KEY}"
+model = "models/embedding-001"
+dimensions = 768
+batch_size = 50
+
+[embeddings.providers.voyage]
+api_key = "${VOYAGE_API_KEY}"
+model = "voyage-code-2"
+dimensions = 1536
+batch_size = 128
+
+[embeddings.search]
+top_k = 10                            # Return top 10 results
+similarity_threshold = 0.7            # Minimum similarity score
+rerank = true                         # Re-rank results
+hybrid_search = true                  # Combine with keyword search
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Agent Configuration
+# ═══════════════════════════════════════════════════════════════════════════
+
+[agents]
+path = "~/.agcodex/agents"            # Custom agents directory
+auto_load = true                      # Load all agents on startup
+parallel_execution = true             # Allow parallel agent execution
+max_concurrent = 4                    # Max agents running simultaneously
+
+[agents.defaults]
+timeout = 300                         # 5 minutes default timeout
+retry_on_failure = true
+max_retries = 2
+mode_override_allowed = true          # Agents can override mode
+
+[agents.orchestration]
+enable_pipelines = true               # Allow agent pipelines
+enable_branching = true               # Conditional execution
+enable_loops = true                   # Iterative workflows
+message_bus = "async"                 # Communication method
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Session Management
+# ═══════════════════════════════════════════════════════════════════════════
+
+[session]
+auto_save = true
+auto_save_interval = 300              # 5 minutes
+compression = "zstd"                  # Compression algorithm
+encryption = false                    # Encrypt sessions (requires key)
+max_history = 1000                    # Max messages per session
+branching_enabled = true              # Allow session branching
+checkpoint_on_mode_switch = true      # Auto checkpoint on mode change
+
+[session.storage]
+path = "~/.agcodex/sessions"
+max_size = "5GB"
+cleanup_age = 30                      # Days to keep old sessions
+backup_path = "~/.agcodex/backups"
+backup_interval = 86400               # Daily backups
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MCP (Model Context Protocol) Servers
+# ═══════════════════════════════════════════════════════════════════════════
+
+[[mcp_servers]]
+name = "github"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-github"]
+env = { GITHUB_TOKEN = "${GITHUB_TOKEN}" }
+auto_start = true
+
+[[mcp_servers]]
+name = "postgres"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-postgres"]  
+env = { DATABASE_URL = "${DATABASE_URL}" }
+auto_start = false
+
+[[mcp_servers]]
+name = "filesystem"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "${HOME}/projects"]
+auto_start = true
+
+[[mcp_servers]]
+name = "slack"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-slack"]
+env = { SLACK_TOKEN = "${SLACK_TOKEN}" }
+auto_start = false
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Security & Sandboxing
+# ═══════════════════════════════════════════════════════════════════════════
+
+[security]
+sandbox_enabled = true                # Enable command sandboxing
+require_approval = true               # Approval for destructive ops
+approval_timeout = 30                 # Seconds to wait for approval
+trust_mode = "explicit"              # explicit, workspace, or global
+
+[security.sandbox]
+platform = "auto"                     # auto, seatbelt, landlock, none
+allow_network = false                 # Network access in sandbox
+allow_filesystem = "readonly"         # readonly, writeonly, readwrite
+temp_dir = "/tmp/agcodex"
+max_memory = "1GB"
+max_cpu = 80                         # Percentage
+
+[security.allowed_commands]
+# Whitelist of allowed commands
+patterns = [
+    "ls", "cat", "grep", "find",
+    "git status", "git diff",
+    "cargo build", "cargo test",
+    "npm install", "npm test",
+    "python -m pytest"
+]
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Performance & Optimization
+# ═══════════════════════════════════════════════════════════════════════════
+
+[performance]
+parallel_threads = 8                  # Number of parallel threads
+lazy_loading = true                   # Load resources on demand
+preload_common = true                 # Preload common resources
+profile_on_start = false              # Performance profiling
+
+[performance.search]
+max_results = 100
+timeout = 5000                        # milliseconds
+use_index = true
+incremental_indexing = true
+index_on_idle = true                  # Index when system is idle
+
+[performance.monitoring]
+enabled = true
+metrics_port = 9090                   # Prometheus metrics
+track_memory = true
+track_cpu = true
+track_latency = true
+alert_on_threshold = true
+
+# ═══════════════════════════════════════════════════════════════════════════
+# UI/UX Configuration
+# ═══════════════════════════════════════════════════════════════════════════
+
+[ui]
+theme = "dark"                        # dark, light, auto
+syntax_highlighting = true
+line_numbers = true
+minimap = true                        # Code minimap
+animations = true
+notification_position = "top-right"
+sound_effects = false
+
+[ui.keybindings]
+# Custom keybindings
+mode_switch = "shift+tab"
+command_palette = "/"
+save_session = "ctrl+s"
+new_conversation = "ctrl+n"
+agent_panel = "ctrl+a"
+history_browser = "ctrl+h"
+jump_to_message = "ctrl+j"
+undo = "ctrl+z"
+redo = "ctrl+y"
+checkpoint = "f5"
+
+[ui.colors]
+# Custom color scheme
+background = "#1e1e1e"
+foreground = "#d4d4d4"
+selection = "#264f78"
+comment = "#608b4e"
+keyword = "#569cd6"
+string = "#ce9178"
+error = "#f44747"
+warning = "#ffcc00"
+success = "#4ec9b0"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Git Integration
+# ═══════════════════════════════════════════════════════════════════════════
+
+[git]
+enabled = true
+auto_commit = false                   # Auto-commit changes
+commit_message_ai = true             # AI-generated commit messages
+branch_per_session = false           # Create branch for each session
+worktree_support = true              # Enable git worktrees
+sign_commits = false                  # GPG sign commits
+
+[git.hooks]
+pre_commit = ["@code-reviewer", "@test-writer"]
+pre_push = ["@security", "@performance"]
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Telemetry & Analytics (Optional)
+# ═══════════════════════════════════════════════════════════════════════════
+
+[telemetry]
+enabled = false                       # Opt-in telemetry
+anonymous = true                      # Anonymize data
+endpoint = "https://telemetry.agcodex.ai"
+events = ["errors", "performance"]   # What to track
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Experimental Features
+# ═══════════════════════════════════════════════════════════════════════════
+
+[experimental]
+enable_voice_input = false            # Voice commands
+enable_web_ui = false                 # Web interface on port 8080
+enable_collaborative = false          # Multi-user sessions
+enable_plugins = false                # Third-party plugins
+enable_ai_explain = true             # AI explanations for actions
+enable_predictive_typing = true      # Autocomplete suggestions
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Logging & Debugging
+# ═══════════════════════════════════════════════════════════════════════════
+
+[logging]
+level = "info"                        # trace, debug, info, warn, error
+file = "~/.agcodex/logs/agcodex.log"
+max_size = "100MB"
+max_files = 5
+format = "json"                       # json or text
+include_timestamps = true
+include_location = true               # File and line numbers
+
+[debug]
+enable_inspector = false              # Debug inspector UI
+inspector_port = 9229
+save_raw_responses = false           # Save LLM responses
+trace_requests = false               # Trace all API requests
+profile_startup = false              # Profile startup time

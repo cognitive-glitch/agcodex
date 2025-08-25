@@ -1,14 +1,14 @@
-use codex_core::ConversationManager;
-use codex_core::ModelProviderInfo;
-use codex_core::NewConversation;
-use codex_core::WireApi;
-use codex_core::built_in_model_providers;
-use codex_core::protocol::EventMsg;
-use codex_core::protocol::InputItem;
-use codex_core::protocol::Op;
-use codex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
-use codex_login::AuthMode;
-use codex_login::CodexAuth;
+use agcodex_core::ConversationManager;
+use agcodex_core::ModelProviderInfo;
+use agcodex_core::NewConversation;
+use agcodex_core::WireApi;
+use agcodex_core::built_in_model_providers;
+use agcodex_core::protocol::EventMsg;
+use agcodex_core::protocol::InputItem;
+use agcodex_core::protocol::Op;
+use agcodex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
+use agcodex_login::AuthMode;
+use agcodex_login::CodexAuth;
 use core_test_support::load_default_config_for_test;
 use core_test_support::load_sse_fixture_with_id;
 use core_test_support::wait_for_event;
@@ -138,8 +138,8 @@ async fn includes_session_id_and_model_headers_in_request() {
     };
 
     // Init session
-    let codex_home = TempDir::new().unwrap();
-    let mut config = load_default_config_for_test(&codex_home);
+    let agcodex_home = TempDir::new().unwrap();
+    let mut config = load_default_config_for_test(&agcodex_home);
     config.model_provider = model_provider;
 
     let conversation_manager = ConversationManager::default();
@@ -173,7 +173,7 @@ async fn includes_session_id_and_model_headers_in_request() {
         request_session_id.to_str().unwrap(),
         conversation_id.to_string()
     );
-    assert_eq!(request_originator.to_str().unwrap(), "codex_cli_rs");
+    assert_eq!(request_originator.to_str().unwrap(), "agcodex_cli_rs");
     assert_eq!(
         request_authorization.to_str().unwrap(),
         "Bearer Test API Key"
@@ -201,8 +201,8 @@ async fn includes_base_instructions_override_in_request() {
         base_url: Some(format!("{}/v1", server.uri())),
         ..built_in_model_providers()["openai"].clone()
     };
-    let codex_home = TempDir::new().unwrap();
-    let mut config = load_default_config_for_test(&codex_home);
+    let agcodex_home = TempDir::new().unwrap();
+    let mut config = load_default_config_for_test(&agcodex_home);
 
     config.base_instructions = Some("test instructions".to_string());
     config.model_provider = model_provider;
@@ -257,8 +257,8 @@ async fn originator_config_override_is_used() {
         ..built_in_model_providers()["openai"].clone()
     };
 
-    let codex_home = TempDir::new().unwrap();
-    let mut config = load_default_config_for_test(&codex_home);
+    let agcodex_home = TempDir::new().unwrap();
+    let mut config = load_default_config_for_test(&agcodex_home);
     config.model_provider = model_provider;
     config.responses_originator_header = "my_override".to_owned();
 
@@ -315,8 +315,8 @@ async fn chatgpt_auth_sends_correct_request() {
     };
 
     // Init session
-    let codex_home = TempDir::new().unwrap();
-    let mut config = load_default_config_for_test(&codex_home);
+    let agcodex_home = TempDir::new().unwrap();
+    let mut config = load_default_config_for_test(&agcodex_home);
     config.model_provider = model_provider;
     let conversation_manager = ConversationManager::default();
     let NewConversation {
@@ -351,7 +351,7 @@ async fn chatgpt_auth_sends_correct_request() {
         request_session_id.to_str().unwrap(),
         conversation_id.to_string()
     );
-    assert_eq!(request_originator.to_str().unwrap(), "codex_cli_rs");
+    assert_eq!(request_originator.to_str().unwrap(), "agcodex_cli_rs");
     assert_eq!(
         request_authorization.to_str().unwrap(),
         "Bearer Access Token"
@@ -397,17 +397,17 @@ async fn prefers_chatgpt_token_when_config_prefers_chatgpt() {
     };
 
     // Init session
-    let codex_home = TempDir::new().unwrap();
+    let agcodex_home = TempDir::new().unwrap();
     // Write auth.json that contains both API key and ChatGPT tokens for a plan that should prefer ChatGPT.
     let _jwt = write_auth_json(
-        &codex_home,
+        &agcodex_home,
         Some("sk-test-key"),
         "pro",
         "Access-123",
         Some("acc-123"),
     );
 
-    let mut config = load_default_config_for_test(&codex_home);
+    let mut config = load_default_config_for_test(&agcodex_home);
     config.model_provider = model_provider;
     config.preferred_auth_method = AuthMode::ChatGPT;
 
@@ -471,18 +471,18 @@ async fn prefers_apikey_when_config_prefers_apikey_even_with_chatgpt_tokens() {
     };
 
     // Init session
-    let codex_home = TempDir::new().unwrap();
+    let agcodex_home = TempDir::new().unwrap();
     // Write auth.json that contains both API key and ChatGPT tokens for a plan that should prefer ChatGPT,
     // but config will force API key preference.
     let _jwt = write_auth_json(
-        &codex_home,
+        &agcodex_home,
         Some("sk-test-key"),
         "pro",
         "Access-123",
         Some("acc-123"),
     );
 
-    let mut config = load_default_config_for_test(&codex_home);
+    let mut config = load_default_config_for_test(&agcodex_home);
     config.model_provider = model_provider;
     config.preferred_auth_method = AuthMode::ApiKey;
 
@@ -535,8 +535,8 @@ async fn includes_user_instructions_message_in_request() {
         ..built_in_model_providers()["openai"].clone()
     };
 
-    let codex_home = TempDir::new().unwrap();
-    let mut config = load_default_config_for_test(&codex_home);
+    let agcodex_home = TempDir::new().unwrap();
+    let mut config = load_default_config_for_test(&agcodex_home);
     config.model_provider = model_provider;
     config.user_instructions = Some("be nice".to_string());
 
@@ -628,8 +628,8 @@ async fn azure_overrides_assign_properties_used_for_responses_url() {
     };
 
     // Init session
-    let codex_home = TempDir::new().unwrap();
-    let mut config = load_default_config_for_test(&codex_home);
+    let agcodex_home = TempDir::new().unwrap();
+    let mut config = load_default_config_for_test(&agcodex_home);
     config.model_provider = provider;
 
     let conversation_manager = ConversationManager::default();
@@ -704,8 +704,8 @@ async fn env_var_overrides_loaded_auth() {
     };
 
     // Init session
-    let codex_home = TempDir::new().unwrap();
-    let mut config = load_default_config_for_test(&codex_home);
+    let agcodex_home = TempDir::new().unwrap();
+    let mut config = load_default_config_for_test(&agcodex_home);
     config.model_provider = provider;
 
     let conversation_manager = ConversationManager::default();

@@ -4,9 +4,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
-use anyhow::Context;
-use anyhow::Result;
-use anyhow::anyhow;
+use crate::error::CodexErr;
+use crate::error::Result;
 use sha1::digest::Output;
 use uuid::Uuid;
 
@@ -388,7 +387,7 @@ enum FileMode {
 }
 
 impl FileMode {
-    fn as_str(&self) -> &'static str {
+    const fn as_str(&self) -> &'static str {
         match self {
             FileMode::Regular => "100644",
             #[cfg(unix)]
@@ -430,11 +429,14 @@ fn file_mode_for_path(_path: &Path) -> Option<FileMode> {
 fn blob_bytes(path: &Path, mode: &FileMode) -> Option<Vec<u8>> {
     if path.exists() {
         let contents = if *mode == FileMode::Symlink {
-            symlink_blob_bytes(path)
-                .ok_or_else(|| anyhow!("failed to read symlink target for {}", path.display()))
+            symlink_blob_bytes(path).ok_or_else(|| {
+                CodexErr::General(format!(
+                    "failed to read symlink target for {}",
+                    path.display()
+                ))
+            })
         } else {
-            fs::read(path)
-                .with_context(|| format!("failed to read current file for diff {}", path.display()))
+            fs::read(path).map_err(CodexErr::Io)
         };
         contents.ok()
     } else {

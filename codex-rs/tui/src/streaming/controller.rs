@@ -1,4 +1,4 @@
-use codex_core::config::Config;
+use agcodex_core::config::Config;
 use ratatui::text::Line;
 
 use super::HeaderEmitter;
@@ -42,7 +42,7 @@ pub(crate) struct StreamController {
 }
 
 impl StreamController {
-    pub(crate) fn new(config: Config) -> Self {
+    pub(crate) const fn new(config: Config) -> Self {
         Self {
             config,
             header: HeaderEmitter::new(),
@@ -52,11 +52,11 @@ impl StreamController {
         }
     }
 
-    pub(crate) fn reset_headers_for_new_turn(&mut self) {
+    pub(crate) const fn reset_headers_for_new_turn(&mut self) {
         self.header.reset_for_new_turn();
     }
 
-    pub(crate) fn is_write_cycle_active(&self) -> bool {
+    pub(crate) const fn is_write_cycle_active(&self) -> bool {
         self.current_stream.is_some()
     }
 
@@ -68,13 +68,13 @@ impl StreamController {
     }
 
     #[inline]
-    fn idx(kind: StreamKind) -> usize {
+    const fn idx(kind: StreamKind) -> usize {
         kind as usize
     }
-    fn state(&self, kind: StreamKind) -> &StreamState {
+    const fn state(&self, kind: StreamKind) -> &StreamState {
         &self.states[Self::idx(kind)]
     }
-    fn state_mut(&mut self, kind: StreamKind) -> &mut StreamState {
+    const fn state_mut(&mut self, kind: StreamKind) -> &mut StreamState {
         &mut self.states[Self::idx(kind)]
     }
 

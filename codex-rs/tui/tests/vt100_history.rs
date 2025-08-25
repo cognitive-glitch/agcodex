@@ -27,13 +27,13 @@ macro_rules! assert_contains {
 struct TestScenario {
     width: u16,
     height: u16,
-    term: codex_tui::custom_terminal::Terminal<TestBackend>,
+    term: agcodex_tui::custom_terminal::Terminal<TestBackend>,
 }
 
 impl TestScenario {
     fn new(width: u16, height: u16, viewport: Rect) -> Self {
         let backend = TestBackend::new(width, height);
-        let mut term = codex_tui::custom_terminal::Terminal::with_options(backend)
+        let mut term = agcodex_tui::custom_terminal::Terminal::with_options(backend)
             .expect("failed to construct terminal");
         term.set_viewport_area(viewport);
         Self {
@@ -45,7 +45,11 @@ impl TestScenario {
 
     fn run_insert(&mut self, lines: Vec<Line<'static>>) -> Vec<u8> {
         let mut buf: Vec<u8> = Vec::new();
-        codex_tui::insert_history::insert_history_lines_to_writer(&mut self.term, &mut buf, lines);
+        agcodex_tui::insert_history::insert_history_lines_to_writer(
+            &mut self.term,
+            &mut buf,
+            lines,
+        );
         buf
     }
 

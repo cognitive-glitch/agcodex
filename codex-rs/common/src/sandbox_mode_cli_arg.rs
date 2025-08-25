@@ -6,8 +6,8 @@
 //! `workspace-write` can continue to do so via `-c` overrides or their
 //! `config.toml`.
 
+use agcodex_protocol::config_types::SandboxMode;
 use clap::ValueEnum;
-use codex_protocol::config_types::SandboxMode;
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 #[value(rename_all = "kebab-case")]

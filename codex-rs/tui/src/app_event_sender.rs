@@ -9,7 +9,7 @@ pub(crate) struct AppEventSender {
 }
 
 impl AppEventSender {
-    pub(crate) fn new(app_event_tx: Sender<AppEvent>) -> Self {
+    pub(crate) const fn new(app_event_tx: Sender<AppEvent>) -> Self {
         Self { app_event_tx }
     }
 

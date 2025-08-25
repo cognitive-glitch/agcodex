@@ -1,0 +1,318 @@
+# AGCodex Team Configuration
+# Standardized configuration for team collaboration
+# Place this file at ~/.agcodex/config.toml or project/.agcodex/config.toml
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Team Standards
+# ═══════════════════════════════════════════════════════════════════════════
+
+[team]
+name = "Engineering Team"
+organization = "ACME Corp"
+config_version = "2.0.0"
+config_source = "https://github.com/acme/agcodex-config"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Shared Model Configuration
+# ═══════════════════════════════════════════════════════════════════════════
+
+[model]
+# Team-standard model selection
+provider = "openai"
+model = "gpt-4-turbo-preview"
+# Use team's shared API key from environment or secrets manager
+api_key = "${TEAM_OPENAI_API_KEY}"
+temperature = 0.7
+max_tokens = 4096
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Standardized Operating Modes
+# ═══════════════════════════════════════════════════════════════════════════
+
+[modes]
+# Enforce consistent mode usage across team
+default = "plan"  # Start in planning mode for safety
+
+[modes.policies]
+# Team policies for mode usage
+plan_required_before_build = true     # Must plan before building
+review_required_for_merge = true      # Review mode for PR reviews
+build_requires_approval = true        # Approval for build mode
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Code Standards & Quality Gates
+# ═══════════════════════════════════════════════════════════════════════════
+
+[standards]
+# Enforce team coding standards
+style_guide = "https://github.com/acme/style-guide"
+min_test_coverage = 80               # Minimum test coverage
+max_complexity = 10                   # Maximum cyclomatic complexity
+max_file_lines = 500                  # Maximum lines per file
+max_function_lines = 50               # Maximum lines per function
+
+[standards.languages]
+# Language-specific standards
+python = { formatter = "black", linter = "ruff", type_checker = "mypy" }
+javascript = { formatter = "prettier", linter = "eslint", test = "jest" }
+rust = { formatter = "rustfmt", linter = "clippy", test = "cargo test" }
+go = { formatter = "gofmt", linter = "golangci-lint", test = "go test" }
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Shared Agent Configuration
+# ═══════════════════════════════════════════════════════════════════════════
+
+[agents]
+# Team-approved agents
+path = [
+    "~/.agcodex/agents",              # User agents
+    "/opt/agcodex/team-agents",       # Team shared agents
+    "./.agcodex/agents"               # Project-specific agents
+]
+
+[agents.required]
+# Mandatory agents for team workflows
+code_reviewer = { min_score = 7.5 }
+security = { scan_on_commit = true }
+test_writer = { min_coverage = 80 }
+
+[agents.pipelines]
+# Standard team pipelines
+pr_review = ["@security", "@code-reviewer", "@test-writer"]
+pre_deploy = ["@performance", "@security", "@integration-tester"]
+hotfix = ["@debugger", "@test-writer", "@security"]
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Collaboration Features
+# ═══════════════════════════════════════════════════════════════════════════
+
+[collaboration]
+# Shared session storage
+session_storage = "s3://team-agcodex-sessions/"
+session_sharing = true                # Allow session sharing
+session_encryption = true             # Encrypt shared sessions
+
+[collaboration.notifications]
+# Team notifications
+slack_webhook = "${SLACK_WEBHOOK_URL}"
+notify_on = ["error", "security_issue", "pr_ready"]
+mention_on_critical = "@channel"
+
+[collaboration.reviews]
+# Code review settings
+require_reviews = 2                   # Number of reviews required
+auto_assign_reviewers = true
+reviewer_pool = ["alice", "bob", "charlie", "diana"]
+review_deadline_hours = 24
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Security & Compliance
+# ═══════════════════════════════════════════════════════════════════════════
+
+[security]
+# Team security policies
+sandbox_enabled = true
+require_approval = true
+audit_logging = true                  # Log all actions
+audit_storage = "s3://team-audit-logs/"
+
+[security.secrets]
+# Secret management
+provider = "vault"                    # vault, aws-secrets, azure-keyvault
+vault_url = "${VAULT_URL}"
+vault_path = "secret/agcodex"
+rotate_interval_days = 90
+
+[security.compliance]
+# Compliance requirements
+standards = ["SOC2", "ISO27001", "GDPR"]
+pii_detection = true                  # Detect PII in code
+pii_block = true                     # Block commits with PII
+license_check = true                 # Verify dependency licenses
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Shared Context & Knowledge Base
+# ═══════════════════════════════════════════════════════════════════════════
+
+[context]
+# Team knowledge base
+shared_index = "s3://team-agcodex-index/"
+index_update_interval = 3600          # Hourly updates
+include_documentation = true
+include_wikis = true
+include_issues = true
+
+[context.repositories]
+# Team repositories to index
+repos = [
+    "github.com/acme/backend",
+    "github.com/acme/frontend",
+    "github.com/acme/infrastructure",
+    "github.com/acme/mobile"
+]
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CI/CD Integration
+# ═══════════════════════════════════════════════════════════════════════════
+
+[ci]
+# CI/CD pipeline integration
+provider = "github"                   # github, gitlab, jenkins, azure-devops
+run_on_pr = true
+run_on_push = false                  # Only on PRs
+block_merge_on_failure = true
+
+[ci.checks]
+# Required CI checks
+security_scan = { required = true, blocker = true }
+test_coverage = { required = true, min = 80 }
+code_quality = { required = true, min_grade = "B" }
+performance_regression = { required = true, threshold = 10 }
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Project Templates
+# ═══════════════════════════════════════════════════════════════════════════
+
+[templates]
+# Team project templates
+api_service = "https://github.com/acme/templates/api-service"
+web_app = "https://github.com/acme/templates/web-app"
+microservice = "https://github.com/acme/templates/microservice"
+library = "https://github.com/acme/templates/library"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Monitoring & Observability
+# ═══════════════════════════════════════════════════════════════════════════
+
+[monitoring]
+# Team monitoring setup
+enabled = true
+provider = "datadog"                  # datadog, new-relic, prometheus
+api_key = "${DATADOG_API_KEY}"
+environment = "development"           # development, staging, production
+
+[monitoring.metrics]
+# Metrics to track
+track_usage = true
+track_performance = true
+track_errors = true
+track_agent_performance = true
+
+[monitoring.alerts]
+# Alert configuration
+error_rate_threshold = 0.01          # 1% error rate
+response_time_threshold = 500        # milliseconds
+memory_usage_threshold = 80          # percentage
+alert_channel = "#agcodex-alerts"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Development Environment
+# ═══════════════════════════════════════════════════════════════════════════
+
+[environment]
+# Standardized development environment
+required_tools = [
+    "git >= 2.30",
+    "docker >= 20.10",
+    "node >= 18.0",
+    "python >= 3.9",
+    "rust >= 1.70"
+]
+
+[environment.hooks]
+# Git hooks for team
+pre_commit = ".agcodex/hooks/pre-commit.sh"
+pre_push = ".agcodex/hooks/pre-push.sh"
+commit_msg = ".agcodex/hooks/commit-msg.sh"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Training & Onboarding
+# ═══════════════════════════════════════════════════════════════════════════
+
+[onboarding]
+# New team member onboarding
+tutorial_mode = true                  # Enable tutorial for new users
+tutorial_repo = "github.com/acme/agcodex-tutorial"
+mentor_agent = "@team-mentor"        # Custom mentor agent
+required_training = [
+    "basic-usage",
+    "agent-workflows",
+    "team-standards",
+    "security-practices"
+]
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Shared MCP Servers
+# ═══════════════════════════════════════════════════════════════════════════
+
+[[mcp_servers]]
+name = "team-github"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-github"]
+env = { GITHUB_TOKEN = "${TEAM_GITHUB_TOKEN}" }
+
+[[mcp_servers]]
+name = "team-database"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-postgres"]
+env = { DATABASE_URL = "${TEAM_DATABASE_URL}" }
+
+[[mcp_servers]]
+name = "team-docs"
+command = "python"
+args = ["-m", "agcodex_mcp_confluence"]
+env = { 
+    CONFLUENCE_URL = "${CONFLUENCE_URL}",
+    CONFLUENCE_TOKEN = "${CONFLUENCE_TOKEN}"
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Access Control
+# ═══════════════════════════════════════════════════════════════════════════
+
+[access]
+# Role-based access control
+rbac_enabled = true
+roles_source = "ldap"                 # ldap, oauth, static
+ldap_url = "${LDAP_URL}"
+
+[access.roles]
+# Role definitions
+admin = { 
+    modes = ["plan", "build", "review"],
+    agents = ["*"],
+    commands = ["*"]
+}
+developer = {
+    modes = ["plan", "build", "review"],
+    agents = ["*"],
+    commands = ["!delete", "!force-push"]
+}
+reviewer = {
+    modes = ["plan", "review"],
+    agents = ["@code-reviewer", "@security"],
+    commands = ["read", "analyze"]
+}
+intern = {
+    modes = ["plan"],
+    agents = ["@code-reviewer"],
+    commands = ["read"]
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Performance Baselines
+# ═══════════════════════════════════════════════════════════════════════════
+
+[performance]
+# Team performance standards
+search_timeout = 5000                 # milliseconds
+agent_timeout = 300                   # seconds
+max_memory_usage = "4GB"
+max_concurrent_operations = 10
+
+[performance.benchmarks]
+# Performance benchmarks
+api_response_p95 = 200                # milliseconds
+database_query_p95 = 50               # milliseconds
+test_suite_duration = 300             # seconds
+build_duration = 600                  # seconds

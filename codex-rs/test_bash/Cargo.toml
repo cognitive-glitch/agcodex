@@ -1,0 +1,17 @@
+[workspace]
+
+[package]
+name = "test_bash_parser"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "test_bash_parser"
+path = "test_bash_parser.rs"
+
+[dependencies]
+regex = "1.11"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+tree-sitter = "0.25"
+tree-sitter-bash = "0.25"

@@ -1,6 +1,6 @@
+use agcodex_common::ApprovalModeCliArg;
+use agcodex_common::CliConfigOverrides;
 use clap::Parser;
-use codex_common::ApprovalModeCliArg;
-use codex_common::CliConfigOverrides;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -27,10 +27,14 @@ pub struct Cli {
     #[arg(long = "profile", short = 'p')]
     pub config_profile: Option<String>,
 
+    /// Operating mode: plan, build, or review. Default is build.
+    #[arg(long = "mode", value_name = "MODE")]
+    pub mode: Option<String>,
+
     /// Select the sandbox policy to use when executing model-generated shell
     /// commands.
     #[arg(long = "sandbox", short = 's')]
-    pub sandbox_mode: Option<codex_common::SandboxModeCliArg>,
+    pub sandbox_mode: Option<agcodex_common::SandboxModeCliArg>,
 
     /// Configure when the model requires human approval before executing a command.
     #[arg(long = "ask-for-approval", short = 'a')]

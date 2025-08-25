@@ -31,7 +31,8 @@ mod tests {
                 "Rename complete and verified `cargo build` succeeds.".to_string(),
             ),
         };
-        let serialized = serde_json::to_string(&notification).unwrap();
+        let serialized = serde_json::to_string(&notification)
+            .expect("Serialization should succeed for valid notification");
         assert_eq!(
             serialized,
             r#"{"type":"agent-turn-complete","turn-id":"12345","input-messages":["Rename `foo` to `bar` and update the callsites."],"last-assistant-message":"Rename complete and verified `cargo build` succeeds."}"#

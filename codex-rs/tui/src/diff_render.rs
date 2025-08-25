@@ -1,4 +1,4 @@
-use crossterm::terminal;
+use ratatui::crossterm::terminal;
 use ratatui::style::Color;
 use ratatui::style::Modifier;
 use ratatui::style::Style;
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::common::DEFAULT_WRAP_COLS;
-use codex_core::protocol::FileChange;
+use agcodex_core::protocol::FileChange;
 
 use crate::history_cell::PatchEventType;
 

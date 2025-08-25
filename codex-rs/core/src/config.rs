@@ -6,6 +6,7 @@ use crate::config_types::ShellEnvironmentPolicy;
 use crate::config_types::ShellEnvironmentPolicyToml;
 use crate::config_types::Tui;
 use crate::config_types::UriBasedFileOpener;
+use crate::error::CodexErr;
 use crate::model_family::ModelFamily;
 use crate::model_family::find_family_for_model;
 use crate::model_provider_info::ModelProviderInfo;
@@ -13,10 +14,10 @@ use crate::model_provider_info::built_in_model_providers;
 use crate::openai_model_info::get_model_info;
 use crate::protocol::AskForApproval;
 use crate::protocol::SandboxPolicy;
-use codex_login::AuthMode;
-use codex_protocol::config_types::ReasoningEffort;
-use codex_protocol::config_types::ReasoningSummary;
-use codex_protocol::config_types::SandboxMode;
+use agcodex_login::AuthMode;
+use agcodex_protocol::config_types::ReasoningEffort;
+use agcodex_protocol::config_types::ReasoningSummary;
+use agcodex_protocol::config_types::SandboxMode;
 use dirs::home_dir;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -35,7 +36,7 @@ pub(crate) const PROJECT_DOC_MAX_BYTES: usize = 32 * 1024; // 32 KiB
 
 const CONFIG_TOML_FILE: &str = "config.toml";
 
-const DEFAULT_RESPONSES_ORIGINATOR_HEADER: &str = "codex_cli_rs";
+const DEFAULT_RESPONSES_ORIGINATOR_HEADER: &str = "agcodex_cli_rs";
 
 /// Application configuration loaded from disk and merged with overrides.
 #[derive(Debug, Clone, PartialEq)]
@@ -91,7 +92,7 @@ pub struct Config {
     /// appends one extra argument containing a JSON payload describing the
     /// event.
     ///
-    /// Example `~/.codex/config.toml` snippet:
+    /// Example `~/.agcodex/config.toml` snippet:
     ///
     /// ```toml
     /// notify = ["notify-send", "Codex"]
@@ -120,11 +121,11 @@ pub struct Config {
     /// Maximum number of bytes to include from an AGENTS.md project doc file.
     pub project_doc_max_bytes: usize,
 
-    /// Directory containing all Codex state (defaults to `~/.codex` but can be
+    /// Directory containing all Codex state (defaults to `~/.agcodex` but can be
     /// overridden by the `CODEX_HOME` environment variable).
     pub codex_home: PathBuf,
 
-    /// Settings that govern if and what will be written to `~/.codex/history.jsonl`.
+    /// Settings that govern if and what will be written to `~/.agcodex/history.jsonl`.
     pub history: History,
 
     /// Optional URI-based file opener. If set, citations to files in the model
@@ -182,10 +183,10 @@ impl Config {
         cli_overrides: Vec<(String, TomlValue)>,
         overrides: ConfigOverrides,
     ) -> std::io::Result<Self> {
-        // Resolve the directory that stores Codex state (e.g. ~/.codex or the
+        // Resolve the directory that stores Codex state (e.g. ~/.agcodex or the
         // value of $CODEX_HOME) so we can embed it into the resulting
         // `Config` instance.
-        let codex_home = find_codex_home()?;
+        let codex_home = find_agcodex_home()?;
 
         // Step 1: parse `config.toml` into a generic JSON value.
         let mut root_value = load_config_as_toml(&codex_home)?;
@@ -250,11 +251,13 @@ pub fn load_config_as_toml(codex_home: &Path) -> std::io::Result<TomlValue> {
 
 /// Patch `CODEX_HOME/config.toml` project state.
 /// Use with caution.
-pub fn set_project_trusted(codex_home: &Path, project_path: &Path) -> anyhow::Result<()> {
+pub fn set_project_trusted(codex_home: &Path, project_path: &Path) -> crate::error::Result<()> {
     let config_path = codex_home.join(CONFIG_TOML_FILE);
     // Parse existing config if present; otherwise start a new document.
     let mut doc = match std::fs::read_to_string(config_path.clone()) {
-        Ok(s) => s.parse::<DocumentMut>()?,
+        Ok(s) => s
+            .parse::<DocumentMut>()
+            .map_err(|e| crate::error::CodexErr::InvalidConfig(e.to_string()))?,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => DocumentMut::new(),
         Err(e) => return Err(e.into()),
     };
@@ -272,7 +275,9 @@ pub fn set_project_trusted(codex_home: &Path, project_path: &Path) -> anyhow::Re
     std::fs::write(tmp_file.path(), doc.to_string())?;
 
     // atomically move the tmp file into config.toml
-    tmp_file.persist(config_path)?;
+    tmp_file
+        .persist(config_path)
+        .map_err(|e| CodexErr::Io(e.error))?;
 
     Ok(())
 }
@@ -290,11 +295,11 @@ fn apply_toml_override(root: &mut TomlValue, path: &str, value: TomlValue) {
         if is_last {
             match current {
                 TomlValue::Table(table) => {
-                    table.insert(segment.to_string(), value);
+                    table.insert((*segment).to_string(), value);
                 }
                 _ => {
                     let mut table = Table::new();
-                    table.insert(segment.to_string(), value);
+                    table.insert((*segment).to_string(), value);
                     *current = TomlValue::Table(table);
                 }
             }
@@ -305,14 +310,14 @@ fn apply_toml_override(root: &mut TomlValue, path: &str, value: TomlValue) {
         match current {
             TomlValue::Table(table) => {
                 current = table
-                    .entry(segment.to_string())
+                    .entry((*segment).to_string())
                     .or_insert_with(|| TomlValue::Table(Table::new()));
             }
             _ => {
                 *current = TomlValue::Table(Table::new());
                 if let TomlValue::Table(tbl) = current {
                     current = tbl
-                        .entry(segment.to_string())
+                        .entry((*segment).to_string())
                         .or_insert_with(|| TomlValue::Table(Table::new()));
                 }
             }
@@ -320,7 +325,7 @@ fn apply_toml_override(root: &mut TomlValue, path: &str, value: TomlValue) {
     }
 }
 
-/// Base config deserialized from ~/.codex/config.toml.
+/// Base config deserialized from ~/.agcodex/config.toml.
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct ConfigToml {
     /// Optional override of model selection.
@@ -377,7 +382,7 @@ pub struct ConfigToml {
     #[serde(default)]
     pub profiles: HashMap<String, ConfigProfile>,
 
-    /// Settings that govern if and what will be written to `~/.codex/history.jsonl`.
+    /// Settings that govern if and what will be written to `~/.agcodex/history.jsonl`.
     #[serde(default)]
     pub history: Option<History>,
 
@@ -670,11 +675,11 @@ impl Config {
             model_reasoning_effort: config_profile
                 .model_reasoning_effort
                 .or(cfg.model_reasoning_effort)
-                .unwrap_or_default(),
+                .unwrap_or(ReasoningEffort::High),
             model_reasoning_summary: config_profile
                 .model_reasoning_summary
                 .or(cfg.model_reasoning_summary)
-                .unwrap_or_default(),
+                .unwrap_or(ReasoningSummary::Detailed),
 
             chatgpt_base_url: config_profile
                 .chatgpt_base_url
@@ -756,13 +761,13 @@ fn default_model() -> String {
 
 /// Returns the path to the Codex configuration directory, which can be
 /// specified by the `CODEX_HOME` environment variable. If not set, defaults to
-/// `~/.codex`.
+/// `~/.agcodex`.
 ///
 /// - If `CODEX_HOME` is set, the value will be canonicalized and this
 ///   function will Err if the path does not exist.
 /// - If `CODEX_HOME` is not set, this function does not verify that the
 ///   directory exists.
-pub fn find_codex_home() -> std::io::Result<PathBuf> {
+pub fn find_agcodex_home() -> std::io::Result<PathBuf> {
     // Honor the `CODEX_HOME` environment variable when it is set to allow users
     // (and tests) to override the default location.
     if let Ok(val) = std::env::var("CODEX_HOME")
@@ -1049,7 +1054,7 @@ disable_response_storage = true
                 base_instructions: None,
                 include_plan_tool: false,
                 include_apply_patch_tool: false,
-                responses_originator_header: "codex_cli_rs".to_string(),
+                responses_originator_header: "agcodex_cli_rs".to_string(),
                 preferred_auth_method: AuthMode::ChatGPT,
             },
             o3_profile_config
@@ -1095,14 +1100,14 @@ disable_response_storage = true
             codex_linux_sandbox_exe: None,
             hide_agent_reasoning: false,
             show_raw_agent_reasoning: false,
-            model_reasoning_effort: ReasoningEffort::default(),
-            model_reasoning_summary: ReasoningSummary::default(),
+            model_reasoning_effort: ReasoningEffort::High,
+            model_reasoning_summary: ReasoningSummary::Detailed,
             chatgpt_base_url: "https://chatgpt.com/backend-api/".to_string(),
             experimental_resume: None,
             base_instructions: None,
             include_plan_tool: false,
             include_apply_patch_tool: false,
-            responses_originator_header: "codex_cli_rs".to_string(),
+            responses_originator_header: "agcodex_cli_rs".to_string(),
             preferred_auth_method: AuthMode::ChatGPT,
         };
 
@@ -1163,14 +1168,14 @@ disable_response_storage = true
             codex_linux_sandbox_exe: None,
             hide_agent_reasoning: false,
             show_raw_agent_reasoning: false,
-            model_reasoning_effort: ReasoningEffort::default(),
-            model_reasoning_summary: ReasoningSummary::default(),
+            model_reasoning_effort: ReasoningEffort::High,
+            model_reasoning_summary: ReasoningSummary::Detailed,
             chatgpt_base_url: "https://chatgpt.com/backend-api/".to_string(),
             experimental_resume: None,
             base_instructions: None,
             include_plan_tool: false,
             include_apply_patch_tool: false,
-            responses_originator_header: "codex_cli_rs".to_string(),
+            responses_originator_header: "agcodex_cli_rs".to_string(),
             preferred_auth_method: AuthMode::ChatGPT,
         };
 

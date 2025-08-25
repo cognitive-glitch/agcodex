@@ -1,28 +1,28 @@
-use codex_common::elapsed::format_duration;
-use codex_common::elapsed::format_elapsed;
-use codex_core::config::Config;
-use codex_core::plan_tool::UpdatePlanArgs;
-use codex_core::protocol::AgentMessageDeltaEvent;
-use codex_core::protocol::AgentMessageEvent;
-use codex_core::protocol::AgentReasoningDeltaEvent;
-use codex_core::protocol::AgentReasoningRawContentDeltaEvent;
-use codex_core::protocol::AgentReasoningRawContentEvent;
-use codex_core::protocol::BackgroundEventEvent;
-use codex_core::protocol::ErrorEvent;
-use codex_core::protocol::Event;
-use codex_core::protocol::EventMsg;
-use codex_core::protocol::ExecCommandBeginEvent;
-use codex_core::protocol::ExecCommandEndEvent;
-use codex_core::protocol::FileChange;
-use codex_core::protocol::McpInvocation;
-use codex_core::protocol::McpToolCallBeginEvent;
-use codex_core::protocol::McpToolCallEndEvent;
-use codex_core::protocol::PatchApplyBeginEvent;
-use codex_core::protocol::PatchApplyEndEvent;
-use codex_core::protocol::SessionConfiguredEvent;
-use codex_core::protocol::TaskCompleteEvent;
-use codex_core::protocol::TurnAbortReason;
-use codex_core::protocol::TurnDiffEvent;
+use agcodex_common::elapsed::format_duration;
+use agcodex_common::elapsed::format_elapsed;
+use agcodex_core::config::Config;
+use agcodex_core::plan_tool::UpdatePlanArgs;
+use agcodex_core::protocol::AgentMessageDeltaEvent;
+use agcodex_core::protocol::AgentMessageEvent;
+use agcodex_core::protocol::AgentReasoningDeltaEvent;
+use agcodex_core::protocol::AgentReasoningRawContentDeltaEvent;
+use agcodex_core::protocol::AgentReasoningRawContentEvent;
+use agcodex_core::protocol::BackgroundEventEvent;
+use agcodex_core::protocol::ErrorEvent;
+use agcodex_core::protocol::Event;
+use agcodex_core::protocol::EventMsg;
+use agcodex_core::protocol::ExecCommandBeginEvent;
+use agcodex_core::protocol::ExecCommandEndEvent;
+use agcodex_core::protocol::FileChange;
+use agcodex_core::protocol::McpInvocation;
+use agcodex_core::protocol::McpToolCallBeginEvent;
+use agcodex_core::protocol::McpToolCallEndEvent;
+use agcodex_core::protocol::PatchApplyBeginEvent;
+use agcodex_core::protocol::PatchApplyEndEvent;
+use agcodex_core::protocol::SessionConfiguredEvent;
+use agcodex_core::protocol::TaskCompleteEvent;
+use agcodex_core::protocol::TurnAbortReason;
+use agcodex_core::protocol::TurnDiffEvent;
 use owo_colors::OwoColorize;
 use owo_colors::Style;
 use shlex::try_join;
@@ -34,7 +34,7 @@ use std::time::Instant;
 use crate::event_processor::CodexStatus;
 use crate::event_processor::EventProcessor;
 use crate::event_processor::handle_last_message;
-use codex_common::create_config_summary_entries;
+use agcodex_common::create_config_summary_entries;
 
 /// This should be configurable. When used in CI, users may not want to impose
 /// a limit so they can see the full transcript.
@@ -188,7 +188,11 @@ impl EventProcessor for EventProcessorWithHumanOutput {
             }
             EventMsg::AgentMessageDelta(AgentMessageDeltaEvent { delta }) => {
                 if !self.answer_started {
-                    ts_println!(self, "{}\n", "codex".style(self.italic).style(self.magenta));
+                    ts_println!(
+                        self,
+                        "{}\n",
+                        "agcodex".style(self.italic).style(self.magenta)
+                    );
                     self.answer_started = true;
                 }
                 print!("{delta}");
@@ -252,7 +256,7 @@ impl EventProcessor for EventProcessorWithHumanOutput {
                     ts_println!(
                         self,
                         "{}\n{}",
-                        "codex".style(self.italic).style(self.magenta),
+                        "agcodex".style(self.italic).style(self.magenta),
                         message,
                     );
                 } else {
@@ -488,7 +492,7 @@ impl EventProcessor for EventProcessorWithHumanOutput {
                         ts_println!(
                             self,
                             "{}\n{}",
-                            "codex".style(self.italic).style(self.magenta),
+                            "agcodex".style(self.italic).style(self.magenta),
                             agent_reasoning_event.text,
                         );
                     } else {
@@ -544,7 +548,7 @@ fn escape_command(command: &[String]) -> String {
     try_join(command.iter().map(|s| s.as_str())).unwrap_or_else(|_| command.join(" "))
 }
 
-fn format_file_change(change: &FileChange) -> &'static str {
+const fn format_file_change(change: &FileChange) -> &'static str {
     match change {
         FileChange::Add { .. } => "A",
         FileChange::Delete => "D",

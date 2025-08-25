@@ -1,0 +1,103 @@
+# Example YAML configuration for a code reviewer subagent
+# Place this file in ~/.agcodex/agents/ or ./.agcodex/agents/
+
+name: code-reviewer
+description: Reviews code for quality and security
+mode_override: review  # Forces Review mode (read-only with limited edits)
+intelligence: hard     # Maximum intelligence level (95% compression)
+
+# Tool permissions
+tools:
+  - name: read
+    permission: allow
+  - name: search
+    permission: allow
+  - name: grep
+    permission: allow
+  - name: tree
+    permission: allow
+  - name: edit
+    permission: deny   # No editing in review mode
+  - name: bash
+    permission: deny   # No command execution
+  - name: glob
+    permission: restricted
+    restrictions:
+      max_files: "100"
+      patterns: "*.rs,*.py,*.js,*.ts,*.go"
+
+# Custom prompt for this agent
+prompt: |
+  You are a senior code reviewer with AST-based analysis capabilities.
+  
+  Focus on:
+  - Syntactic correctness via tree-sitter validation
+  - Security vulnerabilities (OWASP Top 10)
+  - Performance bottlenecks (O(n²) or worse)
+  - Memory leaks and resource management
+  - Error handling completeness
+  - Code quality and maintainability
+  
+  Use AST-powered semantic search to understand code structure and relationships.
+  Provide actionable feedback with specific line numbers and suggested fixes.
+  
+  Rate each file on a scale of 1-10 for:
+  - Security
+  - Performance
+  - Maintainability
+  - Test coverage
+
+# Parameters that can be provided when invoking this agent
+parameters:
+  - name: focus
+    description: Specific area to focus the review on
+    required: false
+    default: general
+    valid_values:
+      - general
+      - security
+      - performance
+      - maintainability
+      - testing
+  
+  - name: severity_threshold
+    description: Minimum severity level to report (1-10)
+    required: false
+    default: "3"
+  
+  - name: file_pattern
+    description: File pattern to review
+    required: false
+    default: "**/*"
+
+# Execution configuration
+timeout_seconds: 600  # 10 minutes
+chainable: true        # Can be chained with other agents
+parallelizable: true   # Can run in parallel with other agents
+
+# Metadata for organization
+metadata:
+  version: "1.0.0"
+  author: "AGCodex Team"
+  last_updated: "2024-01-15"
+
+# File patterns this agent specializes in
+file_patterns:
+  - "*.rs"
+  - "*.py"
+  - "*.js"
+  - "*.ts"
+  - "*.jsx"
+  - "*.tsx"
+  - "*.go"
+  - "*.java"
+  - "*.cpp"
+  - "*.c"
+
+# Tags for categorization
+tags:
+  - review
+  - quality
+  - security
+  - performance
+  - ast-analysis

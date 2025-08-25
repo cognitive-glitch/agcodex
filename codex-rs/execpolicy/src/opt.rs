@@ -37,7 +37,7 @@ pub enum OptMeta {
 }
 
 impl Opt {
-    pub fn new(opt: String, meta: OptMeta, required: bool) -> Self {
+    pub const fn new(opt: String, meta: OptMeta, required: bool) -> Self {
         Self {
             opt,
             meta,

@@ -1,12 +1,12 @@
-use codex_core::util::is_inside_git_repo;
-use crossterm::event::KeyEvent;
+use agcodex_core::util::is_inside_git_repo;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::layout::Rect;
 use ratatui::prelude::Widget;
 use ratatui::widgets::Clear;
 use ratatui::widgets::WidgetRef;
 
-use codex_login::AuthMode;
+use agcodex_login::AuthMode;
 
 use crate::LoginStatus;
 use crate::app::ChatWidgetArgs;

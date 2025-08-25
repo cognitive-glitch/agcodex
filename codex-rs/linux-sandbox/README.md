@@ -1,8 +1,8 @@
-# codex-linux-sandbox
+# agcodex-linux-sandbox
 
 This crate is responsible for producing:
 
-- a `codex-linux-sandbox` standalone executable for Linux that is bundled with the Node.js version of the Codex CLI
+- a `agcodex-linux-sandbox` standalone executable for Linux that is bundled with the Node.js version of the AGCodex CLI
 - a lib crate that exposes the business logic of the executable as `run_main()` so that
-  - the `codex-exec` CLI can check if its arg0 is `codex-linux-sandbox` and, if so, execute as if it were `codex-linux-sandbox`
-  - this should also be true of the `codex` multitool CLI
+  - the `agcodex-exec` CLI can check if its arg0 is `agcodex-linux-sandbox` and, if so, execute as if it were `agcodex-linux-sandbox`
+  - this should also be true of the `agcodex` multitool CLI

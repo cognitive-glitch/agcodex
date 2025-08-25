@@ -1,10 +1,10 @@
-use codex_login::CLIENT_ID;
-use codex_login::ServerOptions;
-use codex_login::ShutdownHandle;
-use codex_login::run_login_server;
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
+use agcodex_login::CLIENT_ID;
+use agcodex_login::ServerOptions;
+use agcodex_login::ShutdownHandle;
+use agcodex_login::run_login_server;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::layout::Rect;
 use ratatui::prelude::Widget;
 use ratatui::style::Color;
@@ -17,7 +17,7 @@ use ratatui::widgets::Paragraph;
 use ratatui::widgets::WidgetRef;
 use ratatui::widgets::Wrap;
 
-use codex_login::AuthMode;
+use agcodex_login::AuthMode;
 
 use crate::LoginStatus;
 use crate::app_event::AppEvent;
@@ -363,7 +363,7 @@ impl AuthModeWidget {
 }
 
 async fn spawn_completion_poller(
-    child: codex_login::LoginServer,
+    child: agcodex_login::LoginServer,
     event_tx: AppEventSender,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {

@@ -1,13 +1,17 @@
 [package]
 name = "core_test_support"
 version = { workspace = true }
-edition = "2024"
+edition.workspace = true
+license = { workspace = true }
 
 [lib]
 path = "lib.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
-codex-core = { path = "../.." }
+agcodex-core = { path = "../.." }
 serde_json = "1"
 tempfile = "3"
 tokio = { version = "1", features = ["time"] }

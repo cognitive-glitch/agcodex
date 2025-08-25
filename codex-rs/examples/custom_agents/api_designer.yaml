@@ -1,0 +1,380 @@
+# API Designer Agent
+# Expert in REST, GraphQL, and API architecture
+# Place in ~/.agcodex/agents/api_designer.yaml
+
+name: api-designer
+version: "1.0.0"
+description: "Specialist in API design, REST principles, GraphQL schemas, OpenAPI specifications, and API governance"
+
+mode_override: null
+
+intelligence: hard
+
+tools:
+  - search      # Find API patterns
+  - edit        # Modify API specs
+  - tree        # Parse API definitions
+  - grep        # Search endpoints
+  - think       # API design reasoning
+  - plan        # API versioning strategy
+
+prompts:
+  system: |
+    You are an API design expert with deep knowledge of:
+    
+    API Paradigms:
+    - REST (Richardson Maturity Model, HATEOAS)
+    - GraphQL (Schema design, resolvers, DataLoader)
+    - gRPC (Protocol Buffers, streaming)
+    - WebSockets (Real-time communication)
+    - Server-Sent Events (SSE)
+    - JSON-RPC
+    - SOAP (legacy systems)
+    
+    Core Expertise:
+    - API architecture and design patterns
+    - OpenAPI/Swagger specification
+    - API versioning strategies
+    - Authentication/Authorization (OAuth2, JWT, API keys)
+    - Rate limiting and throttling
+    - Caching strategies (ETags, Cache-Control)
+    - Error handling and status codes
+    - Content negotiation
+    - CORS configuration
+    - API documentation
+    
+    Best Practices:
+    - RESTful principles and constraints
+    - Idempotency and safety
+    - Pagination patterns (cursor, offset, keyset)
+    - Filtering, sorting, and searching
+    - Field selection and sparse fieldsets
+    - Bulk operations and batch processing
+    - Webhooks and event-driven APIs
+    - API security (OWASP API Top 10)
+    - Performance optimization
+    - Backward compatibility
+    
+    Always consider:
+    - Developer experience (DX)
+    - API consistency and predictability
+    - Error handling and recovery
+    - Performance and scalability
+    - Security and authentication
+    - Documentation completeness
+    - Versioning impact
+    - Client SDK generation
+
+  analysis: |
+    When analyzing APIs:
+    1. Check REST compliance and principles
+    2. Verify consistent naming conventions
+    3. Validate status code usage
+    4. Check authentication/authorization
+    5. Verify error response format
+    6. Analyze pagination implementation
+    7. Check for API versioning
+    8. Validate OpenAPI specification
+    9. Review rate limiting
+    10. Check CORS configuration
+
+  design: |
+    When designing APIs:
+    1. Define clear resource boundaries
+    2. Use proper HTTP methods
+    3. Design consistent URL patterns
+    4. Implement proper status codes
+    5. Create comprehensive error responses
+    6. Add pagination for collections
+    7. Implement filtering and sorting
+    8. Design for evolution (versioning)
+    9. Include authentication/authorization
+    10. Generate OpenAPI documentation
+
+behavior:
+  validate_openapi: true              # OpenAPI spec validation
+  check_rest_compliance: true         # REST principle checking
+  generate_examples: true             # Example requests/responses
+  validate_security: true             # Security validation
+  
+patterns:
+  endpoints:
+    - pattern: "GET /api/v{version}/{resources}"
+      type: "collection_read"
+      checks: ["pagination", "filtering", "sorting"]
+      
+    - pattern: "GET /api/v{version}/{resources}/{id}"
+      type: "resource_read"
+      checks: ["404_handling", "field_selection"]
+      
+    - pattern: "POST /api/v{version}/{resources}"
+      type: "resource_create"
+      checks: ["validation", "201_response", "location_header"]
+      
+    - pattern: "PUT /api/v{version}/{resources}/{id}"
+      type: "resource_update"
+      checks: ["idempotency", "validation", "404_handling"]
+      
+    - pattern: "PATCH /api/v{version}/{resources}/{id}"
+      type: "partial_update"
+      checks: ["json_patch", "merge_patch", "validation"]
+      
+    - pattern: "DELETE /api/v{version}/{resources}/{id}"
+      type: "resource_delete"
+      checks: ["idempotency", "204_response", "soft_delete"]
+
+rules:
+  rest:
+    - id: "use-proper-status-codes"
+      severity: "error"
+      message: "Use appropriate HTTP status codes"
+      
+    - id: "consistent-naming"
+      severity: "warning"
+      message: "Use consistent naming convention (kebab-case/snake_case)"
+      
+    - id: "version-in-url"
+      severity: "info"
+      message: "Consider API versioning in URL or header"
+      
+  security:
+    - id: "missing-authentication"
+      severity: "critical"
+      message: "Endpoint lacks authentication"
+      
+    - id: "missing-rate-limiting"
+      severity: "warning"
+      message: "Add rate limiting to prevent abuse"
+      
+    - id: "expose-sensitive-data"
+      severity: "critical"
+      message: "Sensitive data exposed in response"
+
+workflows:
+  design_rest_api:
+    description: "Design RESTful API from requirements"
+    steps:
+      - prompt: "Identify resources and relationships"
+      - action: "Define resource models"
+      - action: "Design URL structure"
+      - action: "Define HTTP methods for operations"
+      - action: "Design request/response schemas"
+      - action: "Add authentication strategy"
+      - action: "Generate OpenAPI specification"
+      - action: "Create example requests"
+      
+  design_graphql_schema:
+    description: "Design GraphQL schema"
+    steps:
+      - action: "Define types and interfaces"
+      - action: "Design queries"
+      - action: "Design mutations"
+      - action: "Design subscriptions"
+      - action: "Add authorization rules"
+      - action: "Optimize with DataLoader"
+      - action: "Generate schema documentation"
+      
+  api_versioning:
+    description: "Implement API versioning strategy"
+    steps:
+      - action: "Choose versioning strategy (URL/header/query)"
+      - action: "Define deprecation policy"
+      - action: "Create migration guide"
+      - action: "Setup version routing"
+      - action: "Document breaking changes"
+      
+  implement_pagination:
+    description: "Add pagination to collection endpoints"
+    steps:
+      - action: "Choose pagination style (offset/cursor/keyset)"
+      - action: "Implement page size limits"
+      - action: "Add total count header"
+      - action: "Generate navigation links"
+      - action: "Document pagination parameters"
+
+specifications:
+  openapi: |
+    openapi: 3.1.0
+    info:
+      title: ${api_name}
+      version: ${version}
+      description: ${description}
+    servers:
+      - url: https://api.example.com/v1
+    security:
+      - bearerAuth: []
+    paths:
+      ${paths}
+    components:
+      securitySchemes:
+        bearerAuth:
+          type: http
+          scheme: bearer
+          bearerFormat: JWT
+      schemas:
+        ${schemas}
+        
+  graphql: |
+    type Query {
+      ${queries}
+    }
+    
+    type Mutation {
+      ${mutations}
+    }
+    
+    type Subscription {
+      ${subscriptions}
+    }
+    
+    ${types}
+
+templates:
+  rest_endpoint: |
+    /**
+     * @api {${method}} ${path} ${description}
+     * @apiName ${operationId}
+     * @apiGroup ${group}
+     * @apiVersion ${version}
+     * 
+     * @apiParam {${type}} ${param} ${param_description}
+     * 
+     * @apiSuccess {${response_type}} ${response_field} ${response_description}
+     * 
+     * @apiError {401} Unauthorized
+     * @apiError {404} NotFound
+     * @apiError {500} InternalServerError
+     */
+    
+  error_response: |
+    {
+      "error": {
+        "code": "${error_code}",
+        "message": "${error_message}",
+        "details": ${error_details},
+        "timestamp": "${timestamp}",
+        "path": "${request_path}",
+        "request_id": "${request_id}"
+      }
+    }
+    
+  pagination_response: |
+    {
+      "data": ${items},
+      "pagination": {
+        "page": ${page},
+        "per_page": ${per_page},
+        "total": ${total},
+        "total_pages": ${total_pages}
+      },
+      "links": {
+        "self": "${self_link}",
+        "first": "${first_link}",
+        "prev": "${prev_link}",
+        "next": "${next_link}",
+        "last": "${last_link}"
+      }
+    }
+
+security:
+  authentication:
+    - bearer_token
+    - api_key
+    - oauth2
+    - basic_auth
+    
+  authorization:
+    - rbac
+    - abac
+    - scope_based
+    - resource_based
+    
+  rate_limiting:
+    strategies:
+      - fixed_window
+      - sliding_window
+      - token_bucket
+      - leaky_bucket
+
+performance:
+  optimizations:
+    - response_compression
+    - field_filtering
+    - query_batching
+    - caching_headers
+    - connection_pooling
+    
+  metrics:
+    - response_time_p99
+    - throughput_rps
+    - error_rate
+    - cache_hit_ratio
+
+documentation:
+  formats:
+    - openapi
+    - postman_collection
+    - insomnia
+    - api_blueprint
+    - raml
+    
+  includes:
+    - authentication_guide
+    - quick_start
+    - code_examples
+    - sdk_references
+    - changelog
+
+snippets:
+  express_endpoint: |
+    /**
+     * ${description}
+     */
+    router.${method}('${path}', 
+      authenticate,
+      validateRequest(${schema}),
+      rateLimit(${limits}),
+      async (req, res, next) => {
+        try {
+          const result = await ${handler}(req.params, req.body, req.user);
+          res.status(${status}).json(result);
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+    
+  graphql_resolver: |
+    const ${resolver_name} = {
+      Query: {
+        ${query_name}: async (parent, args, context, info) => {
+          // Authorization check
+          if (!context.user) {
+            throw new AuthenticationError('Not authenticated');
+          }
+          
+          // Business logic
+          const result = await ${service}.${method}(args);
+          
+          return result;
+        }
+      },
+      ${type}: {
+        ${field}: async (parent, args, context, info) => {
+          return dataLoader.load(parent.${id});
+        }
+      }
+    };
+
+examples:
+  - input: "@api-designer create REST API for user management"
+    output: "Designs complete CRUD API with auth, pagination, and OpenAPI spec"
+    
+  - input: "@api-designer convert REST to GraphQL"
+    output: "Transforms REST endpoints to GraphQL schema with resolvers"
+    
+  - input: "@api-designer add versioning to existing API"
+    output: "Implements versioning strategy with migration path"
+    
+  - input: "@api-designer optimize API performance"
+    output: "Adds caching, batching, and field filtering"

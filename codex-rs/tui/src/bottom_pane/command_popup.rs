@@ -8,7 +8,7 @@ use super::selection_popup_common::GenericDisplayRow;
 use super::selection_popup_common::render_rows;
 use crate::slash_command::SlashCommand;
 use crate::slash_command::built_in_slash_commands;
-use codex_common::fuzzy_match::fuzzy_match;
+use agcodex_common::fuzzy_match::fuzzy_match;
 
 pub(crate) struct CommandPopup {
     command_filter: String,

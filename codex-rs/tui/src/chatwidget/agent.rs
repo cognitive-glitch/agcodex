@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use codex_core::ConversationManager;
-use codex_core::NewConversation;
-use codex_core::config::Config;
-use codex_core::protocol::Op;
+use agcodex_core::ConversationManager;
+use agcodex_core::NewConversation;
+use agcodex_core::config::Config;
+use agcodex_core::protocol::Op;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -35,10 +35,10 @@ pub(crate) fn spawn_agent(
         };
 
         // Forward the captured `SessionConfigured` event so it can be rendered in the UI.
-        let ev = codex_core::protocol::Event {
+        let ev = agcodex_core::protocol::Event {
             // The `id` does not matter for rendering, so we can use a fake value.
             id: "".to_string(),
-            msg: codex_core::protocol::EventMsg::SessionConfigured(session_configured),
+            msg: agcodex_core::protocol::EventMsg::SessionConfigured(session_configured),
         };
         app_event_tx_clone.send(AppEvent::CodexEvent(ev));
 

@@ -65,7 +65,7 @@ pub(crate) enum PlanType {
 }
 
 impl PlanType {
-    fn is_plan_that_should_use_api_key(&self) -> bool {
+    const fn is_plan_that_should_use_api_key(&self) -> bool {
         match self {
             Self::Known(known) => {
                 use KnownPlan::*;

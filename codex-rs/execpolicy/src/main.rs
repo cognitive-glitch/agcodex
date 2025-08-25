@@ -1,12 +1,12 @@
+use agcodex_execpolicy::ExecCall;
+use agcodex_execpolicy::MatchedExec;
+use agcodex_execpolicy::Policy;
+use agcodex_execpolicy::PolicyParser;
+use agcodex_execpolicy::ValidExec;
+use agcodex_execpolicy::get_default_policy;
 use anyhow::Result;
 use clap::Parser;
 use clap::Subcommand;
-use codex_execpolicy::ExecCall;
-use codex_execpolicy::MatchedExec;
-use codex_execpolicy::Policy;
-use codex_execpolicy::PolicyParser;
-use codex_execpolicy::ValidExec;
-use codex_execpolicy::get_default_policy;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de;
@@ -139,12 +139,12 @@ pub enum Output {
     #[serde(rename = "forbidden")]
     Forbidden {
         reason: String,
-        cause: codex_execpolicy::Forbidden,
+        cause: agcodex_execpolicy::Forbidden,
     },
 
     /// The safety of the command could not be verified.
     #[serde(rename = "unverified")]
-    Unverified { error: codex_execpolicy::Error },
+    Unverified { error: agcodex_execpolicy::Error },
 }
 
 fn deserialize_from_json<'de, D>(deserializer: D) -> Result<ExecArg, D::Error>

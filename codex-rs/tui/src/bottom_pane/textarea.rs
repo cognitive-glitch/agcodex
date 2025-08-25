@@ -1,7 +1,7 @@
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
-use crossterm::event::KeyModifiers;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyModifiers;
 use ratatui::layout::Rect;
 use ratatui::style::Color;
 use ratatui::style::Style;
@@ -41,7 +41,7 @@ pub(crate) struct TextAreaState {
 }
 
 impl TextArea {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             text: String::new(),
             cursor_pos: 0,
@@ -116,7 +116,7 @@ impl TextArea {
         self.cursor_pos = self.clamp_pos_to_nearest_boundary(self.cursor_pos);
     }
 
-    pub fn cursor(&self) -> usize {
+    pub const fn cursor(&self) -> usize {
         self.cursor_pos
     }
 
@@ -149,7 +149,7 @@ impl TextArea {
         Some((area.x + col, area.y + screen_row))
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.text.is_empty()
     }
 
@@ -1138,9 +1138,9 @@ mod tests {
 
     #[test]
     fn control_b_and_f_move_cursor() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let mut t = ta_with("abcd");
         t.set_cursor(1);
@@ -1154,9 +1154,9 @@ mod tests {
 
     #[test]
     fn control_b_f_fallback_control_chars_move_cursor() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let mut t = ta_with("abcd");
         t.set_cursor(2);

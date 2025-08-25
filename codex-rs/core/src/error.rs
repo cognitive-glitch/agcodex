@@ -95,7 +95,7 @@ pub enum CodexErr {
     #[error("sandbox error: {0}")]
     Sandbox(#[from] SandboxErr),
 
-    #[error("codex-linux-sandbox was required but not provided")]
+    #[error("agcodex-linux-sandbox was required but not provided")]
     LandlockSandboxExecutableNotProvided,
 
     // -----------------------------------------------------------------
@@ -123,6 +123,53 @@ pub enum CodexErr {
 
     #[error("{0}")]
     EnvVar(EnvVarError),
+
+    // MCP-related errors
+    #[error("MCP server error: {0}")]
+    McpServer(String),
+
+    #[error("MCP client start failed for server {server}: {error}")]
+    McpClientStart { server: String, error: String },
+
+    #[error("MCP tool not found: {0}")]
+    McpToolNotFound(String),
+
+    // Configuration errors
+    #[error("invalid configuration: {0}")]
+    InvalidConfig(String),
+
+    #[error("invalid working directory: {0}")]
+    InvalidWorkingDirectory(String),
+
+    // Mode restriction errors
+    #[error("operation not allowed in current mode: {0}")]
+    ModeRestriction(String),
+
+    // Undo/Redo system errors
+    #[error("no branch point available for creating branch")]
+    NoBranchPointAvailable,
+
+    #[error("no current state available for creating checkpoint")]
+    NoCurrentStateForCheckpoint,
+
+    #[error("snapshot {0} not found")]
+    SnapshotNotFound(Uuid),
+
+    #[error("branch {0} not found")]
+    BranchNotFound(Uuid),
+
+    #[error("undo stack is empty")]
+    UndoStackEmpty,
+
+    #[error("redo stack is empty")]
+    RedoStackEmpty,
+
+    #[error("memory limit exceeded: {current} > {limit} bytes")]
+    MemoryLimitExceeded { current: usize, limit: usize },
+
+    // General errors for migration from anyhow
+    #[error("{0}")]
+    General(String),
 }
 
 #[derive(Debug)]

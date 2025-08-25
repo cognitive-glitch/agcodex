@@ -7,7 +7,7 @@ use ratatui::text::Line;
 #[test]
 fn live_001_commit_on_overflow() {
     let backend = TestBackend::new(20, 6);
-    let mut term = match codex_tui::custom_terminal::Terminal::with_options(backend) {
+    let mut term = match agcodex_tui::custom_terminal::Terminal::with_options(backend) {
         Ok(t) => t,
         Err(e) => panic!("failed to construct terminal: {e}"),
     };
@@ -15,7 +15,7 @@ fn live_001_commit_on_overflow() {
     term.set_viewport_area(area);
 
     // Build 5 explicit rows at width 20.
-    let mut rb = codex_tui::live_wrap::RowBuilder::new(20);
+    let mut rb = agcodex_tui::live_wrap::RowBuilder::new(20);
     rb.push_fragment("one\n");
     rb.push_fragment("two\n");
     rb.push_fragment("three\n");
@@ -30,7 +30,7 @@ fn live_001_commit_on_overflow() {
         .collect();
 
     let mut buf: Vec<u8> = Vec::new();
-    codex_tui::insert_history::insert_history_lines_to_writer(&mut term, &mut buf, lines);
+    agcodex_tui::insert_history::insert_history_lines_to_writer(&mut term, &mut buf, lines);
 
     let mut parser = vt100::Parser::new(6, 20, 0);
     parser.process(&buf);
@@ -64,7 +64,7 @@ fn live_001_commit_on_overflow() {
 #[test]
 fn live_002_pre_scroll_and_commit() {
     let backend = TestBackend::new(20, 6);
-    let mut term = match codex_tui::custom_terminal::Terminal::with_options(backend) {
+    let mut term = match agcodex_tui::custom_terminal::Terminal::with_options(backend) {
         Ok(t) => t,
         Err(e) => panic!("failed to construct terminal: {e}"),
     };
@@ -72,7 +72,7 @@ fn live_002_pre_scroll_and_commit() {
     let area = Rect::new(0, 3, 20, 1);
     term.set_viewport_area(area);
 
-    let mut rb = codex_tui::live_wrap::RowBuilder::new(20);
+    let mut rb = agcodex_tui::live_wrap::RowBuilder::new(20);
     rb.push_fragment("alpha\n");
     rb.push_fragment("beta\n");
     rb.push_fragment("gamma\n");
@@ -86,7 +86,7 @@ fn live_002_pre_scroll_and_commit() {
         .collect();
 
     let mut buf: Vec<u8> = Vec::new();
-    codex_tui::insert_history::insert_history_lines_to_writer(&mut term, &mut buf, lines);
+    agcodex_tui::insert_history::insert_history_lines_to_writer(&mut term, &mut buf, lines);
     let s = String::from_utf8_lossy(&buf);
 
     // Expect a SetScrollRegion to [area.top()+1 .. screen_height] and a cursor move to top of that region.

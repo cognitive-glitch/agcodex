@@ -1,11 +1,11 @@
 use std::io::IsTerminal;
 use std::path::Path;
 
+use agcodex_file_search::Cli;
+use agcodex_file_search::FileMatch;
+use agcodex_file_search::Reporter;
+use agcodex_file_search::run_main;
 use clap::Parser;
-use codex_file_search::Cli;
-use codex_file_search::FileMatch;
-use codex_file_search::Reporter;
-use codex_file_search::run_main;
 use serde_json::json;
 
 #[tokio::main]
@@ -27,12 +27,16 @@ struct StdioReporter {
 impl Reporter for StdioReporter {
     fn report_match(&self, file_match: &FileMatch) {
         if self.write_output_as_json {
-            println!("{}", serde_json::to_string(&file_match).unwrap());
+            match serde_json::to_string(&file_match) {
+                Ok(s) => println!("{}", s),
+                Err(_) => eprintln!("Failed to serialize file match as JSON"),
+            }
         } else if self.show_indices {
-            let indices = file_match
-                .indices
-                .as_ref()
-                .expect("--compute-indices was specified");
+            let Some(indices) = file_match.indices.as_ref() else {
+                eprintln!("Indices were not available; showing plain path");
+                println!("{}", file_match.path);
+                return;
+            };
             // `indices` is guaranteed to be sorted in ascending order. Instead
             // of calling `contains` for every character (which would be O(N^2)
             // in the worst-case), walk through the `indices` vector once while
@@ -61,7 +65,10 @@ impl Reporter for StdioReporter {
     fn warn_matches_truncated(&self, total_match_count: usize, shown_match_count: usize) {
         if self.write_output_as_json {
             let value = json!({"matches_truncated": true});
-            println!("{}", serde_json::to_string(&value).unwrap());
+            match serde_json::to_string(&value) {
+                Ok(s) => println!("{}", s),
+                Err(_) => eprintln!("Failed to serialize warning as JSON"),
+            }
         } else {
             eprintln!(
                 "Warning: showing {shown_match_count} out of {total_match_count} results. Provide a more specific pattern or increase the --limit.",

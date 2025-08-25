@@ -69,7 +69,7 @@ impl ArgType {
         }
     }
 
-    pub fn might_write_file(&self) -> bool {
+    pub const fn might_write_file(&self) -> bool {
         match self {
             ArgType::WriteableFile | ArgType::Unknown => true,
             ArgType::Literal(_)

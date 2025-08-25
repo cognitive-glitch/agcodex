@@ -1,19 +1,26 @@
 [package]
-edition = "2024"
-name = "codex-arg0"
+edition.workspace = true
+name = "agcodex-arg0"
 version = { workspace = true }
+description = "Command-line argument handling utilities for AGCodex"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-arg0"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
+license = { workspace = true }
 
 [lib]
-name = "codex_arg0"
+name = "agcodex_arg0"
 path = "src/lib.rs"
 
 [lints]
 workspace = true
 
 [dependencies]
-anyhow = "1"
-codex-apply-patch = { path = "../apply-patch" }
-codex-core = { path = "../core" }
-codex-linux-sandbox = { path = "../linux-sandbox" }
-dotenvy = "0.15.7"
-tokio = { version = "1", features = ["rt-multi-thread"] }
+anyhow = { workspace = true }
+agcodex-apply-patch = { path = "../apply-patch", version = "0.1.0" }
+agcodex-core = { path = "../core", version = "0.1.0" }
+agcodex-linux-sandbox = { path = "../linux-sandbox", version = "0.1.0" }
+dotenvy = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }

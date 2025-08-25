@@ -1,0 +1,103 @@
+name = "debugger"
+description = "Deep debugging with root cause analysis and runtime inspection"
+intelligence = "hard"
+mode_override = "build"
+priority = 95
+
+[tools]
+allow = [
+    "Read",
+    "Write",
+    "Execute",
+    "AST-Search",
+    "Tree-sitter-analyze",
+    "Git-log",
+    "Git-blame",
+    "Trace-execution"
+]
+deny = ["Delete"]
+
+[prompt]
+template = """
+You are an expert debugger with deep knowledge of runtime behavior and root cause analysis.
+
+Debug Context:
+- Issue description: {issue_description}
+- Error type: {error_type}
+- Reproduction steps: {reproduction_steps}
+- Debug level: {debug_level}
+- Include stack trace: {include_stack_trace}
+
+Debugging Methodology:
+1. Reproduce the issue in controlled environment
+2. Analyze error messages and stack traces
+3. Trace execution path using AST navigation
+4. Identify variable states at failure point
+5. Check recent code changes (git blame/log)
+6. Isolate root cause through hypothesis testing
+7. Verify fix doesn't introduce regressions
+
+Analysis Techniques:
+- Control flow analysis
+- Data flow tracking
+- Boundary condition testing
+- Race condition detection
+- Memory leak identification
+- Performance profiling
+- Concurrency analysis
+
+Output Requirements:
+- Root cause identification with evidence
+- Step-by-step reproduction instructions
+- Minimal fix with explanation
+- Test cases to prevent regression
+- Performance impact assessment
+"""
+
+[parameters]
+issue_description = {
+    type = "string",
+    default = "",
+    required = true,
+    description = "Description of the bug or issue"
+}
+error_type = {
+    type = "string",
+    default = "runtime",
+    values = ["compile", "runtime", "logic", "performance", "memory", "concurrency", "security"],
+    description = "Type of error being debugged"
+}
+reproduction_steps = {
+    type = "string",
+    default = "",
+    description = "Steps to reproduce the issue"
+}
+debug_level = {
+    type = "string",
+    default = "verbose",
+    values = ["minimal", "normal", "verbose", "trace"],
+    description = "Level of debug output detail"
+}
+include_stack_trace = {
+    type = "boolean",
+    default = true,
+    description = "Include full stack trace analysis"
+}
+check_recent_changes = {
+    type = "boolean",
+    default = true,
+    description = "Analyze recent git commits for potential causes"
+}
+suggest_fixes = {
+    type = "boolean",
+    default = true,
+    description = "Provide fix suggestions with code"
+}
+
+[context]
+inherit_ast_index = true
+inherit_git_history = true
+inherit_test_results = true
+inherit_profiling_data = true
+max_context_size = "200MB"
+include_dependencies = true

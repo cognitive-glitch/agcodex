@@ -3,11 +3,12 @@
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::user_approval_widget::ApprovalRequest;
+use agcodex_core::protocol::TokenUsage;
+use agcodex_file_search::FileMatch;
+use agcodex_persistence::types::SessionMetadata;
 use bottom_pane_view::BottomPaneView;
-use codex_core::protocol::TokenUsage;
-use codex_file_search::FileMatch;
-use crossterm::event::KeyEvent;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::layout::Rect;
 use ratatui::widgets::WidgetRef;
 
@@ -18,9 +19,10 @@ mod chat_composer_history;
 mod command_popup;
 mod file_search_popup;
 mod list_selection_view;
-mod popup_consts;
-mod scroll_state;
-mod selection_popup_common;
+mod load_dialog_view;
+pub mod popup_consts;
+pub mod scroll_state;
+pub mod selection_popup_common;
 mod status_indicator_view;
 mod textarea;
 
@@ -36,6 +38,7 @@ pub(crate) use chat_composer::InputResult;
 use approval_modal_view::ApprovalModalView;
 pub(crate) use list_selection_view::SelectionAction;
 pub(crate) use list_selection_view::SelectionItem;
+use load_dialog_view::LoadDialogView;
 use status_indicator_view::StatusIndicatorView;
 
 /// Pane displayed in the lower half of the chat UI.
@@ -188,7 +191,7 @@ impl BottomPane<'_> {
         }
     }
 
-    pub(crate) fn ctrl_c_quit_hint_visible(&self) -> bool {
+    pub(crate) const fn ctrl_c_quit_hint_visible(&self) -> bool {
         self.ctrl_c_quit_hint
     }
 
@@ -248,11 +251,11 @@ impl BottomPane<'_> {
         }
     }
 
-    pub(crate) fn composer_is_empty(&self) -> bool {
+    pub(crate) const fn composer_is_empty(&self) -> bool {
         self.composer.is_empty()
     }
 
-    pub(crate) fn is_task_running(&self) -> bool {
+    pub(crate) const fn is_task_running(&self) -> bool {
         self.is_task_running
     }
 
@@ -319,6 +322,54 @@ impl BottomPane<'_> {
     pub(crate) fn on_file_search_result(&mut self, query: String, matches: Vec<FileMatch>) {
         self.composer.on_file_search_result(query, matches);
         self.request_redraw();
+    }
+
+    // --- Load dialog helpers ---
+
+    /// Show the load session dialog
+    pub(crate) fn show_load_dialog(&mut self) {
+        let view = LoadDialogView::new(self.app_event_tx.clone());
+        self.active_view = Some(Box::new(view));
+        self.status_view_active = false;
+        self.request_redraw();
+    }
+
+    /// Update the load dialog with session list
+    pub(crate) fn on_load_session_list_result(
+        &mut self,
+        sessions: Result<Vec<SessionMetadata>, String>,
+    ) {
+        // TODO: Fix lifetime issues with as_any_mut downcasting
+        // This requires refactoring the BottomPaneView trait to not have lifetime parameters
+        // or finding an alternative to downcasting
+        /*
+        if let Some(view) = self.active_view.as_mut() {
+            if let Some(load_view) = view.as_any_mut().downcast_mut::<LoadDialogView>() {
+                match sessions {
+                    Ok(sessions) => load_view.set_sessions(sessions),
+                    Err(error) => load_view.set_error(error),
+                }
+                self.request_redraw();
+            }
+        }
+        */
+        let _ = sessions; // Suppress unused warning
+    }
+
+    /// Update search query in load dialog
+    pub(crate) fn on_load_dialog_query_update(&mut self, query: String) {
+        // TODO: Fix lifetime issues with as_any_mut downcasting
+        // This requires refactoring the BottomPaneView trait to not have lifetime parameters
+        // or finding an alternative to downcasting
+        /*
+        if let Some(view) = self.active_view.as_mut() {
+            if let Some(load_view) = view.as_any_mut().downcast_mut::<LoadDialogView>() {
+                load_view.update_search_query(query);
+                self.request_redraw();
+            }
+        }
+        */
+        let _ = query; // Suppress unused warning
     }
 }
 
@@ -434,9 +485,9 @@ mod tests {
         pane.push_approval_request(exec_request());
 
         // Simulate pressing 'n' (deny) on the modal.
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
         pane.handle_key_event(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE));
 
         // After denial, since the task is still running, the status indicator

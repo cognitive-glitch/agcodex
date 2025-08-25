@@ -78,13 +78,13 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             slug, "o4-mini",
             supports_reasoning_summaries: true,
         )
-    } else if slug.starts_with("codex-mini-latest") {
+    } else if slug.starts_with("agcodex-mini-latest") {
         model_family!(
-            slug, "codex-mini-latest",
+            slug, "agcodex-mini-latest",
             supports_reasoning_summaries: true,
             uses_local_shell_tool: true,
         )
-    } else if slug.starts_with("codex-") {
+    } else if slug.starts_with("agcodex-") {
         model_family!(
             slug, slug,
             supports_reasoning_summaries: true,

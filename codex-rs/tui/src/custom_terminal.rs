@@ -199,7 +199,7 @@ impl Frame<'_> {
     }
 
     /// Gets the buffer that this `Frame` draws into as a mutable reference.
-    pub fn buffer_mut(&mut self) -> &mut Buffer {
+    pub const fn buffer_mut(&mut self) -> &mut Buffer {
         self.buffer
     }
 
@@ -309,7 +309,7 @@ where
     }
 
     /// Get a Frame object which provides a consistent view into the terminal state for rendering.
-    pub fn get_frame(&mut self) -> Frame<'_> {
+    pub const fn get_frame(&mut self) -> Frame<'_> {
         let count = self.frame_count;
         Frame {
             cursor_position: None,
@@ -320,7 +320,7 @@ where
     }
 
     /// Gets the current buffer as a mutable reference.
-    pub fn current_buffer_mut(&mut self) -> &mut Buffer {
+    pub const fn current_buffer_mut(&mut self) -> &mut Buffer {
         &mut self.buffers[self.current]
     }
 
@@ -330,7 +330,7 @@ where
     }
 
     /// Gets the backend as a mutable reference
-    pub fn backend_mut(&mut self) -> &mut B {
+    pub const fn backend_mut(&mut self) -> &mut B {
         &mut self.backend
     }
 
@@ -350,7 +350,7 @@ where
     ///
     /// Requested area will be saved to remain consistent when rendering. This leads to a full clear
     /// of the screen.
-    pub fn resize(&mut self, screen_size: Size) -> io::Result<()> {
+    pub const fn resize(&mut self, screen_size: Size) -> io::Result<()> {
         self.last_known_screen_size = screen_size;
         Ok(())
     }

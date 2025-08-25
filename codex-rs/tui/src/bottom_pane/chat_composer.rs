@@ -1,8 +1,9 @@
-use codex_core::protocol::TokenUsage;
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
-use crossterm::event::KeyModifiers;
+use agcodex_core::protocol::TokenUsage;
+use agcodex_core::subagents::InvocationParser;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyModifiers;
 use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::layout::Margin;
@@ -11,7 +12,6 @@ use ratatui::style::Color;
 use ratatui::style::Modifier;
 use ratatui::style::Style;
 use ratatui::style::Styled;
-use ratatui::style::Stylize;
 use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::Block;
@@ -28,7 +28,7 @@ use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::bottom_pane::textarea::TextArea;
 use crate::bottom_pane::textarea::TextAreaState;
-use codex_file_search::FileMatch;
+use agcodex_file_search::FileMatch;
 use std::cell::RefCell;
 
 /// If the pasted content exceeds this number of characters, replace it with a
@@ -70,6 +70,7 @@ pub(crate) struct ChatComposer {
     token_usage_info: Option<TokenUsageInfo>,
     has_focus: bool,
     placeholder_text: String,
+    invocation_parser: InvocationParser,
 }
 
 /// Popup state – at most one can be visible at any time.
@@ -102,6 +103,7 @@ impl ChatComposer {
             token_usage_info: None,
             has_focus: has_input_focus,
             placeholder_text,
+            invocation_parser: InvocationParser::new().expect("Failed to create InvocationParser"),
         }
     }
 
@@ -130,7 +132,7 @@ impl ChatComposer {
     }
 
     /// Returns true if the composer currently contains no user input.
-    pub(crate) fn is_empty(&self) -> bool {
+    pub(crate) const fn is_empty(&self) -> bool {
         self.textarea.is_empty()
     }
 
@@ -211,7 +213,7 @@ impl ChatComposer {
         }
     }
 
-    pub fn set_ctrl_c_quit_hint(&mut self, show: bool, has_focus: bool) {
+    pub const fn set_ctrl_c_quit_hint(&mut self, show: bool, has_focus: bool) {
         self.ctrl_c_quit_hint = show;
         self.set_has_focus(has_focus);
     }
@@ -541,8 +543,14 @@ impl ChatComposer {
                 if text.is_empty() {
                     (InputResult::None, true)
                 } else {
-                    self.history.record_local_submission(&text);
-                    (InputResult::Submitted(text), true)
+                    // Check for agent invocations before submitting
+                    if let Ok(Some(invocation)) = self.invocation_parser.parse(&text) {
+                        self.app_event_tx.send(AppEvent::StartAgent(invocation));
+                        (InputResult::None, true)
+                    } else {
+                        self.history.record_local_submission(&text);
+                        (InputResult::Submitted(text), true)
+                    }
                 }
             }
             input => self.handle_input_basic(input),
@@ -632,7 +640,7 @@ impl ChatComposer {
         self.dismissed_file_popup_token = None;
     }
 
-    fn set_has_focus(&mut self, has_focus: bool) {
+    const fn set_has_focus(&mut self, has_focus: bool) {
         self.has_focus = has_focus;
     }
 }
@@ -706,7 +714,7 @@ impl WidgetRef for &ChatComposer {
                 }
 
                 Line::from(hint)
-                    .style(Style::default().dim())
+                    .style(Style::default().add_modifier(Modifier::DIM))
                     .render_ref(bottom_line_rect, buf);
             }
         }
@@ -731,7 +739,7 @@ impl WidgetRef for &ChatComposer {
         StatefulWidgetRef::render_ref(&(&self.textarea), textarea_rect, buf, &mut state);
         if self.textarea.text().is_empty() {
             Line::from(self.placeholder_text.as_str())
-                .style(Style::default().dim())
+                .style(Style::default().add_modifier(Modifier::DIM))
                 .render_ref(textarea_rect.inner(Margin::new(1, 0)), buf);
         }
     }
@@ -897,9 +905,9 @@ mod tests {
 
     #[test]
     fn handle_paste_small_inserts_text() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);
@@ -921,9 +929,9 @@ mod tests {
 
     #[test]
     fn handle_paste_large_uses_placeholder_and_replaces_on_submit() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);
@@ -950,9 +958,9 @@ mod tests {
 
     #[test]
     fn edit_clears_pending_paste() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let large = "y".repeat(LARGE_PASTE_CHAR_THRESHOLD + 1);
         let (tx, _rx) = std::sync::mpsc::channel();
@@ -970,12 +978,12 @@ mod tests {
 
     #[test]
     fn ui_snapshots() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
         use insta::assert_snapshot;
         use ratatui::Terminal;
         use ratatui::backend::TestBackend;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);
@@ -1030,9 +1038,9 @@ mod tests {
 
     #[test]
     fn slash_init_dispatches_command_and_does_not_submit_literal_text() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
         use std::sync::mpsc::TryRecvError;
 
         let (tx, rx) = std::sync::mpsc::channel();
@@ -1074,9 +1082,9 @@ mod tests {
 
     #[test]
     fn slash_tab_completion_moves_cursor_to_end() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);
@@ -1096,9 +1104,9 @@ mod tests {
 
     #[test]
     fn slash_mention_dispatches_command_and_inserts_at() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
         use std::sync::mpsc::TryRecvError;
 
         let (tx, rx) = std::sync::mpsc::channel();
@@ -1137,9 +1145,9 @@ mod tests {
 
     #[test]
     fn test_multiple_pastes_submission() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);
@@ -1211,9 +1219,9 @@ mod tests {
 
     #[test]
     fn test_placeholder_deletion() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);
@@ -1278,9 +1286,9 @@ mod tests {
 
     #[test]
     fn test_partial_placeholder_deletion() {
-        use crossterm::event::KeyCode;
-        use crossterm::event::KeyEvent;
-        use crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyEvent;
+        use ratatui::crossterm::event::KeyModifiers;
 
         let (tx, _rx) = std::sync::mpsc::channel();
         let sender = AppEventSender::new(tx);

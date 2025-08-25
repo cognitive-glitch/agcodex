@@ -1,23 +1,23 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use codex_core::config::Config;
-use codex_core::protocol::Event;
-use codex_core::protocol::EventMsg;
-use codex_core::protocol::TaskCompleteEvent;
+use agcodex_core::config::Config;
+use agcodex_core::protocol::Event;
+use agcodex_core::protocol::EventMsg;
+use agcodex_core::protocol::TaskCompleteEvent;
 use serde_json::json;
 
 use crate::event_processor::CodexStatus;
 use crate::event_processor::EventProcessor;
 use crate::event_processor::handle_last_message;
-use codex_common::create_config_summary_entries;
+use agcodex_common::create_config_summary_entries;
 
 pub(crate) struct EventProcessorWithJsonOutput {
     last_message_path: Option<PathBuf>,
 }
 
 impl EventProcessorWithJsonOutput {
-    pub fn new(last_message_path: Option<PathBuf>) -> Self {
+    pub const fn new(last_message_path: Option<PathBuf>) -> Self {
         Self { last_message_path }
     }
 }

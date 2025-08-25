@@ -44,6 +44,7 @@ pub struct ToolsConfig {
     pub shell_type: ConfigShellToolType,
     pub plan_tool: bool,
     pub apply_patch_tool: bool,
+    pub agent_tools: bool,
 }
 
 impl ToolsConfig {
@@ -69,6 +70,7 @@ impl ToolsConfig {
             shell_type,
             plan_tool: include_plan_tool,
             apply_patch_tool: include_apply_patch_tool || model_family.uses_apply_patch_tool,
+            agent_tools: true, // Enable agent tools by default
         }
     }
 }
@@ -76,7 +78,7 @@ impl ToolsConfig {
 /// Generic JSON‑Schema subset needed for our tool definitions
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "lowercase")]
-pub(crate) enum JsonSchema {
+pub enum JsonSchema {
     Boolean {
         #[serde(skip_serializing_if = "Option::is_none")]
         description: Option<String>,
@@ -367,9 +369,9 @@ pub(crate) fn create_tools_json_for_chat_completions_api(
 
 pub(crate) fn mcp_tool_to_openai_tool(
     fully_qualified_name: String,
-    tool: mcp_types::Tool,
+    tool: agcodex_mcp_types::Tool,
 ) -> Result<ResponsesApiTool, serde_json::Error> {
-    let mcp_types::Tool {
+    let agcodex_mcp_types::Tool {
         description,
         mut input_schema,
         ..
@@ -514,12 +516,151 @@ fn sanitize_json_schema(value: &mut JsonValue) {
     }
 }
 
+/// Create agent invocation tools for OpenAI function calling
+fn create_agent_invocation_tools() -> Vec<OpenAiTool> {
+    let mut tools = Vec::new();
+
+    // Single agent invocation tool
+    let mut agent_properties = BTreeMap::new();
+    agent_properties.insert(
+        "agent".to_string(),
+        JsonSchema::String {
+            description: Some(
+                "Agent name (e.g., 'code-reviewer', 'debugger', 'refactorer')".to_string(),
+            ),
+        },
+    );
+    agent_properties.insert(
+        "task".to_string(),
+        JsonSchema::String {
+            description: Some("Task description or parameters for the agent".to_string()),
+        },
+    );
+    agent_properties.insert(
+        "context".to_string(),
+        JsonSchema::Object {
+            properties: BTreeMap::new(),
+            required: None,
+            additional_properties: Some(true),
+        },
+    );
+    agent_properties.insert(
+        "mode_override".to_string(),
+        JsonSchema::String {
+            description: Some(
+                "Override operating mode: 'plan', 'build', or 'review' (optional)".to_string(),
+            ),
+        },
+    );
+
+    tools.push(OpenAiTool::Function(ResponsesApiTool {
+        name: "invoke_agent".to_string(),
+        description: "Invoke a specialized subagent for task-specific workflows. Available agents: code-reviewer (quality/security), refactorer (restructuring), debugger (issue analysis), test-writer (test generation), performance (optimization), security (vulnerability scan), docs (documentation).".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties: agent_properties,
+            required: Some(vec!["agent".to_string(), "task".to_string()]),
+            additional_properties: Some(false),
+        },
+    }));
+
+    // Agent chain tool for sequential execution
+    let mut chain_properties = BTreeMap::new();
+    chain_properties.insert(
+        "agents".to_string(),
+        JsonSchema::Array {
+            items: Box::new(JsonSchema::Object {
+                properties: BTreeMap::from([
+                    (
+                        "name".to_string(),
+                        JsonSchema::String {
+                            description: Some("Agent name".to_string()),
+                        },
+                    ),
+                    (
+                        "task".to_string(),
+                        JsonSchema::String {
+                            description: Some("Task for this agent".to_string()),
+                        },
+                    ),
+                ]),
+                required: Some(vec!["name".to_string(), "task".to_string()]),
+                additional_properties: Some(false),
+            }),
+            description: Some("Agents to execute in sequence".to_string()),
+        },
+    );
+    chain_properties.insert(
+        "stop_on_error".to_string(),
+        JsonSchema::Boolean {
+            description: Some("Stop chain if an agent fails (default: true)".to_string()),
+        },
+    );
+
+    tools.push(OpenAiTool::Function(ResponsesApiTool {
+        name: "agent_chain".to_string(),
+        description: "Execute multiple agents in sequence, passing context between them. Each agent's output becomes context for the next.".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties: chain_properties,
+            required: Some(vec!["agents".to_string()]),
+            additional_properties: Some(false),
+        },
+    }));
+
+    // Agent parallel tool for concurrent execution
+    let mut parallel_properties = BTreeMap::new();
+    parallel_properties.insert(
+        "agents".to_string(),
+        JsonSchema::Array {
+            items: Box::new(JsonSchema::Object {
+                properties: BTreeMap::from([
+                    (
+                        "name".to_string(),
+                        JsonSchema::String {
+                            description: Some("Agent name".to_string()),
+                        },
+                    ),
+                    (
+                        "task".to_string(),
+                        JsonSchema::String {
+                            description: Some("Task for this agent".to_string()),
+                        },
+                    ),
+                ]),
+                required: Some(vec!["name".to_string(), "task".to_string()]),
+                additional_properties: Some(false),
+            }),
+            description: Some("Agents to execute in parallel".to_string()),
+        },
+    );
+    parallel_properties.insert(
+        "max_concurrency".to_string(),
+        JsonSchema::Number {
+            description: Some("Maximum agents to run concurrently (default: 4)".to_string()),
+        },
+    );
+
+    tools.push(OpenAiTool::Function(ResponsesApiTool {
+        name: "agent_parallel".to_string(),
+        description: "Execute multiple agents in parallel for independent tasks. Useful for running security scan, performance analysis, and code review simultaneously.".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties: parallel_properties,
+            required: Some(vec!["agents".to_string()]),
+            additional_properties: Some(false),
+        },
+    }));
+
+    tools
+}
+
 /// Returns a list of OpenAiTools based on the provided config and MCP tools.
 /// Note that the keys of mcp_tools should be fully qualified names. See
 /// [`McpConnectionManager`] for more details.
 pub(crate) fn get_openai_tools(
     config: &ToolsConfig,
-    mcp_tools: Option<HashMap<String, mcp_types::Tool>>,
+    mcp_tools: Option<HashMap<String, agcodex_mcp_types::Tool>>,
 ) -> Vec<OpenAiTool> {
     let mut tools: Vec<OpenAiTool> = Vec::new();
 
@@ -543,6 +684,10 @@ pub(crate) fn get_openai_tools(
         tools.push(create_apply_patch_tool());
     }
 
+    if config.agent_tools {
+        tools.extend(create_agent_invocation_tools());
+    }
+
     if let Some(mcp_tools) = mcp_tools {
         for (name, tool) in mcp_tools {
             match mcp_tool_to_openai_tool(name.clone(), tool.clone()) {
@@ -560,7 +705,7 @@ pub(crate) fn get_openai_tools(
 #[cfg(test)]
 mod tests {
     use crate::model_family::find_family_for_model;
-    use mcp_types::ToolInputSchema;
+    use agcodex_mcp_types::ToolInputSchema;
     use pretty_assertions::assert_eq;
 
     use super::*;
@@ -589,8 +734,8 @@ mod tests {
 
     #[test]
     fn test_get_openai_tools() {
-        let model_family = find_family_for_model("codex-mini-latest")
-            .expect("codex-mini-latest should be a valid model family");
+        let model_family = find_family_for_model("agcodex-mini-latest")
+            .expect("agcodex-mini-latest should be a valid model family");
         let config = ToolsConfig::new(
             &model_family,
             AskForApproval::Never,
@@ -600,7 +745,16 @@ mod tests {
         );
         let tools = get_openai_tools(&config, Some(HashMap::new()));
 
-        assert_eq_tool_names(&tools, &["local_shell", "update_plan"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "local_shell",
+                "update_plan",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+            ],
+        );
     }
 
     #[test]
@@ -615,7 +769,16 @@ mod tests {
         );
         let tools = get_openai_tools(&config, Some(HashMap::new()));
 
-        assert_eq_tool_names(&tools, &["shell", "update_plan"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "shell",
+                "update_plan",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+            ],
+        );
     }
 
     #[test]
@@ -632,7 +795,7 @@ mod tests {
             &config,
             Some(HashMap::from([(
                 "test_server/do_something_cool".to_string(),
-                mcp_types::Tool {
+                agcodex_mcp_types::Tool {
                     name: "do_something_cool".to_string(),
                     input_schema: ToolInputSchema {
                         properties: Some(serde_json::json!({
@@ -666,10 +829,19 @@ mod tests {
             )])),
         );
 
-        assert_eq_tool_names(&tools, &["shell", "test_server/do_something_cool"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "shell",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+                "test_server/do_something_cool",
+            ],
+        );
 
         assert_eq!(
-            tools[1],
+            tools[4],
             OpenAiTool::Function(ResponsesApiTool {
                 name: "test_server/do_something_cool".to_string(),
                 parameters: JsonSchema::Object {
@@ -727,7 +899,7 @@ mod tests {
             &config,
             Some(HashMap::from([(
                 "dash/search".to_string(),
-                mcp_types::Tool {
+                agcodex_mcp_types::Tool {
                     name: "search".to_string(),
                     input_schema: ToolInputSchema {
                         properties: Some(serde_json::json!({
@@ -746,10 +918,19 @@ mod tests {
             )])),
         );
 
-        assert_eq_tool_names(&tools, &["shell", "dash/search"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "shell",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+                "dash/search",
+            ],
+        );
 
         assert_eq!(
-            tools[1],
+            tools[4],
             OpenAiTool::Function(ResponsesApiTool {
                 name: "dash/search".to_string(),
                 parameters: JsonSchema::Object {
@@ -783,7 +964,7 @@ mod tests {
             &config,
             Some(HashMap::from([(
                 "dash/paginate".to_string(),
-                mcp_types::Tool {
+                agcodex_mcp_types::Tool {
                     name: "paginate".to_string(),
                     input_schema: ToolInputSchema {
                         properties: Some(serde_json::json!({
@@ -800,9 +981,18 @@ mod tests {
             )])),
         );
 
-        assert_eq_tool_names(&tools, &["shell", "dash/paginate"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "shell",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+                "dash/paginate",
+            ],
+        );
         assert_eq!(
-            tools[1],
+            tools[4],
             OpenAiTool::Function(ResponsesApiTool {
                 name: "dash/paginate".to_string(),
                 parameters: JsonSchema::Object {
@@ -834,7 +1024,7 @@ mod tests {
             &config,
             Some(HashMap::from([(
                 "dash/tags".to_string(),
-                mcp_types::Tool {
+                agcodex_mcp_types::Tool {
                     name: "tags".to_string(),
                     input_schema: ToolInputSchema {
                         properties: Some(serde_json::json!({
@@ -851,9 +1041,18 @@ mod tests {
             )])),
         );
 
-        assert_eq_tool_names(&tools, &["shell", "dash/tags"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "shell",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+                "dash/tags",
+            ],
+        );
         assert_eq!(
-            tools[1],
+            tools[4],
             OpenAiTool::Function(ResponsesApiTool {
                 name: "dash/tags".to_string(),
                 parameters: JsonSchema::Object {
@@ -888,7 +1087,7 @@ mod tests {
             &config,
             Some(HashMap::from([(
                 "dash/value".to_string(),
-                mcp_types::Tool {
+                agcodex_mcp_types::Tool {
                     name: "value".to_string(),
                     input_schema: ToolInputSchema {
                         properties: Some(serde_json::json!({
@@ -905,9 +1104,18 @@ mod tests {
             )])),
         );
 
-        assert_eq_tool_names(&tools, &["shell", "dash/value"]);
+        assert_eq_tool_names(
+            &tools,
+            &[
+                "shell",
+                "invoke_agent",
+                "agent_chain",
+                "agent_parallel",
+                "dash/value",
+            ],
+        );
         assert_eq!(
-            tools[1],
+            tools[4],
             OpenAiTool::Function(ResponsesApiTool {
                 name: "dash/value".to_string(),
                 parameters: JsonSchema::Object {

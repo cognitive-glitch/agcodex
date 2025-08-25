@@ -10,8 +10,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
-use mcp_types::CallToolResult;
-use mcp_types::Tool as McpTool;
+use agcodex_mcp_types::CallToolResult;
+use agcodex_mcp_types::Tool as McpTool;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_bytes::ByteBuf;
@@ -258,14 +258,14 @@ impl FromStr for SandboxPolicy {
 
 impl SandboxPolicy {
     /// Returns a policy with read-only disk access and no network.
-    pub fn new_read_only_policy() -> Self {
+    pub const fn new_read_only_policy() -> Self {
         SandboxPolicy::ReadOnly
     }
 
     /// Returns a policy that can read the entire disk, but can only write to
     /// the current working directory and the per-user tmp dir on macOS. It does
     /// not allow network access.
-    pub fn new_workspace_write_policy() -> Self {
+    pub const fn new_workspace_write_policy() -> Self {
         SandboxPolicy::WorkspaceWrite {
             writable_roots: vec![],
             network_access: false,
@@ -275,11 +275,11 @@ impl SandboxPolicy {
     }
 
     /// Always returns `true`; restricting read access is not supported.
-    pub fn has_full_disk_read_access(&self) -> bool {
+    pub const fn has_full_disk_read_access(&self) -> bool {
         true
     }
 
-    pub fn has_full_disk_write_access(&self) -> bool {
+    pub const fn has_full_disk_write_access(&self) -> bool {
         match self {
             SandboxPolicy::DangerFullAccess => true,
             SandboxPolicy::ReadOnly => false,
@@ -287,7 +287,7 @@ impl SandboxPolicy {
         }
     }
 
-    pub fn has_full_network_access(&self) -> bool {
+    pub const fn has_full_network_access(&self) -> bool {
         match self {
             SandboxPolicy::DangerFullAccess => true,
             SandboxPolicy::ReadOnly => false,
@@ -491,7 +491,7 @@ pub struct TokenUsage {
 }
 
 impl TokenUsage {
-    pub fn is_zero(&self) -> bool {
+    pub const fn is_zero(&self) -> bool {
         self.total_tokens == 0
     }
 
@@ -847,7 +847,7 @@ mod tests {
             id: "1234".to_string(),
             msg: EventMsg::SessionConfigured(SessionConfiguredEvent {
                 session_id,
-                model: "codex-mini-latest".to_string(),
+                model: "agcodex-mini-latest".to_string(),
                 history_log_id: 0,
                 history_entry_count: 0,
             }),
@@ -855,7 +855,7 @@ mod tests {
         let serialized = serde_json::to_string(&event).unwrap();
         assert_eq!(
             serialized,
-            r#"{"id":"1234","msg":{"type":"session_configured","session_id":"67e55044-10b1-426f-9247-bb680e5fe0c8","model":"codex-mini-latest","history_log_id":0,"history_entry_count":0}}"#
+            r#"{"id":"1234","msg":{"type":"session_configured","session_id":"67e55044-10b1-426f-9247-bb680e5fe0c8","model":"agcodex-mini-latest","history_log_id":0,"history_entry_count":0}}"#
         );
     }
 }

@@ -1,4 +1,4 @@
-use codex_file_search::FileMatch;
+use agcodex_file_search::FileMatch;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::widgets::WidgetRef;
@@ -24,7 +24,7 @@ pub(crate) struct FileSearchPopup {
 }
 
 impl FileSearchPopup {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             display_query: String::new(),
             pending_query: String::new(),

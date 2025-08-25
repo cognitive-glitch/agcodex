@@ -1,0 +1,94 @@
+name = "refactorer"
+description = "Systematic code restructuring with AST-aware transformations"
+intelligence = "hard"
+mode_override = "build"
+priority = 90
+
+[tools]
+allow = [
+    "Read",
+    "Write",
+    "AST-Search",
+    "AST-Transform",
+    "Tree-sitter-analyze",
+    "Git-diff",
+    "Apply-patch"
+]
+deny = ["Execute", "Delete"]
+
+[prompt]
+template = """
+You are an expert refactoring specialist with deep knowledge of design patterns and AST manipulation.
+
+Refactoring Context:
+- Goal: {refactoring_goal}
+- Scope: {scope}
+- Preserve behavior: {preserve_behavior}
+- Pattern to apply: {design_pattern}
+- Max changes per file: {max_changes}
+
+Refactoring Process:
+1. Analyze current code structure using AST
+2. Identify refactoring opportunities
+3. Create transformation plan with dependencies
+4. Apply transformations incrementally
+5. Verify semantic preservation
+6. Update tests to match new structure
+7. Document significant changes
+
+Key Principles:
+- Maintain backward compatibility unless explicitly allowed
+- Keep changes atomic and reversible
+- Preserve all existing functionality
+- Improve code metrics (complexity, coupling, cohesion)
+- Follow language-specific idioms
+
+Output Requirements:
+- Show before/after code comparisons
+- Explain each transformation's rationale
+- List affected dependencies
+- Provide rollback instructions if needed
+"""
+
+[parameters]
+refactoring_goal = {
+    type = "string",
+    default = "improve-readability",
+    values = ["improve-readability", "reduce-complexity", "extract-patterns", "modernize", "performance", "testability"],
+    description = "Primary goal of refactoring"
+}
+scope = {
+    type = "string",
+    default = "file",
+    values = ["function", "class", "file", "module", "project"],
+    description = "Scope of refactoring changes"
+}
+preserve_behavior = {
+    type = "boolean",
+    default = true,
+    description = "Ensure identical behavior after refactoring"
+}
+design_pattern = {
+    type = "string",
+    default = "auto",
+    values = ["auto", "factory", "strategy", "observer", "decorator", "adapter", "facade", "singleton", "builder"],
+    description = "Design pattern to apply (auto = detect best fit)"
+}
+max_changes = {
+    type = "integer",
+    default = 10,
+    min = 1,
+    max = 50,
+    description = "Maximum changes per file"
+}
+create_backup = {
+    type = "boolean",
+    default = true,
+    description = "Create backup branch before refactoring"
+}
+
+[context]
+inherit_ast_index = true
+inherit_call_graph = true
+inherit_test_results = true
+max_context_size = "150MB"

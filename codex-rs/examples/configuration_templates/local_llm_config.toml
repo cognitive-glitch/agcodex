@@ -1,0 +1,252 @@
+# AGCodex Local LLM Configuration (Ollama)
+# Configuration for running AGCodex with local language models
+# No API keys required - everything runs on your machine
+# Place this file at ~/.agcodex/config.toml
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Ollama Configuration
+# ═══════════════════════════════════════════════════════════════════════════
+
+[model]
+provider = "ollama"
+model = "codellama:34b"               # Recommended for code tasks
+base_url = "http://localhost:11434"   # Default Ollama endpoint
+timeout = 300                          # 5 minutes for large models
+stream = true                          # Enable streaming
+max_retries = 3
+
+# Model selection based on task
+[model.task_models]
+# Different models for different tasks
+code_generation = "codellama:34b"     # Best for code
+code_review = "deepseek-coder:33b"    # Good at analysis
+documentation = "mistral:7b"          # Fast for docs
+chat = "llama3:8b"                     # General chat
+reasoning = "mixtral:8x7b"            # Complex reasoning
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Ollama Model Management
+# ═══════════════════════════════════════════════════════════════════════════
+
+[ollama]
+# Auto-download models if not present
+auto_pull = true
+# Models to ensure are available
+required_models = [
+    "codellama:34b",
+    "llama3:8b",
+    "mistral:7b"
+]
+# Keep models loaded in memory
+keep_alive = "5m"                     # Keep model loaded for 5 minutes
+# Number of parallel model instances
+num_parallel = 2
+
+# Model-specific settings
+[ollama.models.codellama]
+num_gpu = 1                           # Number of GPUs to use
+num_thread = 8                        # CPU threads
+num_ctx = 8192                        # Context window size
+temperature = 0.7
+top_p = 0.9
+repeat_penalty = 1.1
+
+[ollama.models.mistral]
+num_gpu = 1
+num_thread = 4
+num_ctx = 4096
+temperature = 0.8
+
+[ollama.models.llama3]
+num_gpu = 1
+num_thread = 6
+num_ctx = 4096
+temperature = 0.7
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Performance Optimization for Local Models
+# ═══════════════════════════════════════════════════════════════════════════
+
+[performance]
+# Optimize for local execution
+batch_processing = true                # Batch requests
+cache_responses = true                 # Cache model responses
+response_cache_size = "1GB"
+response_cache_ttl = 3600             # 1 hour
+
+[performance.gpu]
+# GPU settings (if available)
+use_gpu = true
+gpu_layers = 35                       # Layers to offload to GPU
+gpu_memory_fraction = 0.9             # Use 90% of GPU memory
+
+[performance.cpu]
+# CPU fallback settings
+thread_count = 8                      # Use 8 CPU threads
+use_mmap = true                       # Memory-mapped model loading
+use_mlock = false                     # Don't lock model in RAM
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Local Embeddings
+# ═══════════════════════════════════════════════════════════════════════════
+
+[embeddings]
+# Use local embeddings model
+enabled = true
+provider = "ollama"
+model = "nomic-embed-text"            # Local embedding model
+
+[embeddings.ollama]
+base_url = "http://localhost:11434"
+model = "nomic-embed-text"
+dimensions = 768
+batch_size = 32                       # Smaller batches for local
+max_chunk_size = 512
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Context Management for Limited Resources
+# ═══════════════════════════════════════════════════════════════════════════
+
+[context_engine]
+# Lighter settings for local models
+intelligence_mode = "medium"          # Balance quality and speed
+compression_level = 85
+chunk_size = 512                      # Smaller chunks
+max_context = 4096                    # Limit context size
+sliding_window = true                 # Use sliding window for long contexts
+
+[context_engine.cache]
+# Aggressive caching for local models
+enabled = true
+memory_limit = "4GB"                  # Use more cache
+disk_limit = "20GB"
+strategy = "lfu"                      # Least frequently used
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Agent Configuration for Local Models
+# ═══════════════════════════════════════════════════════════════════════════
+
+[agents]
+# Adjust agent behavior for local models
+timeout = 600                         # 10 minutes for slower models
+max_concurrent = 1                    # Only one agent at a time
+queue_requests = true                 # Queue instead of parallel
+
+[agents.model_assignment]
+# Assign specific models to agents
+"@code-reviewer" = "deepseek-coder:33b"
+"@refactorer" = "codellama:34b"
+"@test-writer" = "codellama:13b"
+"@docs" = "mistral:7b"
+"@debugger" = "codellama:34b"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Fallback Configuration
+# ═══════════════════════════════════════════════════════════════════════════
+
+[fallback]
+# Fallback to cloud if local fails
+enabled = false                       # Set to true if you want fallback
+provider = "openai"
+model = "gpt-3.5-turbo"
+api_key = "${OPENAI_API_KEY}"
+trigger = "timeout"                   # timeout, error, or manual
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Simplified UI for Local Mode
+# ═══════════════════════════════════════════════════════════════════════════
+
+[ui]
+# Simplified UI for better local performance
+animations = false                    # Disable animations
+syntax_highlighting = true            # Keep syntax highlighting
+minimap = false                      # Disable minimap
+auto_complete_delay = 500            # Delay auto-complete
+
+[ui.status]
+# Show model loading status
+show_model_status = true
+show_memory_usage = true
+show_gpu_usage = true
+show_queue_length = true
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Local Storage Settings
+# ═══════════════════════════════════════════════════════════════════════════
+
+[storage]
+# Store everything locally
+sessions_path = "~/.agcodex/sessions"
+cache_path = "~/.agcodex/cache"
+index_path = "~/.agcodex/index"
+models_path = "~/.ollama/models"     # Ollama models location
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Resource Limits
+# ═══════════════════════════════════════════════════════════════════════════
+
+[limits]
+# Conservative limits for local execution
+max_file_size = 1048576               # 1MB max file size
+max_project_size = 104857600         # 100MB max project
+max_concurrent_files = 10            # Process 10 files at once
+max_search_results = 50              # Limit search results
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Monitoring for Local Execution
+# ═══════════════════════════════════════════════════════════════════════════
+
+[monitoring]
+# Local monitoring only
+enabled = true
+type = "local"                        # Don't send to external services
+log_level = "info"
+log_file = "~/.agcodex/logs/local.log"
+
+[monitoring.metrics]
+track_model_load_time = true
+track_inference_time = true
+track_token_usage = true
+track_memory_usage = true
+track_gpu_usage = true
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Quick Start Scripts
+# ═══════════════════════════════════════════════════════════════════════════
+
+[scripts]
+# Helper scripts for Ollama setup
+check_ollama = "ollama list"
+pull_models = """
+ollama pull codellama:34b
+ollama pull mistral:7b
+ollama pull llama3:8b
+ollama pull nomic-embed-text
+"""
+start_ollama = "ollama serve"
+test_connection = "curl http://localhost:11434/api/version"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Recommended System Requirements
+# ═══════════════════════════════════════════════════════════════════════════
+# 
+# For codellama:34b:
+#   - RAM: 32GB minimum (64GB recommended)
+#   - GPU: 24GB VRAM (RTX 3090/4090 or better)
+#   - CPU: 8+ cores
+#   - Storage: 50GB free space
+#
+# For smaller models (7b-13b):
+#   - RAM: 16GB minimum
+#   - GPU: 8GB VRAM (optional)
+#   - CPU: 4+ cores
+#   - Storage: 20GB free space
+#
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Installation Instructions:
+# 1. Install Ollama: curl -fsSL https://ollama.ai/install.sh | sh
+# 2. Start Ollama: ollama serve
+# 3. Pull models: ollama pull codellama:34b
+# 4. Copy this config: cp local_llm_config.toml ~/.agcodex/config.toml
+# 5. Run AGCodex: agcodex

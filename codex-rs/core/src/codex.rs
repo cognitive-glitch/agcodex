@@ -8,16 +8,16 @@ use std::sync::MutexGuard;
 use std::sync::atomic::AtomicU64;
 use std::time::Duration;
 
+use agcodex_apply_patch::ApplyPatchAction;
+use agcodex_apply_patch::MaybeApplyPatchVerified;
+use agcodex_apply_patch::maybe_parse_apply_patch_verified;
+use agcodex_login::CodexAuth;
+use agcodex_mcp_types::CallToolResult;
+use agcodex_protocol::protocol::TurnAbortReason;
+use agcodex_protocol::protocol::TurnAbortedEvent;
 use async_channel::Receiver;
 use async_channel::Sender;
-use codex_apply_patch::ApplyPatchAction;
-use codex_apply_patch::MaybeApplyPatchVerified;
-use codex_apply_patch::maybe_parse_apply_patch_verified;
-use codex_login::CodexAuth;
-use codex_protocol::protocol::TurnAbortReason;
-use codex_protocol::protocol::TurnAbortedEvent;
 use futures::prelude::*;
-use mcp_types::CallToolResult;
 use serde::Serialize;
 use serde_json;
 use tokio::sync::oneshot;
@@ -44,6 +44,7 @@ use crate::conversation_history::ConversationHistory;
 use crate::environment_context::EnvironmentContext;
 use crate::error::CodexErr;
 use crate::error::Result as CodexResult;
+use crate::error::Result;
 use crate::error::SandboxErr;
 use crate::error::get_error_message_ui;
 use crate::exec::ExecParams;
@@ -105,8 +106,8 @@ use crate::shell;
 use crate::turn_diff_tracker::TurnDiffTracker;
 use crate::user_notification::UserNotification;
 use crate::util::backoff;
-use codex_protocol::config_types::ReasoningEffort as ReasoningEffortConfig;
-use codex_protocol::config_types::ReasoningSummary as ReasoningSummaryConfig;
+use agcodex_protocol::config_types::ReasoningEffort as ReasoningEffortConfig;
+use agcodex_protocol::config_types::ReasoningSummary as ReasoningSummaryConfig;
 
 // A convenience extension trait for acquiring mutex locks where poisoning is
 // unrecoverable and should abort the program. This avoids scattered `.unwrap()`
@@ -324,7 +325,7 @@ impl Session {
         config: Arc<Config>,
         auth: Option<CodexAuth>,
         tx_event: Sender<Event>,
-    ) -> anyhow::Result<(Arc<Self>, TurnContext)> {
+    ) -> Result<(Arc<Self>, TurnContext)> {
         let ConfigureSession {
             provider,
             model,
@@ -341,7 +342,9 @@ impl Session {
         } = configure_session;
         debug!("Configuring session: model={model}; provider={provider:?}");
         if !cwd.is_absolute() {
-            return Err(anyhow::anyhow!("cwd is not absolute: {cwd:?}"));
+            return Err(CodexErr::InvalidWorkingDirectory(format!(
+                "cwd is not absolute: {cwd:?}"
+            )));
         }
 
         // Error messages to dispatch after SessionConfigured is sent.
@@ -399,9 +402,9 @@ impl Session {
             }
             Err(e) => {
                 if let Some(path) = resume_path.as_ref() {
-                    return Err(anyhow::anyhow!(
+                    return Err(CodexErr::McpServer(format!(
                         "failed to resume rollout from {path:?}: {e}"
-                    ));
+                    )));
                 }
 
                 let message = format!("failed to initialize rollout recorder: {e}");
@@ -767,12 +770,23 @@ impl Session {
         self.on_exec_command_begin(turn_diff_tracker, begin_ctx.clone())
             .await;
 
+        // TODO: Integrate proper mode management into Session
+        // For now, use default mode restrictions (Build mode) to maintain compatibility
+        let default_mode_restrictions = crate::modes::ModeRestrictions {
+            allow_file_write: true,
+            allow_command_exec: true,
+            allow_network_access: true,
+            allow_git_operations: true,
+            max_file_size: None,
+        };
+
         let result = process_exec_tool_call(
             exec_args.params,
             exec_args.sandbox_type,
             exec_args.sandbox_policy,
             exec_args.codex_linux_sandbox_exe,
             exec_args.stdout_stream,
+            &default_mode_restrictions,
         )
         .await;
 
@@ -821,7 +835,7 @@ impl Session {
     }
 
     /// Returns the input if there was no task running to inject into
-    pub fn inject_input(&self, input: Vec<InputItem>) -> Result<(), Vec<InputItem>> {
+    pub fn inject_input(&self, input: Vec<InputItem>) -> std::result::Result<(), Vec<InputItem>> {
         let mut state = self.state.lock_unchecked();
         if state.current_task.is_some() {
             state.pending_input.push(input.into());
@@ -848,7 +862,7 @@ impl Session {
         tool: &str,
         arguments: Option<serde_json::Value>,
         timeout: Option<Duration>,
-    ) -> anyhow::Result<CallToolResult> {
+    ) -> Result<CallToolResult> {
         self.mcp_connection_manager
             .call_tool(server, tool, arguments, timeout)
             .await
@@ -1184,7 +1198,7 @@ async fn submission_loop(
                                 offset,
                                 log_id,
                                 entry: entry_opt.map(|e| {
-                                    codex_protocol::message_history::HistoryEntry {
+                                    agcodex_protocol::message_history::HistoryEntry {
                                         session_id: e.session_id,
                                         ts: e.ts,
                                         text: e.text,
@@ -2025,7 +2039,7 @@ fn parse_container_exec_arguments(
     arguments: String,
     turn_context: &TurnContext,
     call_id: &str,
-) -> Result<ExecParams, Box<ResponseInputItem>> {
+) -> std::result::Result<ExecParams, Box<ResponseInputItem>> {
     // parse command
     match serde_json::from_str::<ShellToolCallParams>(&arguments) {
         Ok(shell_tool_call_params) => Ok(to_exec_params(shell_tool_call_params, turn_context)),

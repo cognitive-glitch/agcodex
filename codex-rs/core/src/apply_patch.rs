@@ -6,8 +6,8 @@ use crate::protocol::FileChange;
 use crate::protocol::ReviewDecision;
 use crate::safety::SafetyCheck;
 use crate::safety::assess_patch_safety;
-use codex_apply_patch::ApplyPatchAction;
-use codex_apply_patch::ApplyPatchFileChange;
+use agcodex_apply_patch::ApplyPatchAction;
+use agcodex_apply_patch::ApplyPatchFileChange;
 use std::collections::HashMap;
 use std::path::PathBuf;
 

@@ -10,7 +10,7 @@ pub struct LandlockCommand {
     /// is different from the cwd of the process to spawn.
     pub sandbox_policy_cwd: PathBuf,
 
-    pub sandbox_policy: codex_core::protocol::SandboxPolicy,
+    pub sandbox_policy: agcodex_core::protocol::SandboxPolicy,
 
     /// Full command args to run under landlock.
     #[arg(trailing_var_arg = true)]

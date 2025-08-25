@@ -12,9 +12,9 @@ use crate::protocol::EventMsg;
 
 // Use the canonical plan tool types from the protocol crate to ensure
 // type-identity matches events transported via `codex_protocol`.
-pub use codex_protocol::plan_tool::PlanItemArg;
-pub use codex_protocol::plan_tool::StepStatus;
-pub use codex_protocol::plan_tool::UpdatePlanArgs;
+pub use agcodex_protocol::plan_tool::PlanItemArg;
+pub use agcodex_protocol::plan_tool::StepStatus;
+pub use agcodex_protocol::plan_tool::UpdatePlanArgs;
 
 // Types for the TODO tool arguments matching codex-vscode/todo-mcp/src/main.rs
 

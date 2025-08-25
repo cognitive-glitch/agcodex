@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use codex_login::CodexAuth;
+use agcodex_login::CodexAuth;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 

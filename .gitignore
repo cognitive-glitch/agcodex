@@ -27,10 +27,6 @@ result
 *.swp
 *~
 
-# cli tools
-CLAUDE.md
-.claude/
-
 # caches
 .cache/
 .turbo/
@@ -81,3 +77,7 @@ CHANGELOG.ignore.md
 # nix related
 .direnv
 .envrc
+
+
+#Ignore cursor AI rules
+.cursor/rules/codacy.mdc

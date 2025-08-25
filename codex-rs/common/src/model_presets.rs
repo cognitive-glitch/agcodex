@@ -1,4 +1,4 @@
-use codex_core::protocol_config_types::ReasoningEffort;
+use agcodex_core::protocol_config_types::ReasoningEffort;
 
 /// A simple preset pairing a model slug with a reasoning effort.
 #[derive(Debug, Clone, Copy)]
@@ -18,34 +18,34 @@ pub struct ModelPreset {
 /// Built-in list of model presets that pair a model with a reasoning effort.
 ///
 /// Keep this UI-agnostic so it can be reused by both TUI and MCP server.
-pub fn builtin_model_presets() -> &'static [ModelPreset] {
+pub const fn builtin_model_presets() -> &'static [ModelPreset] {
     // Order reflects effort from minimal to high.
     const PRESETS: &[ModelPreset] = &[
         ModelPreset {
             id: "gpt-5-minimal",
             label: "gpt-5 minimal",
-            description: "— Fastest responses with very limited reasoning; ideal for coding, instructions, or lightweight tasks.",
+            description: "— fastest responses with limited reasoning; ideal for coding, instructions, or lightweight tasks",
             model: "gpt-5",
             effort: ReasoningEffort::Minimal,
         },
         ModelPreset {
             id: "gpt-5-low",
             label: "gpt-5 low",
-            description: "— Balances speed with some reasoning; useful for straightforward queries and short explanations.",
+            description: "— balances speed with some reasoning; useful for straightforward queries and short explanations",
             model: "gpt-5",
             effort: ReasoningEffort::Low,
         },
         ModelPreset {
             id: "gpt-5-medium",
             label: "gpt-5 medium",
-            description: "— Default setting; provides a solid balance of reasoning depth and latency for general-purpose tasks.",
+            description: "— default setting; provides a solid balance of reasoning depth and latency for general-purpose tasks",
             model: "gpt-5",
             effort: ReasoningEffort::Medium,
         },
         ModelPreset {
             id: "gpt-5-high",
             label: "gpt-5 high",
-            description: "— Maximizes reasoning depth for complex or ambiguous problems.",
+            description: "— maximizes reasoning depth for complex or ambiguous problems",
             model: "gpt-5",
             effort: ReasoningEffort::High,
         },

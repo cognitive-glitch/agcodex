@@ -1,13 +1,13 @@
 #![expect(clippy::unwrap_used)]
 
-use codex_core::ConversationManager;
-use codex_core::ModelProviderInfo;
-use codex_core::built_in_model_providers;
-use codex_core::protocol::EventMsg;
-use codex_core::protocol::InputItem;
-use codex_core::protocol::Op;
-use codex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
-use codex_login::CodexAuth;
+use agcodex_core::ConversationManager;
+use agcodex_core::ModelProviderInfo;
+use agcodex_core::built_in_model_providers;
+use agcodex_core::protocol::EventMsg;
+use agcodex_core::protocol::InputItem;
+use agcodex_core::protocol::Op;
+use agcodex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
+use agcodex_login::CodexAuth;
 use core_test_support::load_default_config_for_test;
 use core_test_support::wait_for_event;
 use serde_json::Value;

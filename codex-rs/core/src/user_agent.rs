@@ -1,4 +1,4 @@
-const DEFAULT_ORIGINATOR: &str = "codex_cli_rs";
+const DEFAULT_ORIGINATOR: &str = "agcodex_cli_rs";
 
 pub fn get_codex_user_agent(originator: Option<&str>) -> String {
     let build_version = env!("CARGO_PKG_VERSION");
@@ -19,7 +19,7 @@ mod tests {
     #[test]
     fn test_get_codex_user_agent() {
         let user_agent = get_codex_user_agent(None);
-        assert!(user_agent.starts_with("codex_cli_rs/"));
+        assert!(user_agent.starts_with("agcodex_cli_rs/"));
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use codex_core::config::Config;
-use codex_core::protocol::Event;
+use agcodex_core::config::Config;
+use agcodex_core::protocol::Event;
 
 pub(crate) enum CodexStatus {
     Running,
