@@ -1,11 +1,11 @@
-use mcp_types::ClientCapabilities;
-use mcp_types::ClientRequest;
-use mcp_types::Implementation;
-use mcp_types::InitializeRequestParams;
-use mcp_types::JSONRPC_VERSION;
-use mcp_types::JSONRPCMessage;
-use mcp_types::JSONRPCRequest;
-use mcp_types::RequestId;
+use agcodex_mcp_types::ClientCapabilities;
+use agcodex_mcp_types::ClientRequest;
+use agcodex_mcp_types::Implementation;
+use agcodex_mcp_types::InitializeRequestParams;
+use agcodex_mcp_types::JSONRPC_VERSION;
+use agcodex_mcp_types::JSONRPCMessage;
+use agcodex_mcp_types::JSONRPCRequest;
+use agcodex_mcp_types::RequestId;
 use serde_json::json;
 
 #[test]

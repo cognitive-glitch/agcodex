@@ -3,19 +3,21 @@
 // alternate‑screen mode starts; that file opts‑out locally via `allow`.
 #![deny(clippy::print_stdout, clippy::print_stderr)]
 #![deny(clippy::disallowed_methods)]
+use agcodex_core::BUILT_IN_OSS_MODEL_PROVIDER_ID;
+use agcodex_core::config::Config;
+use agcodex_core::config::ConfigOverrides;
+use agcodex_core::config::ConfigToml;
+use agcodex_core::config::find_agcodex_home;
+use agcodex_core::config::load_config_as_toml_with_cli_overrides;
+use agcodex_core::modes::ModeManager;
+use agcodex_core::modes::OperatingMode;
+use agcodex_core::protocol::AskForApproval;
+use agcodex_core::protocol::SandboxPolicy;
+use agcodex_login::AuthMode;
+use agcodex_login::CodexAuth;
+use agcodex_ollama::DEFAULT_OSS_MODEL;
+use agcodex_protocol::config_types::SandboxMode;
 use app::App;
-use codex_core::BUILT_IN_OSS_MODEL_PROVIDER_ID;
-use codex_core::config::Config;
-use codex_core::config::ConfigOverrides;
-use codex_core::config::ConfigToml;
-use codex_core::config::find_codex_home;
-use codex_core::config::load_config_as_toml_with_cli_overrides;
-use codex_core::protocol::AskForApproval;
-use codex_core::protocol::SandboxPolicy;
-use codex_login::AuthMode;
-use codex_login::CodexAuth;
-use codex_ollama::DEFAULT_OSS_MODEL;
-use codex_protocol::config_types::SandboxMode;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use tracing::error;
@@ -31,9 +33,13 @@ mod chatwidget;
 mod citation_regex;
 mod cli;
 mod common;
+mod context_visualizer;
 pub mod custom_terminal;
+mod dialogs;
 mod diff_render;
+mod error;
 mod exec_command;
+mod features;
 mod file_search;
 mod get_git_diff;
 mod history_cell;
@@ -41,6 +47,7 @@ pub mod insert_history;
 pub mod live_wrap;
 mod markdown;
 mod markdown_stream;
+mod notification;
 pub mod onboarding;
 mod render;
 mod session_log;
@@ -51,6 +58,7 @@ mod streaming;
 mod text_formatting;
 mod tui;
 mod user_approval_widget;
+mod widgets;
 
 // Internal vt100-based replay tests live as a separate source file to keep them
 // close to the widget code. Include them in unit tests.
@@ -63,13 +71,23 @@ mod updates;
 use color_eyre::owo_colors::OwoColorize;
 
 pub use cli::Cli;
+pub use dialogs::LoadSessionBrowser;
+pub use dialogs::LoadSessionState;
+pub use dialogs::SaveSessionDialog;
+pub use dialogs::SaveSessionState;
+pub use features::HistoryBrowser;
+pub use features::MessageJump;
+pub use features::RoleFilter;
+pub use widgets::SessionBrowser;
+pub use widgets::SessionSwitcher;
+pub use widgets::SessionSwitcherState;
 
 // (tests access modules directly within the crate)
 
 pub async fn run_main(
     cli: Cli,
     codex_linux_sandbox_exe: Option<PathBuf>,
-) -> std::io::Result<codex_core::protocol::TokenUsage> {
+) -> std::io::Result<agcodex_core::protocol::TokenUsage> {
     let (sandbox_mode, approval_policy) = if cli.full_auto {
         (
             Some(SandboxMode::WorkspaceWrite),
@@ -104,6 +122,17 @@ pub async fn run_main(
         None
     };
 
+    // Initialize operating mode from CLI. Default to Build.
+    let operating_mode = match cli.mode.as_deref() {
+        Some(s) => match s.to_lowercase().as_str() {
+            "plan" => OperatingMode::Plan,
+            "review" => OperatingMode::Review,
+            _ => OperatingMode::Build,
+        },
+        None => OperatingMode::Build,
+    };
+    let mode_manager = ModeManager::new(operating_mode);
+
     // canonicalize the cwd
     let cwd = cli.cwd.clone().map(|p| p.canonicalize().unwrap_or(p));
 
@@ -115,7 +144,7 @@ pub async fn run_main(
         model_provider: model_provider_override,
         config_profile: cli.config_profile.clone(),
         codex_linux_sandbox_exe,
-        base_instructions: None,
+        base_instructions: Some(mode_manager.prompt_suffix().to_string()),
         include_plan_tool: Some(true),
         include_apply_patch_tool: None,
         disable_response_storage: cli.oss.then_some(true),
@@ -148,7 +177,7 @@ pub async fn run_main(
     // we load config.toml here to determine project state.
     #[allow(clippy::print_stderr)]
     let config_toml = {
-        let codex_home = match find_codex_home() {
+        let codex_home = match find_agcodex_home() {
             Ok(codex_home) => codex_home,
             Err(err) => {
                 eprintln!("Error finding codex home: {err}");
@@ -173,7 +202,7 @@ pub async fn run_main(
         cli.config_profile.clone(),
     )?;
 
-    let log_dir = codex_core::config::log_dir(&config)?;
+    let log_dir = agcodex_core::config::log_dir(&config)?;
     std::fs::create_dir_all(&log_dir)?;
     // Open (or create) your log file, appending to it.
     let mut log_file_opts = OpenOptions::new();
@@ -189,7 +218,7 @@ pub async fn run_main(
         log_file_opts.mode(0o600);
     }
 
-    let log_file = log_file_opts.open(log_dir.join("codex-tui.log"))?;
+    let log_file = log_file_opts.open(log_dir.join("agcodex-tui.log"))?;
 
     // Wrap file in non‑blocking writer.
     let (non_blocking, _guard) = non_blocking(log_file);
@@ -197,7 +226,7 @@ pub async fn run_main(
     // use RUST_LOG env var, default to info for codex crates.
     let env_filter = || {
         EnvFilter::try_from_default_env()
-            .unwrap_or_else(|_| EnvFilter::new("codex_core=info,codex_tui=info"))
+            .unwrap_or_else(|_| EnvFilter::new("agcodex_core=info,codex_tui=info"))
     };
 
     // Build layered subscriber:
@@ -207,7 +236,7 @@ pub async fn run_main(
         .with_filter(env_filter());
 
     if cli.oss {
-        codex_ollama::ensure_oss_ready(&config)
+        agcodex_ollama::ensure_oss_ready(&config)
             .await
             .map_err(|e| std::io::Error::other(format!("OSS setup failed: {e}")))?;
     }
@@ -254,7 +283,7 @@ fn run_ratatui_app(
     cli: Cli,
     config: Config,
     should_show_trust_screen: bool,
-) -> color_eyre::Result<codex_core::protocol::TokenUsage> {
+) -> color_eyre::Result<agcodex_core::protocol::TokenUsage> {
     color_eyre::install()?;
 
     // Forward panic reports through tracing so they appear in the UI status

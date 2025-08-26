@@ -2,11 +2,11 @@
 //!
 //! Providers can be defined in two places:
 //!   1. Built-in defaults compiled into the binary so Codex works out-of-the-box.
-//!   2. User-defined entries inside `~/.codex/config.toml` under the `model_providers`
+//!   2. User-defined entries inside `~/.agcodex/config.toml` under the `model_providers`
 //!      key. These override or extend the defaults at runtime.
 
-use codex_login::AuthMode;
-use codex_login::CodexAuth;
+use agcodex_login::AuthMode;
+use agcodex_login::CodexAuth;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -285,7 +285,7 @@ pub fn built_in_model_providers() -> HashMap<String, ModelProviderInfo> {
 pub fn create_oss_provider() -> ModelProviderInfo {
     // These CODEX_OSS_ environment variables are experimental: we may
     // switch to reading values from config.toml instead.
-    let codex_oss_base_url = match std::env::var("CODEX_OSS_BASE_URL")
+    let agcodex_oss_base_url = match std::env::var("CODEX_OSS_BASE_URL")
         .ok()
         .filter(|v| !v.trim().is_empty())
     {
@@ -300,7 +300,7 @@ pub fn create_oss_provider() -> ModelProviderInfo {
         ),
     };
 
-    create_oss_provider_with_base_url(&codex_oss_base_url)
+    create_oss_provider_with_base_url(&agcodex_oss_base_url)
 }
 
 pub fn create_oss_provider_with_base_url(base_url: &str) -> ModelProviderInfo {

@@ -4,8 +4,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use codex_core::config::Config;
-use codex_core::protocol::Op;
+use agcodex_core::config::Config;
+use agcodex_core::protocol::Op;
 use once_cell::sync::Lazy;
 use once_cell::sync::OnceCell;
 use serde::Serialize;
@@ -20,7 +20,7 @@ struct SessionLogger {
 }
 
 impl SessionLogger {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             file: OnceCell::new(),
         }
@@ -92,7 +92,7 @@ pub(crate) fn maybe_init(config: &Config) {
     let path = if let Ok(path) = std::env::var("CODEX_TUI_SESSION_LOG_PATH") {
         PathBuf::from(path)
     } else {
-        let mut p = match codex_core::config::log_dir(config) {
+        let mut p = match agcodex_core::config::log_dir(config) {
             Ok(dir) => dir,
             Err(_) => std::env::temp_dir(),
         };
@@ -130,7 +130,7 @@ pub(crate) fn log_inbound_app_event(event: &AppEvent) {
 
     match event {
         AppEvent::CodexEvent(ev) => {
-            write_record("to_tui", "codex_event", ev);
+            write_record("to_tui", "agcodex_event", ev);
         }
         AppEvent::KeyEvent(k) => {
             let value = json!({

@@ -10,7 +10,7 @@ use crate::protocol::FileChange;
 use crate::protocol::ReviewDecision;
 use crate::protocol::SandboxPolicy;
 use crate::protocol::TurnAbortReason;
-use mcp_types::RequestId;
+use agcodex_mcp_types::RequestId;
 use serde::Deserialize;
 use serde::Serialize;
 use ts_rs::TS;

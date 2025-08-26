@@ -25,7 +25,7 @@ where
     P: AsRef<Path>,
 {
     let args = create_linux_sandbox_command_args(command, sandbox_policy, &cwd);
-    let arg0 = Some("codex-linux-sandbox");
+    let arg0 = Some("agcodex-linux-sandbox");
     spawn_child_async(
         codex_linux_sandbox_exe.as_ref().to_path_buf(),
         args,

@@ -3,20 +3,20 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use codex_core::CodexConversation;
-use codex_core::ConversationManager;
-use codex_core::NewConversation;
-use codex_core::config::Config;
-use codex_core::config::ConfigOverrides;
-use codex_core::git_info::git_diff_to_remote;
-use codex_core::protocol::ApplyPatchApprovalRequestEvent;
-use codex_core::protocol::Event;
-use codex_core::protocol::EventMsg;
-use codex_core::protocol::ExecApprovalRequestEvent;
-use codex_core::protocol::ReviewDecision;
-use codex_protocol::mcp_protocol::GitDiffToRemoteResponse;
-use mcp_types::JSONRPCErrorError;
-use mcp_types::RequestId;
+use agcodex_core::CodexConversation;
+use agcodex_core::ConversationManager;
+use agcodex_core::NewConversation;
+use agcodex_core::config::Config;
+use agcodex_core::config::ConfigOverrides;
+use agcodex_core::git_info::git_diff_to_remote;
+use agcodex_core::protocol::ApplyPatchApprovalRequestEvent;
+use agcodex_core::protocol::Event;
+use agcodex_core::protocol::EventMsg;
+use agcodex_core::protocol::ExecApprovalRequestEvent;
+use agcodex_core::protocol::ReviewDecision;
+use agcodex_mcp_types::JSONRPCErrorError;
+use agcodex_mcp_types::RequestId;
+use agcodex_protocol::mcp_protocol::GitDiffToRemoteResponse;
 use tokio::sync::Mutex;
 use tokio::sync::oneshot;
 use tracing::error;
@@ -27,36 +27,36 @@ use crate::error_code::INVALID_REQUEST_ERROR_CODE;
 use crate::json_to_toml::json_to_toml;
 use crate::outgoing_message::OutgoingMessageSender;
 use crate::outgoing_message::OutgoingNotification;
-use codex_core::protocol::InputItem as CoreInputItem;
-use codex_core::protocol::Op;
-use codex_login::CLIENT_ID;
-use codex_login::ServerOptions as LoginServerOptions;
-use codex_login::ShutdownHandle;
-use codex_login::run_login_server;
-use codex_protocol::mcp_protocol::APPLY_PATCH_APPROVAL_METHOD;
-use codex_protocol::mcp_protocol::AddConversationListenerParams;
-use codex_protocol::mcp_protocol::AddConversationSubscriptionResponse;
-use codex_protocol::mcp_protocol::ApplyPatchApprovalParams;
-use codex_protocol::mcp_protocol::ApplyPatchApprovalResponse;
-use codex_protocol::mcp_protocol::ClientRequest;
-use codex_protocol::mcp_protocol::ConversationId;
-use codex_protocol::mcp_protocol::EXEC_COMMAND_APPROVAL_METHOD;
-use codex_protocol::mcp_protocol::ExecCommandApprovalParams;
-use codex_protocol::mcp_protocol::ExecCommandApprovalResponse;
-use codex_protocol::mcp_protocol::InputItem as WireInputItem;
-use codex_protocol::mcp_protocol::InterruptConversationParams;
-use codex_protocol::mcp_protocol::InterruptConversationResponse;
-use codex_protocol::mcp_protocol::LOGIN_CHATGPT_COMPLETE_EVENT;
-use codex_protocol::mcp_protocol::LoginChatGptCompleteNotification;
-use codex_protocol::mcp_protocol::LoginChatGptResponse;
-use codex_protocol::mcp_protocol::NewConversationParams;
-use codex_protocol::mcp_protocol::NewConversationResponse;
-use codex_protocol::mcp_protocol::RemoveConversationListenerParams;
-use codex_protocol::mcp_protocol::RemoveConversationSubscriptionResponse;
-use codex_protocol::mcp_protocol::SendUserMessageParams;
-use codex_protocol::mcp_protocol::SendUserMessageResponse;
-use codex_protocol::mcp_protocol::SendUserTurnParams;
-use codex_protocol::mcp_protocol::SendUserTurnResponse;
+use agcodex_core::protocol::InputItem as CoreInputItem;
+use agcodex_core::protocol::Op;
+use agcodex_login::CLIENT_ID;
+use agcodex_login::ServerOptions as LoginServerOptions;
+use agcodex_login::ShutdownHandle;
+use agcodex_login::run_login_server;
+use agcodex_protocol::mcp_protocol::APPLY_PATCH_APPROVAL_METHOD;
+use agcodex_protocol::mcp_protocol::AddConversationListenerParams;
+use agcodex_protocol::mcp_protocol::AddConversationSubscriptionResponse;
+use agcodex_protocol::mcp_protocol::ApplyPatchApprovalParams;
+use agcodex_protocol::mcp_protocol::ApplyPatchApprovalResponse;
+use agcodex_protocol::mcp_protocol::ClientRequest;
+use agcodex_protocol::mcp_protocol::ConversationId;
+use agcodex_protocol::mcp_protocol::EXEC_COMMAND_APPROVAL_METHOD;
+use agcodex_protocol::mcp_protocol::ExecCommandApprovalParams;
+use agcodex_protocol::mcp_protocol::ExecCommandApprovalResponse;
+use agcodex_protocol::mcp_protocol::InputItem as WireInputItem;
+use agcodex_protocol::mcp_protocol::InterruptConversationParams;
+use agcodex_protocol::mcp_protocol::InterruptConversationResponse;
+use agcodex_protocol::mcp_protocol::LOGIN_CHATGPT_COMPLETE_EVENT;
+use agcodex_protocol::mcp_protocol::LoginChatGptCompleteNotification;
+use agcodex_protocol::mcp_protocol::LoginChatGptResponse;
+use agcodex_protocol::mcp_protocol::NewConversationParams;
+use agcodex_protocol::mcp_protocol::NewConversationResponse;
+use agcodex_protocol::mcp_protocol::RemoveConversationListenerParams;
+use agcodex_protocol::mcp_protocol::RemoveConversationSubscriptionResponse;
+use agcodex_protocol::mcp_protocol::SendUserMessageParams;
+use agcodex_protocol::mcp_protocol::SendUserMessageResponse;
+use agcodex_protocol::mcp_protocol::SendUserTurnParams;
+use agcodex_protocol::mcp_protocol::SendUserTurnResponse;
 
 // Duration before a ChatGPT login attempt is abandoned.
 const LOGIN_CHATGPT_TIMEOUT: Duration = Duration::from_secs(10 * 60);
@@ -246,7 +246,7 @@ impl CodexMessageProcessor {
             self.outgoing
                 .send_response(
                     request_id,
-                    codex_protocol::mcp_protocol::CancelLoginChatGptResponse {},
+                    agcodex_protocol::mcp_protocol::CancelLoginChatGptResponse {},
                 )
                 .await;
         } else {
@@ -657,7 +657,7 @@ fn derive_config_from_params(
 
 async fn on_patch_approval_response(
     event_id: String,
-    receiver: tokio::sync::oneshot::Receiver<mcp_types::Result>,
+    receiver: tokio::sync::oneshot::Receiver<agcodex_mcp_types::Result>,
     codex: Arc<CodexConversation>,
 ) {
     let response = receiver.await;
@@ -699,7 +699,7 @@ async fn on_patch_approval_response(
 
 async fn on_exec_approval_response(
     event_id: String,
-    receiver: tokio::sync::oneshot::Receiver<mcp_types::Result>,
+    receiver: tokio::sync::oneshot::Receiver<agcodex_mcp_types::Result>,
     conversation: Arc<CodexConversation>,
 ) {
     let response = receiver.await;

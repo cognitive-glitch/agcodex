@@ -3,8 +3,8 @@ mod exit_status;
 pub mod login;
 pub mod proto;
 
+use agcodex_common::CliConfigOverrides;
 use clap::Parser;
-use codex_common::CliConfigOverrides;
 
 #[derive(Debug, Parser)]
 pub struct SeatbeltCommand {

@@ -1,0 +1,135 @@
+# Example YAML configuration for a refactoring subagent
+# Place this file in ~/.agcodex/agents/ or ./.agcodex/agents/
+
+name: refactorer
+description: Performs intelligent code refactoring with AST awareness
+intelligence: hard  # Maximum intelligence for complex refactoring
+
+# No mode override - uses current mode
+# mode_override: build
+
+# Tool permissions for refactoring
+tools:
+  - name: read
+    permission: allow
+  - name: edit
+    permission: allow
+  - name: search
+    permission: allow
+  - name: tree
+    permission: allow
+  - name: grep
+    permission: allow
+  - name: patch
+    permission: allow  # AST-based patching
+  - name: bash
+    permission: restricted
+    restrictions:
+      allowed_commands: "cargo fmt,black,prettier,gofmt,rustfmt"
+      purpose: "formatting_only"
+
+# Refactoring-focused prompt
+prompt: |
+  You are an expert refactoring specialist with deep AST knowledge.
+  
+  Refactoring objectives:
+  - Improve code readability and maintainability
+  - Reduce complexity and duplication
+  - Apply design patterns appropriately
+  - Optimize performance without sacrificing clarity
+  - Ensure backward compatibility
+  
+  Before refactoring:
+  1. Analyze the existing code structure using AST
+  2. Identify code smells and anti-patterns
+  3. Plan the refactoring strategy
+  4. Verify no functionality is broken
+  
+  Refactoring techniques to apply:
+  - Extract Method/Function for long procedures
+  - Introduce Parameter Object for multiple parameters
+  - Replace Conditional with Polymorphism
+  - Extract Class/Module for cohesive functionality
+  - Rename for clarity and consistency
+  - Remove dead code and unused variables
+  - Consolidate duplicate code
+  - Simplify complex conditionals
+  
+  After refactoring:
+  - Ensure all tests still pass
+  - Document significant changes
+  - Preserve or improve performance characteristics
+
+# Refactoring parameters
+parameters:
+  - name: refactor_type
+    description: Type of refactoring to perform
+    required: true
+    valid_values:
+      - extract_method
+      - extract_class
+      - rename
+      - simplify
+      - remove_duplication
+      - introduce_pattern
+      - optimize
+      - all
+  
+  - name: complexity_threshold
+    description: Cyclomatic complexity threshold to trigger refactoring
+    required: false
+    default: "10"
+  
+  - name: preserve_api
+    description: Whether to preserve public API
+    required: false
+    default: "true"
+  
+  - name: target_pattern
+    description: File pattern to refactor
+    required: false
+    default: "**/*.{rs,py,js,ts,go}"
+
+# Can be chained after code-reviewer
+template: null  # No template inheritance
+
+# Execution settings
+timeout_seconds: 1200  # 20 minutes for complex refactoring
+chainable: true
+parallelizable: false  # Refactoring should be sequential
+
+# Rich metadata
+metadata:
+  version: "1.0.0"
+  refactoring_patterns:
+    - name: "Extract Method"
+      when: "Method length > 20 lines"
+    - name: "Extract Class"
+      when: "Class has > 5 responsibilities"
+    - name: "Introduce Parameter Object"
+      when: "Method has > 3 parameters"
+  complexity_metrics:
+    low: 1-5
+    medium: 6-10
+    high: 11-20
+    very_high: ">20"
+
+# File patterns for refactoring
+file_patterns:
+  - "*.rs"
+  - "*.py"
+  - "*.js"
+  - "*.ts"
+  - "*.go"
+  - "*.java"
+  - "*.cpp"
+  - "*.rb"
+
+# Categorization tags
+tags:
+  - refactoring
+  - code-quality
+  - maintainability
+  - design-patterns
+  - ast-transformation
+  - technical-debt

@@ -1,14 +1,14 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use codex_core::CodexConversation;
-use codex_core::protocol::Op;
-use codex_core::protocol::ReviewDecision;
-use mcp_types::ElicitRequest;
-use mcp_types::ElicitRequestParamsRequestedSchema;
-use mcp_types::JSONRPCErrorError;
-use mcp_types::ModelContextProtocolRequest;
-use mcp_types::RequestId;
+use agcodex_core::CodexConversation;
+use agcodex_core::protocol::Op;
+use agcodex_core::protocol::ReviewDecision;
+use agcodex_mcp_types::ElicitRequest;
+use agcodex_mcp_types::ElicitRequestParamsRequestedSchema;
+use agcodex_mcp_types::JSONRPCErrorError;
+use agcodex_mcp_types::ModelContextProtocolRequest;
+use agcodex_mcp_types::RequestId;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
@@ -16,7 +16,7 @@ use tracing::error;
 
 use crate::codex_tool_runner::INVALID_PARAMS_ERROR_CODE;
 
-/// Conforms to [`mcp_types::ElicitRequestParams`] so that it can be used as the
+/// Conforms to [`agcodex_mcp_types::ElicitRequestParams`] so that it can be used as the
 /// `params` field of an [`ElicitRequest`].
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ExecApprovalElicitRequestParams {
@@ -115,7 +115,7 @@ pub(crate) async fn handle_exec_approval_request(
 
 async fn on_exec_approval_response(
     event_id: String,
-    receiver: tokio::sync::oneshot::Receiver<mcp_types::Result>,
+    receiver: tokio::sync::oneshot::Receiver<agcodex_mcp_types::Result>,
     codex: Arc<CodexConversation>,
 ) {
     let response = receiver.await;

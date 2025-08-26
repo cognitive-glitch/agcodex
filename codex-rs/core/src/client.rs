@@ -3,9 +3,9 @@ use std::path::Path;
 use std::sync::OnceLock;
 use std::time::Duration;
 
+use agcodex_login::AuthMode;
+use agcodex_login::CodexAuth;
 use bytes::Bytes;
-use codex_login::AuthMode;
-use codex_login::CodexAuth;
 use eventsource_stream::Eventsource;
 use futures::prelude::*;
 use regex_lite::Regex;
@@ -41,8 +41,8 @@ use crate::openai_tools::create_tools_json_for_responses_api;
 use crate::protocol::TokenUsage;
 use crate::user_agent::get_codex_user_agent;
 use crate::util::backoff;
-use codex_protocol::config_types::ReasoningEffort as ReasoningEffortConfig;
-use codex_protocol::config_types::ReasoningSummary as ReasoningSummaryConfig;
+use agcodex_protocol::config_types::ReasoningEffort as ReasoningEffortConfig;
+use agcodex_protocol::config_types::ReasoningSummary as ReasoningSummaryConfig;
 use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
@@ -328,12 +328,12 @@ impl ModelClient {
     }
 
     /// Returns the current reasoning effort setting.
-    pub fn get_reasoning_effort(&self) -> ReasoningEffortConfig {
+    pub const fn get_reasoning_effort(&self) -> ReasoningEffortConfig {
         self.effort
     }
 
     /// Returns the current reasoning summary setting.
-    pub fn get_reasoning_summary(&self) -> ReasoningSummaryConfig {
+    pub const fn get_reasoning_summary(&self) -> ReasoningSummaryConfig {
         self.summary
     }
 

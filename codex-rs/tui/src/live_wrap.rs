@@ -35,7 +35,7 @@ impl RowBuilder {
         }
     }
 
-    pub fn width(&self) -> usize {
+    pub const fn width(&self) -> usize {
         self.target_width
     }
 

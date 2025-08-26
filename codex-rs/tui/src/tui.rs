@@ -2,17 +2,18 @@ use std::io::Result;
 use std::io::Stdout;
 use std::io::stdout;
 
-use codex_core::config::Config;
-use crossterm::cursor::MoveTo;
-use crossterm::event::DisableBracketedPaste;
-use crossterm::event::EnableBracketedPaste;
-use crossterm::event::KeyboardEnhancementFlags;
-use crossterm::event::PopKeyboardEnhancementFlags;
-use crossterm::event::PushKeyboardEnhancementFlags;
-use crossterm::terminal::Clear;
-use crossterm::terminal::ClearType;
+use agcodex_core::config::Config;
+// Use crossterm types re-exported by ratatui to avoid version conflicts
 use ratatui::backend::CrosstermBackend;
+use ratatui::crossterm::cursor::MoveTo;
+use ratatui::crossterm::event::DisableBracketedPaste;
+use ratatui::crossterm::event::EnableBracketedPaste;
+use ratatui::crossterm::event::KeyboardEnhancementFlags;
+use ratatui::crossterm::event::PopKeyboardEnhancementFlags;
+use ratatui::crossterm::event::PushKeyboardEnhancementFlags;
 use ratatui::crossterm::execute;
+use ratatui::crossterm::terminal::Clear;
+use ratatui::crossterm::terminal::ClearType;
 use ratatui::crossterm::terminal::disable_raw_mode;
 use ratatui::crossterm::terminal::enable_raw_mode;
 

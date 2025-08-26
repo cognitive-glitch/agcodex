@@ -1,22 +1,28 @@
 [package]
-edition = "2024"
-name = "codex-apply-patch"
+edition.workspace = true
+name = "agcodex-apply-patch"
 version = { workspace = true }
+description = "AST-aware patch application with precise location tracking"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-apply-patch"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
+license = { workspace = true }
 
 [lib]
-name = "codex_apply_patch"
+name = "agcodex_apply_patch"
 path = "src/lib.rs"
 
 [lints]
 workspace = true
 
 [dependencies]
-anyhow = "1"
-similar = "2.7.0"
-thiserror = "2.0.12"
-tree-sitter = "0.25.8"
-tree-sitter-bash = "0.25.0"
+similar = { workspace = true }
+thiserror = { workspace = true }
+tree-sitter = { workspace = true }
+tree-sitter-bash = { workspace = true }
 
 [dev-dependencies]
-pretty_assertions = "1.4.1"
-tempfile = "3.13.0"
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

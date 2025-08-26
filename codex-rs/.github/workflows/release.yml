@@ -1,0 +1,283 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      upload_url: ${{ steps.create-release.outputs.upload_url }}
+    steps:
+      - name: Get version from tag
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        id: create-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get-version.outputs.version }}
+          release_name: AGCodex ${{ steps.get-version.outputs.version }}
+          draft: false
+          prerelease: ${{ contains(steps.get-version.outputs.version, 'alpha') || contains(steps.get-version.outputs.version, 'beta') || contains(steps.get-version.outputs.version, 'rc') }}
+
+  build-release:
+    name: Build Release
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: agcodex-linux-x86_64
+            cross: false
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            name: agcodex-linux-x86_64-musl
+            cross: true
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: agcodex-linux-aarch64
+            cross: true
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            name: agcodex-macos-x86_64
+            cross: false
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            name: agcodex-macos-aarch64
+            cross: false
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            name: agcodex-windows-x86_64.exe
+            cross: false
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            name: agcodex-windows-aarch64.exe
+            cross: true
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config
+
+      - name: Install cross-compilation tools
+        if: matrix.cross
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-release-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache Cargo build
+        uses: actions/cache@v4
+        with:
+          path: target/
+          key: ${{ runner.os }}-release-cargo-build-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }} --bin agcodex
+          else
+            cargo build --release --target ${{ matrix.target }} --bin agcodex
+          fi
+        shell: bash
+
+      - name: Prepare binary (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          chmod +x agcodex
+          tar czf ${{ matrix.name }}.tar.gz agcodex
+          echo "ASSET_PATH=target/${{ matrix.target }}/release/${{ matrix.name }}.tar.gz" >> $GITHUB_ENV
+          echo "ASSET_NAME=${{ matrix.name }}.tar.gz" >> $GITHUB_ENV
+
+      - name: Prepare binary (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          7z a ${{ matrix.name }}.zip agcodex.exe
+          echo "ASSET_PATH=target/${{ matrix.target }}/release/${{ matrix.name }}.zip" >> $GITHUB_ENV
+          echo "ASSET_NAME=${{ matrix.name }}.zip" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Sign binary (macOS)
+        if: matrix.os == 'macos-latest' && env.APPLE_CERTIFICATE_BASE64 != ''
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo $APPLE_CERTIFICATE_BASE64 | base64 --decode > certificate.p12
+          security create-keychain -p "$APPLE_CERTIFICATE_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$APPLE_CERTIFICATE_PASSWORD" build.keychain
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLE_CERTIFICATE_PASSWORD" build.keychain
+          codesign --force --sign "Developer ID Application" target/${{ matrix.target }}/release/agcodex
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ env.ASSET_PATH }}
+          asset_name: ${{ env.ASSET_NAME }}
+          asset_content_type: application/octet-stream
+
+      - name: Generate checksums
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            certutil -hashfile "${{ env.ASSET_PATH }}" SHA256 > ${{ env.ASSET_NAME }}.sha256
+          else
+            sha256sum "${{ env.ASSET_PATH }}" > ${{ env.ASSET_NAME }}.sha256
+          fi
+        shell: bash
+
+      - name: Upload checksum
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ env.ASSET_NAME }}.sha256
+          asset_name: ${{ env.ASSET_NAME }}.sha256
+          asset_content_type: text/plain
+
+  cargo-dist:
+    name: Cargo Dist
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [create-release]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-dist
+        run: cargo install cargo-dist --locked
+
+      - name: Check if cargo-dist is configured
+        id: check-dist
+        run: |
+          if grep -q "\[workspace.metadata.dist\]" Cargo.toml; then
+            echo "configured=true" >> $GITHUB_OUTPUT
+          else
+            echo "configured=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run cargo-dist
+        if: steps.check-dist.outputs.configured == 'true'
+        run: |
+          cargo dist build --tag ${{ needs.create-release.outputs.version }}
+          cargo dist upload --tag ${{ needs.create-release.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  homebrew:
+    name: Update Homebrew Formula
+    runs-on: ubuntu-latest
+    needs: [create-release, build-release]
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')
+    steps:
+      - name: Update Homebrew formula
+        uses: dawidd6/action-homebrew-bump-formula@v3
+        with:
+          token: ${{ secrets.HOMEBREW_TOKEN }}
+          formula: agcodex
+          tag: ${{ needs.create-release.outputs.version }}
+          revision: ${{ github.sha }}
+        continue-on-error: true
+
+  docker:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: create-release
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: env.DOCKER_USERNAME != ''
+        uses: docker/login-action@v3
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

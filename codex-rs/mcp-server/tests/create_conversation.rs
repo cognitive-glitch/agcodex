@@ -1,18 +1,18 @@
 use std::path::Path;
 
-use codex_protocol::mcp_protocol::AddConversationListenerParams;
-use codex_protocol::mcp_protocol::AddConversationSubscriptionResponse;
-use codex_protocol::mcp_protocol::InputItem;
-use codex_protocol::mcp_protocol::NewConversationParams;
-use codex_protocol::mcp_protocol::NewConversationResponse;
-use codex_protocol::mcp_protocol::SendUserMessageParams;
-use codex_protocol::mcp_protocol::SendUserMessageResponse;
+use agcodex_mcp_types::JSONRPCResponse;
+use agcodex_mcp_types::RequestId;
+use agcodex_protocol::mcp_protocol::AddConversationListenerParams;
+use agcodex_protocol::mcp_protocol::AddConversationSubscriptionResponse;
+use agcodex_protocol::mcp_protocol::InputItem;
+use agcodex_protocol::mcp_protocol::NewConversationParams;
+use agcodex_protocol::mcp_protocol::NewConversationResponse;
+use agcodex_protocol::mcp_protocol::SendUserMessageParams;
+use agcodex_protocol::mcp_protocol::SendUserMessageResponse;
 use mcp_test_support::McpProcess;
 use mcp_test_support::create_final_assistant_message_sse_response;
 use mcp_test_support::create_mock_chat_completions_server;
 use mcp_test_support::to_response;
-use mcp_types::JSONRPCResponse;
-use mcp_types::RequestId;
 use pretty_assertions::assert_eq;
 use serde_json::json;
 use tempfile::TempDir;
@@ -29,11 +29,11 @@ async fn test_conversation_create_and_send_message_ok() {
     let server = create_mock_chat_completions_server(responses).await;
 
     // Temporary Codex home with config pointing at the mock server.
-    let codex_home = TempDir::new().expect("create temp dir");
-    create_config_toml(codex_home.path(), &server.uri()).expect("write config.toml");
+    let agcodex_home = TempDir::new().expect("create temp dir");
+    create_config_toml(agcodex_home.path(), &server.uri()).expect("write config.toml");
 
     // Start MCP server process and initialize.
-    let mut mcp = McpProcess::new(codex_home.path())
+    let mut mcp = McpProcess::new(agcodex_home.path())
         .await
         .expect("spawn mcp process");
     timeout(DEFAULT_READ_TIMEOUT, mcp.initialize())

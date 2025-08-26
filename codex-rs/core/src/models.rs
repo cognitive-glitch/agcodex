@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use agcodex_mcp_types::CallToolResult;
 use base64::Engine;
-use mcp_types::CallToolResult;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;

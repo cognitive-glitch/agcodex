@@ -626,7 +626,7 @@ pub(crate) trait AggregateStreamExt: Stream<Item = Result<ResponseEvent>> + Size
 impl<T> AggregateStreamExt for T where T: Stream<Item = Result<ResponseEvent>> + Sized {}
 
 impl<S> AggregatedChatStream<S> {
-    fn new(inner: S, mode: AggregateMode) -> Self {
+    const fn new(inner: S, mode: AggregateMode) -> Self {
         AggregatedChatStream {
             inner,
             cumulative: String::new(),
@@ -636,7 +636,7 @@ impl<S> AggregatedChatStream<S> {
         }
     }
 
-    pub(crate) fn streaming_mode(inner: S) -> Self {
+    pub(crate) const fn streaming_mode(inner: S) -> Self {
         Self::new(inner, AggregateMode::Streaming)
     }
 }

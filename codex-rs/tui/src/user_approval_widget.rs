@@ -9,12 +9,12 @@
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
-use codex_core::protocol::Op;
-use codex_core::protocol::ReviewDecision;
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
-use crossterm::event::KeyEventKind;
+use agcodex_core::protocol::Op;
+use agcodex_core::protocol::ReviewDecision;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyEventKind;
 use ratatui::layout::Rect;
 use ratatui::prelude::*;
 use ratatui::text::Line;
@@ -211,7 +211,7 @@ impl UserApprovalWidget<'_> {
     /// Normalize a key for comparison.
     /// - For `KeyCode::Char`, converts to lowercase for case-insensitive matching.
     /// - Other key codes are returned unchanged.
-    fn normalize_keycode(code: KeyCode) -> KeyCode {
+    const fn normalize_keycode(code: KeyCode) -> KeyCode {
         match code {
             KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
             other => other,
@@ -347,7 +347,7 @@ impl UserApprovalWidget<'_> {
 
     /// Returns `true` once the user has made a decision and the widget no
     /// longer needs to be displayed.
-    pub(crate) fn is_complete(&self) -> bool {
+    pub(crate) const fn is_complete(&self) -> bool {
         self.done
     }
 
@@ -421,9 +421,9 @@ impl WidgetRef for &UserApprovalWidget<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::KeyCode;
-    use crossterm::event::KeyEvent;
-    use crossterm::event::KeyModifiers;
+    use ratatui::crossterm::event::KeyCode;
+    use ratatui::crossterm::event::KeyEvent;
+    use ratatui::crossterm::event::KeyModifiers;
     use std::sync::mpsc::channel;
 
     #[test]

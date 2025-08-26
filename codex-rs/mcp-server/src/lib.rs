@@ -4,7 +4,7 @@
 use std::io::Result as IoResult;
 use std::path::PathBuf;
 
-use mcp_types::JSONRPCMessage;
+use agcodex_mcp_types::JSONRPCMessage;
 use tokio::io::AsyncBufReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::io::BufReader;

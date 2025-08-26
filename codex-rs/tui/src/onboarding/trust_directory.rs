@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
-use codex_core::config::set_project_trusted;
-use codex_core::protocol::AskForApproval;
-use codex_core::protocol::SandboxPolicy;
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
+use agcodex_core::config::set_project_trusted;
+use agcodex_core::protocol::AskForApproval;
+use agcodex_core::protocol::SandboxPolicy;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::layout::Rect;
 use ratatui::prelude::Widget;
 use ratatui::style::Color;
@@ -166,7 +166,7 @@ impl TrustDirectoryWidget {
         self.selection = Some(TrustDirectorySelection::Trust);
     }
 
-    fn handle_dont_trust(&mut self) {
+    const fn handle_dont_trust(&mut self) {
         self.highlighted = TrustDirectorySelection::DontTrust;
         self.selection = Some(TrustDirectorySelection::DontTrust);
     }

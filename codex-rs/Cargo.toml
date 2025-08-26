@@ -1,8 +1,12 @@
 [workspace]
 members = [
+    "agcodex",
+    "ast",
     "ansi-escape",
     "apply-patch",
     "arg0",
+    "benches",
+    "chatgpt",
     "cli",
     "common",
     "core",
@@ -15,6 +19,7 @@ members = [
     "mcp-server",
     "mcp-types",
     "ollama",
+    "persistence",
     "protocol",
     "protocol-ts",
     "tui",
@@ -22,29 +27,224 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.0.0"
+version = "0.1.0"
 # Track the edition for all workspace crates in one place. Individual
 # crates can still override this value, but keeping it here means new
 # crates created with `cargo new -w ...` automatically inherit the 2024
 # edition.
 edition = "2024"
+license = "Apache-2.0"
 
-[workspace.lints]
-rust = {}
+[workspace.lints.rust]
+rust-2024-compatibility = "warn"
+rust-2024-incompatible-pat = "warn"
+
+# dead_code = "allow"
+# unused_variables = "allow"
+
+# # Docs lints
+# missing_docs = "warn"
 
 [workspace.lints.clippy]
-expect_used = "deny"
-unwrap_used = "deny"
+# Performance lints
+inefficient_to_string = "warn"
+large_types_passed_by_value = "warn"
+
+# Correctness lints
+fallible_impl_from = "warn"
+missing_const_for_fn = "warn"
+
+# Error handling
+expect_used = "warn"
+unwrap_used = "warn"
+
+[workspace.dependencies]
+anyhow = "1"
+async-channel = "2.3.1"
+async-trait = "0.1"
+async-stream = "0.3"
+base64 = "0.22.1"
+bytes = "1.10.1"
+chrono = "0.4"
+clap = "4"
+clap_complete = "4"
+color-eyre = "0.6.3"
+criterion = "0.7"
+crossterm = "0.29"
+diffy = "0.4.2"
+dirs = "6"
+dotenvy = "0.15.7"
+env-flags = "0.1.1"
+eventsource-stream = "0.2.3"
+futures = "0.3"
+image = "0.25.6"
+ignore = "0.4.23"
+insta = "1.43.1"
+landlock = "0.4.1"
+lazy_static = "1"
+libc = "0.2.175"
+log = "0.4"
+maplit = "1.0.2"
+md5 = "0.8"
+mime_guess = "2.0"
+multimap = "0.10.0"
+nucleo-matcher = "0.3.1"
+once_cell = "1"
+os_info = "3.12.0"
+owo-colors = "4.2.0"
+path-absolutize = "3.1.1"
+path-clean = "1.0.1"
+predicates = "3"
+pretty_assertions = "1.4.1"
+rand = "0.9"
+ratatui = "0.29.0"
+rayon = "1.10"
+ratatui-image = "8.0"
+regex = "1.11"
+regex-lite = "0.1.6"
+reqwest = "0.12"
+schemars = "1.0.4"
+seccompiler = "0.5.0"
+serde = "1"
+serde_bytes = "0.11"
+serde_json = "1"
+serde_with = "3"
+sha1 = "0.10.6"
+sha2 = "0.10"
+shlex = "1.3.0"
+similar = "2.7.0"
+starlark = "0.13.0"
+strum = "0.27.2"
+strum_macros = "0.27.2"
+supports-color = "3.0.2"
+tempfile = "3.13.0"
+textwrap = "0.16"
+thiserror = "2"
+time = "0.3"
+tiny_http = "0.12"
+tokio = "1"
+tokio-test = "0.4"
+tokio-util = "0.7.16"
+toml = "0.9.5"
+toml_edit = "0.23.4"
+tracing = "0.1.41"
+tracing-appender = "0.2.3"
+tracing-subscriber = "0.3.19"
+
+# Core tree-sitter and language parsers
+tree-sitter = "0.25"
+tree-sitter-bash = "0.25"
+tree-sitter-rust = "0.24"
+tree-sitter-python = "0.23"
+tree-sitter-javascript = "0.23"
+tree-sitter-typescript = "0.23"
+tree-sitter-go = "0.23"
+tree-sitter-java = "0.23"
+tree-sitter-c = "0.24"
+tree-sitter-cpp = "0.23"
+tree-sitter-c-sharp = "0.23"
+
+# Web languages
+tree-sitter-html = "0.23"
+tree-sitter-css = "0.23"
+tree-sitter-json = "0.24"
+tree-sitter-yaml = "0.7"
+tree-sitter-toml = "0.20"
+
+# Scripting languages
+tree-sitter-ruby = "0.23"
+tree-sitter-php = "0.24"
+tree-sitter-lua = "0.2"
+
+# tree-sitter-perl - not available on crates.io
+# Functional languages
+tree-sitter-haskell = "0.23"
+tree-sitter-elixir = "0.3"
+tree-sitter-scala = "0.24"
+tree-sitter-ocaml = "0.24"
+tree-sitter-clojure = "0.1"
+# Systems languages
+tree-sitter-zig = "1.1"
+tree-sitter-swift = "0.7"
+tree-sitter-kotlin-ng = "1.1"
+tree-sitter-objc = "3.0"
+# Config/Build languages
+tree-sitter-dockerfile = "0.2"
+tree-sitter-hcl = "1.1"
+tree-sitter-nix = "0.3"
+tree-sitter-make = "1.1"
+# Documentation languages
+tree-sitter-markdown = "0.7.1"
+# tree-sitter-latex = "0.1.0" # Disabled due to linking issues
+tree-sitter-rst = "0.2"
+# Additional utilities for AST work
+lru = "0.16"
+dashmap = "6.1.0"
+ast-grep-core = "0.39.4"
+ast-grep-language = "0.39.4"
+ast-grep = "0.39.4"
+ast-grep-config = "0.39.4"
+bincode = { version = "2.0", features = ["serde"] }
+messagepack = "0.1.0"
+zstd = "0.13.2"
+ts-rs = "11"
+tui-input = "0.14.0"
+tui-markdown = "0.3.3"
+unicode-segmentation = "1.12.0"
+unicode-width = "0.2"
+url = "2"
+urlencoding = "2.1"
+uuid = "1"
+walkdir = "2.5.0"
+webbrowser = "1.0"
+whoami = "1.6.0"
+wildmatch = "2.4.0"
+wiremock = "0.6"
+assert_cmd = "2"
+allocative = "0.3.3"
+derive_more = "2"
+env_logger = "0.11.5"
+vt100 = "0.16.2"
 
 [profile.release]
 lto = "fat"
 # Because we bundle some of these executables with the TypeScript CLI, we
 # remove everything to make the binary as small as possible.
-strip = "symbols"
+strip = true
 
-# See https://github.com/openai/codex/issues/1411 for details.
+# # See https://github.com/openai/codex/issues/1411 for details.
+# codegen-units = 1
+
+[profile.release.build-override]
+# codegen-units = 1
+opt-level = 3
+strip = true
+
+[profile.release.package."*"]
+# codegen-units = 1
+opt-level = 3
+strip = true
+
+# Development profile - optimized for fast compile times
+[profile.dev]
+incremental = false    # Disable incremental compilation for macro-heavy code
+opt-level = 0          # No optimization for fastest builds
+debug = true           # Enable debug info
+overflow-checks = true # CRITICAL: Enable overflow checks in development to catch financial calculation bugs early
+
+# Build script optimization for development
+[profile.dev.build-override]
+# Helps with compile times for macro-heavy code
+# See: https://corrode.dev/blog/tips-for-faster-rust-compile-times/
+opt-level = 1
+
+
+[profile.bench]
+opt-level = 3
+debug = false
+lto = true
 codegen-units = 1
 
-[patch.crates-io]
-# ratatui = { path = "../../ratatui" }
-ratatui = { git = "https://github.com/nornagon/ratatui", branch = "nornagon-v0.29.0-patch" }
+# [patch.crates-io]
+# # ratatui = { path = "../../ratatui" }
+# ratatui = { git = "https://github.com/nornagon/ratatui", branch = "nornagon-v0.29.0-patch" }

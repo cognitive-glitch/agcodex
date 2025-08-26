@@ -4,9 +4,9 @@ use ratatui::backend::TestBackend;
 use ratatui::layout::Rect;
 use ratatui::text::Line;
 
-fn term(viewport: Rect) -> codex_tui::custom_terminal::Terminal<TestBackend> {
+fn term(viewport: Rect) -> agcodex_tui::custom_terminal::Terminal<TestBackend> {
     let backend = TestBackend::new(20, 6);
-    let mut term = codex_tui::custom_terminal::Terminal::with_options(backend)
+    let mut term = agcodex_tui::custom_terminal::Terminal::with_options(backend)
         .unwrap_or_else(|e| panic!("failed to construct terminal: {e}"));
     term.set_viewport_area(viewport);
     term
@@ -20,7 +20,7 @@ fn stream_commit_trickle_no_duplication() {
 
     // Step 1: commit first row
     let mut out1 = Vec::new();
-    codex_tui::insert_history::insert_history_lines_to_writer(
+    agcodex_tui::insert_history::insert_history_lines_to_writer(
         &mut t,
         &mut out1,
         vec![Line::from("one")],
@@ -28,7 +28,7 @@ fn stream_commit_trickle_no_duplication() {
 
     // Step 2: later commit next row
     let mut out2 = Vec::new();
-    codex_tui::insert_history::insert_history_lines_to_writer(
+    agcodex_tui::insert_history::insert_history_lines_to_writer(
         &mut t,
         &mut out2,
         vec![Line::from("two")],
@@ -59,7 +59,7 @@ fn live_ring_rows_not_inserted_into_history() {
 
     // Commit two rows to history.
     let mut buf = Vec::new();
-    codex_tui::insert_history::insert_history_lines_to_writer(
+    agcodex_tui::insert_history::insert_history_lines_to_writer(
         &mut t,
         &mut buf,
         vec![Line::from("one"), Line::from("two")],

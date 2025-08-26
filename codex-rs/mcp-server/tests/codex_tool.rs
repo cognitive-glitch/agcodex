@@ -3,21 +3,21 @@ use std::env;
 use std::path::Path;
 use std::path::PathBuf;
 
-use codex_core::protocol::FileChange;
-use codex_core::protocol::ReviewDecision;
-use codex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
-use codex_mcp_server::CodexToolCallParam;
-use codex_mcp_server::ExecApprovalElicitRequestParams;
-use codex_mcp_server::ExecApprovalResponse;
-use codex_mcp_server::PatchApprovalElicitRequestParams;
-use codex_mcp_server::PatchApprovalResponse;
-use mcp_types::ElicitRequest;
-use mcp_types::ElicitRequestParamsRequestedSchema;
-use mcp_types::JSONRPC_VERSION;
-use mcp_types::JSONRPCRequest;
-use mcp_types::JSONRPCResponse;
-use mcp_types::ModelContextProtocolRequest;
-use mcp_types::RequestId;
+use agcodex_core::protocol::FileChange;
+use agcodex_core::protocol::ReviewDecision;
+use agcodex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
+use agcodex_mcp_server::CodexToolCallParam;
+use agcodex_mcp_server::ExecApprovalElicitRequestParams;
+use agcodex_mcp_server::ExecApprovalResponse;
+use agcodex_mcp_server::PatchApprovalElicitRequestParams;
+use agcodex_mcp_server::PatchApprovalResponse;
+use agcodex_mcp_types::ElicitRequest;
+use agcodex_mcp_types::ElicitRequestParamsRequestedSchema;
+use agcodex_mcp_types::JSONRPC_VERSION;
+use agcodex_mcp_types::JSONRPCRequest;
+use agcodex_mcp_types::JSONRPCResponse;
+use agcodex_mcp_types::ModelContextProtocolRequest;
+use agcodex_mcp_types::RequestId;
 use pretty_assertions::assert_eq;
 use serde_json::json;
 use tempfile::TempDir;
@@ -71,7 +71,7 @@ async fn shell_command_approval_triggers_elicitation() -> anyhow::Result<()> {
     ])
     .await?;
 
-    // Send a "codex" tool request, which should hit the completions endpoint.
+    // Send a "agcodex" tool request, which should hit the completions endpoint.
     // In turn, it should reply with a tool call, which the MCP should forward
     // as an elicitation.
     let codex_request_id = mcp_process
@@ -224,7 +224,7 @@ async fn patch_approval_triggers_elicitation() -> anyhow::Result<()> {
     ])
     .await?;
 
-    // Send a "codex" tool request that will trigger the apply_patch command
+    // Send a "agcodex" tool request that will trigger the apply_patch command
     let codex_request_id = mcp_process
         .send_codex_tool_call(CodexToolCallParam {
             cwd: Some(cwd.path().to_string_lossy().to_string()),
@@ -298,7 +298,7 @@ async fn patch_approval_triggers_elicitation() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn test_codex_tool_passes_base_instructions() {
+async fn test_agcodex_tool_passes_base_instructions() {
     if std::env::var(CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR).is_ok() {
         println!(
             "Skipping test because it cannot execute when network is disabled in a Codex sandbox."
@@ -308,12 +308,12 @@ async fn test_codex_tool_passes_base_instructions() {
 
     // Apparently `#[tokio::test]` must return `()`, so we create a helper
     // function that returns `Result` so we can use `?` in favor of `unwrap`.
-    if let Err(err) = codex_tool_passes_base_instructions().await {
+    if let Err(err) = agcodex_tool_passes_base_instructions().await {
         panic!("failure: {err}");
     }
 }
 
-async fn codex_tool_passes_base_instructions() -> anyhow::Result<()> {
+async fn agcodex_tool_passes_base_instructions() -> anyhow::Result<()> {
     #![expect(clippy::unwrap_used)]
 
     let server =
@@ -323,12 +323,12 @@ async fn codex_tool_passes_base_instructions() -> anyhow::Result<()> {
         .await;
 
     // Run `codex mcp` with a specific config.toml.
-    let codex_home = TempDir::new()?;
-    create_config_toml(codex_home.path(), &server.uri())?;
-    let mut mcp_process = McpProcess::new(codex_home.path()).await?;
+    let agcodex_home = TempDir::new()?;
+    create_config_toml(agcodex_home.path(), &server.uri())?;
+    let mut mcp_process = McpProcess::new(agcodex_home.path()).await?;
     timeout(DEFAULT_READ_TIMEOUT, mcp_process.initialize()).await??;
 
-    // Send a "codex" tool request, which should hit the completions endpoint.
+    // Send a "agcodex" tool request, which should hit the completions endpoint.
     let codex_request_id = mcp_process
         .send_codex_tool_call(CodexToolCallParam {
             prompt: "How are you?".to_string(),
@@ -416,14 +416,14 @@ pub struct McpHandle {
 
 async fn create_mcp_process(responses: Vec<String>) -> anyhow::Result<McpHandle> {
     let server = create_mock_chat_completions_server(responses).await;
-    let codex_home = TempDir::new()?;
-    create_config_toml(codex_home.path(), &server.uri())?;
-    let mut mcp_process = McpProcess::new(codex_home.path()).await?;
+    let agcodex_home = TempDir::new()?;
+    create_config_toml(agcodex_home.path(), &server.uri())?;
+    let mut mcp_process = McpProcess::new(agcodex_home.path()).await?;
     timeout(DEFAULT_READ_TIMEOUT, mcp_process.initialize()).await??;
     Ok(McpHandle {
         process: mcp_process,
         server,
-        dir: codex_home,
+        dir: agcodex_home,
     })
 }
 

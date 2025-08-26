@@ -3,17 +3,17 @@
 
 use std::path::Path;
 
-use codex_core::protocol::TurnAbortReason;
-use codex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
-use codex_protocol::mcp_protocol::AddConversationListenerParams;
-use codex_protocol::mcp_protocol::InterruptConversationParams;
-use codex_protocol::mcp_protocol::InterruptConversationResponse;
-use codex_protocol::mcp_protocol::NewConversationParams;
-use codex_protocol::mcp_protocol::NewConversationResponse;
-use codex_protocol::mcp_protocol::SendUserMessageParams;
-use codex_protocol::mcp_protocol::SendUserMessageResponse;
-use mcp_types::JSONRPCResponse;
-use mcp_types::RequestId;
+use agcodex_core::protocol::TurnAbortReason;
+use agcodex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
+use agcodex_mcp_types::JSONRPCResponse;
+use agcodex_mcp_types::RequestId;
+use agcodex_protocol::mcp_protocol::AddConversationListenerParams;
+use agcodex_protocol::mcp_protocol::InterruptConversationParams;
+use agcodex_protocol::mcp_protocol::InterruptConversationResponse;
+use agcodex_protocol::mcp_protocol::NewConversationParams;
+use agcodex_protocol::mcp_protocol::NewConversationResponse;
+use agcodex_protocol::mcp_protocol::SendUserMessageParams;
+use agcodex_protocol::mcp_protocol::SendUserMessageResponse;
 use tempfile::TempDir;
 use tokio::time::timeout;
 
@@ -55,7 +55,7 @@ async fn shell_command_interruption() -> anyhow::Result<()> {
 
     let tmp = TempDir::new()?;
     // Temporary Codex home with config pointing at the mock server.
-    let codex_home = tmp.path().join("codex_home");
+    let codex_home = tmp.path().join("agcodex_home");
     std::fs::create_dir(&codex_home)?;
     let working_directory = tmp.path().join("workdir");
     std::fs::create_dir(&working_directory)?;
@@ -105,7 +105,7 @@ async fn shell_command_interruption() -> anyhow::Result<()> {
     let send_user_id = mcp
         .send_send_user_message_request(SendUserMessageParams {
             conversation_id,
-            items: vec![codex_protocol::mcp_protocol::InputItem::Text {
+            items: vec![agcodex_protocol::mcp_protocol::InputItem::Text {
                 text: "run first sleep command".to_string(),
             }],
         })

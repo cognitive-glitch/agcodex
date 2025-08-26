@@ -286,7 +286,7 @@ fn build_authorize_url(
         ("code_challenge", &pkce.code_challenge),
         ("code_challenge_method", "S256"),
         ("id_token_add_organizations", "true"),
-        ("codex_cli_simplified_flow", "true"),
+        ("agcodex_cli_simplified_flow", "true"),
         ("state", state),
     ];
     let qs = query
@@ -299,7 +299,7 @@ fn build_authorize_url(
 
 fn generate_state() -> String {
     let mut bytes = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut bytes);
+    rand::rng().fill_bytes(&mut bytes);
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
 }
 

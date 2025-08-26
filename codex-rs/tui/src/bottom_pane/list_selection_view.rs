@@ -1,7 +1,7 @@
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
-use crossterm::event::KeyModifiers;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyModifiers;
 use ratatui::layout::Rect;
 use ratatui::style::Modifier;
 use ratatui::style::Style;
@@ -9,6 +9,7 @@ use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::Paragraph;
 use ratatui::widgets::Widget;
+use std::any::Any;
 
 use crate::app_event_sender::AppEventSender;
 
@@ -99,7 +100,7 @@ impl ListSelectionView {
         }
     }
 
-    fn cancel(&mut self) {
+    const fn cancel(&mut self) {
         // Close the popup without performing any actions.
         self.complete = true;
     }
@@ -246,5 +247,13 @@ impl BottomPaneView<'_> for ListSelectionView {
             )));
             footer_para.render(footer_area, buf);
         }
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }

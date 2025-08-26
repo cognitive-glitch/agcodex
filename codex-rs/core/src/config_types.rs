@@ -40,7 +40,7 @@ pub enum UriBasedFileOpener {
 }
 
 impl UriBasedFileOpener {
-    pub fn get_scheme(&self) -> Option<&str> {
+    pub const fn get_scheme(&self) -> Option<&str> {
         match self {
             UriBasedFileOpener::VsCode => Some("vscode"),
             UriBasedFileOpener::VsCodeInsiders => Some("vscode-insiders"),
@@ -51,7 +51,7 @@ impl UriBasedFileOpener {
     }
 }
 
-/// Settings that govern if and what will be written to `~/.codex/history.jsonl`.
+/// Settings that govern if and what will be written to `~/.agcodex/history.jsonl`.
 #[derive(Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct History {
     /// If true, history entries will not be written to disk.
@@ -74,7 +74,70 @@ pub enum HistoryPersistence {
 
 /// Collection of settings that are specific to the TUI.
 #[derive(Deserialize, Debug, Clone, PartialEq, Default)]
-pub struct Tui {}
+pub struct Tui {
+    /// Terminal bell notifications configuration
+    #[serde(default)]
+    pub notifications: TuiNotifications,
+}
+
+/// TUI notification settings with enhanced feedback options
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+pub struct TuiNotifications {
+    /// Enable terminal bell (\x07) notifications
+    #[serde(default = "default_true")]
+    pub terminal_bell: bool,
+
+    /// Enable visual flash notifications for accessibility
+    #[serde(default = "default_true")]
+    pub visual_flash: bool,
+
+    /// Enable terminal bell for agent completion (single bell)
+    #[serde(default = "default_true")]
+    pub agent_complete: bool,
+
+    /// Enable terminal bell for agent failures (double bell)
+    #[serde(default = "default_true")]
+    pub agent_failed: bool,
+
+    /// Enable terminal bell for general errors (double bell)
+    #[serde(default = "default_true")]
+    pub error_occurred: bool,
+
+    /// Enable terminal bell for user input needed/approvals (single bell)
+    #[serde(default = "default_true")]
+    pub user_input_needed: bool,
+
+    /// Enable terminal bell for warnings (single bell)
+    #[serde(default = "default_true")]
+    pub warnings: bool,
+
+    /// Enable terminal bell for info messages (disabled by default)
+    #[serde(default = "default_false")]
+    pub info_messages: bool,
+}
+
+const fn default_true() -> bool {
+    true
+}
+
+const fn default_false() -> bool {
+    false
+}
+
+impl Default for TuiNotifications {
+    fn default() -> Self {
+        Self {
+            terminal_bell: true,
+            visual_flash: true,
+            agent_complete: true,
+            agent_failed: true,
+            error_occurred: true,
+            user_input_needed: true,
+            warnings: true,
+            info_messages: false, // Info messages are visual-only by default
+        }
+    }
+}
 
 #[derive(Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct SandboxWorkspaceWrite {

@@ -18,25 +18,25 @@ use std::sync::atomic::AtomicI64;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
+use agcodex_mcp_types::CallToolRequest;
+use agcodex_mcp_types::CallToolRequestParams;
+use agcodex_mcp_types::InitializeRequest;
+use agcodex_mcp_types::InitializeRequestParams;
+use agcodex_mcp_types::InitializedNotification;
+use agcodex_mcp_types::JSONRPC_VERSION;
+use agcodex_mcp_types::JSONRPCMessage;
+use agcodex_mcp_types::JSONRPCNotification;
+use agcodex_mcp_types::JSONRPCRequest;
+use agcodex_mcp_types::JSONRPCResponse;
+use agcodex_mcp_types::ListToolsRequest;
+use agcodex_mcp_types::ListToolsRequestParams;
+use agcodex_mcp_types::ListToolsResult;
+use agcodex_mcp_types::ModelContextProtocolNotification;
+use agcodex_mcp_types::ModelContextProtocolRequest;
+use agcodex_mcp_types::RequestId;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
-use mcp_types::CallToolRequest;
-use mcp_types::CallToolRequestParams;
-use mcp_types::InitializeRequest;
-use mcp_types::InitializeRequestParams;
-use mcp_types::InitializedNotification;
-use mcp_types::JSONRPC_VERSION;
-use mcp_types::JSONRPCMessage;
-use mcp_types::JSONRPCNotification;
-use mcp_types::JSONRPCRequest;
-use mcp_types::JSONRPCResponse;
-use mcp_types::ListToolsRequest;
-use mcp_types::ListToolsRequestParams;
-use mcp_types::ListToolsResult;
-use mcp_types::ModelContextProtocolNotification;
-use mcp_types::ModelContextProtocolRequest;
-use mcp_types::RequestId;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use tokio::io::AsyncBufReadExt;
@@ -320,7 +320,7 @@ impl McpClient {
         initialize_params: InitializeRequestParams,
         initialize_notification_params: Option<serde_json::Value>,
         timeout: Option<Duration>,
-    ) -> Result<mcp_types::InitializeResult> {
+    ) -> Result<agcodex_mcp_types::InitializeResult> {
         let response = self
             .send_request::<InitializeRequest>(initialize_params, timeout)
             .await?;
@@ -344,7 +344,7 @@ impl McpClient {
         name: String,
         arguments: Option<serde_json::Value>,
         timeout: Option<Duration>,
-    ) -> Result<mcp_types::CallToolResult> {
+    ) -> Result<agcodex_mcp_types::CallToolResult> {
         let params = CallToolRequestParams { name, arguments };
         debug!("MCP tool call: {params:?}");
         self.send_request::<CallToolRequest>(params, timeout).await
@@ -375,7 +375,7 @@ impl McpClient {
 
     /// Internal helper: route a JSON-RPC *error* object to the pending map.
     async fn dispatch_error(
-        err: mcp_types::JSONRPCError,
+        err: agcodex_mcp_types::JSONRPCError,
         pending: &Arc<Mutex<HashMap<i64, PendingSender>>>,
     ) {
         let id = match err.id {
@@ -448,7 +448,7 @@ fn create_env_for_mcp_server(
     DEFAULT_ENV_VARS
         .iter()
         .filter_map(|var| match std::env::var(var) {
-            Ok(value) => Some((var.to_string(), value)),
+            Ok(value) => Some(((*var).to_string(), value)),
             Err(_) => None,
         })
         .chain(extra_env.unwrap_or_default())

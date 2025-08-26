@@ -11,13 +11,12 @@ use std::collections::HashSet;
 use std::ffi::OsString;
 use std::time::Duration;
 
-use anyhow::Context;
-use anyhow::Result;
-use anyhow::anyhow;
-use codex_mcp_client::McpClient;
-use mcp_types::ClientCapabilities;
-use mcp_types::Implementation;
-use mcp_types::Tool;
+use crate::error::CodexErr;
+use crate::error::Result;
+use agcodex_mcp_client::McpClient;
+use agcodex_mcp_types::ClientCapabilities;
+use agcodex_mcp_types::Implementation;
+use agcodex_mcp_types::Tool;
 
 use serde_json::json;
 use sha1::Digest;
@@ -41,7 +40,7 @@ const LIST_TOOLS_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Map that holds a startup error for every MCP server that could **not** be
 /// spawned successfully.
-pub type ClientStartErrors = HashMap<String, anyhow::Error>;
+pub type ClientStartErrors = HashMap<String, String>;
 
 fn qualify_tools(tools: Vec<ToolInfo>) -> HashMap<String, ToolInfo> {
     let mut used_names = HashSet::new();
@@ -118,11 +117,11 @@ impl McpConnectionManager {
         for (server_name, cfg) in mcp_servers {
             // Validate server name before spawning
             if !is_valid_mcp_server_name(&server_name) {
-                let error = anyhow::anyhow!(
+                let error_msg = format!(
                     "invalid server name '{}': must match pattern ^[a-zA-Z0-9_-]+$",
                     server_name
                 );
-                errors.insert(server_name, error);
+                errors.insert(server_name, error_msg);
                 continue;
             }
 
@@ -137,7 +136,7 @@ impl McpConnectionManager {
                 match client_res {
                     Ok(client) => {
                         // Initialize the client.
-                        let params = mcp_types::InitializeRequestParams {
+                        let params = agcodex_mcp_types::InitializeRequestParams {
                             capabilities: ClientCapabilities {
                                 experimental: None,
                                 roots: None,
@@ -147,11 +146,11 @@ impl McpConnectionManager {
                                 elicitation: Some(json!({})),
                             },
                             client_info: Implementation {
-                                name: "codex-mcp-client".to_owned(),
+                                name: "agcodex-mcp-client".to_owned(),
                                 version: env!("CARGO_PKG_VERSION").to_owned(),
                                 title: Some("Codex".into()),
                             },
-                            protocol_version: mcp_types::MCP_SCHEMA_VERSION.to_owned(),
+                            protocol_version: agcodex_mcp_types::MCP_SCHEMA_VERSION.to_owned(),
                         };
                         let initialize_notification_params = None;
                         let timeout = Some(Duration::from_secs(10));
@@ -160,10 +159,10 @@ impl McpConnectionManager {
                             .await
                         {
                             Ok(_response) => (server_name, Ok(client)),
-                            Err(e) => (server_name, Err(e)),
+                            Err(e) => (server_name, Err(e.to_string())),
                         }
                     }
-                    Err(e) => (server_name, Err(e.into())),
+                    Err(e) => (server_name, Err(e.to_string())),
                 }
             });
         }
@@ -207,17 +206,19 @@ impl McpConnectionManager {
         tool: &str,
         arguments: Option<serde_json::Value>,
         timeout: Option<Duration>,
-    ) -> Result<mcp_types::CallToolResult> {
+    ) -> Result<agcodex_mcp_types::CallToolResult> {
         let client = self
             .clients
             .get(server)
-            .ok_or_else(|| anyhow!("unknown MCP server '{server}'"))?
+            .ok_or_else(|| CodexErr::McpServer(format!("unknown MCP server '{server}'")))?
             .clone();
 
         client
             .call_tool(tool.to_string(), arguments, timeout)
             .await
-            .with_context(|| format!("tool call failed for `{server}/{tool}`"))
+            .map_err(|e| {
+                CodexErr::McpServer(format!("tool call failed for `{server}/{tool}`: {e}"))
+            })
     }
 
     pub fn parse_tool_name(&self, tool_name: &str) -> Option<(String, String)> {
@@ -252,7 +253,8 @@ async fn list_all_tools(
 
     while let Some(join_res) = join_set.join_next().await {
         let (server_name, list_result) = join_res?;
-        let list_result = list_result?;
+        let list_result =
+            list_result.map_err(|e| CodexErr::McpServer(format!("failed to list tools: {e}")))?;
 
         for tool in list_result.tools {
             let tool_info = ToolInfo {
@@ -283,7 +285,7 @@ fn is_valid_mcp_server_name(server_name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mcp_types::ToolInputSchema;
+    use agcodex_mcp_types::ToolInputSchema;
 
     fn create_test_tool(server_name: &str, tool_name: &str) -> ToolInfo {
         ToolInfo {

@@ -1,27 +1,34 @@
 [package]
-name = "codex-execpolicy"
+name = "agcodex-execpolicy"
 version = { workspace = true }
-edition = "2024"
+description = "Sandboxing and execution policy enforcement"
+homepage = "https://github.com/agcodex/agcodex"
+repository = "https://github.com/agcodex/agcodex"
+documentation = "https://docs.rs/agcodex-execpolicy"
+keywords = ["ai", "coding-assistant", "ast", "tree-sitter", "llm"]
+categories = ["development-tools", "command-line-utilities"]
+license = { workspace = true }
+edition.workspace = true
 
 [[bin]]
-name = "codex-execpolicy"
+name = "agcodex-execpolicy"
 path = "src/main.rs"
 
 [lib]
-name = "codex_execpolicy"
+name = "agcodex_execpolicy"
 path = "src/lib.rs"
 
 [lints]
 workspace = true
 
 [dependencies]
-anyhow = "1"
-starlark = "0.13.0"
-allocative = "0.3.3"
-clap = { version = "4", features = ["derive"] }
-derive_more = { version = "2", features = ["display"] }
-env_logger = "0.11.5"
-log = "0.4"
+anyhow = { workspace = true }
+starlark = { workspace = true }
+allocative = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+derive_more = { workspace = true, features = ["display"] }
+env_logger = { workspace = true }
+log = { workspace = true }
 multimap = "0.10.0"
 path-absolutize = "3.1.1"
 regex-lite = "0.1"

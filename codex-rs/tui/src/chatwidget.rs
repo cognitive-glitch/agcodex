@@ -2,35 +2,35 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use codex_core::config::Config;
-use codex_core::protocol::AgentMessageDeltaEvent;
-use codex_core::protocol::AgentMessageEvent;
-use codex_core::protocol::AgentReasoningDeltaEvent;
-use codex_core::protocol::AgentReasoningEvent;
-use codex_core::protocol::AgentReasoningRawContentDeltaEvent;
-use codex_core::protocol::AgentReasoningRawContentEvent;
-use codex_core::protocol::ApplyPatchApprovalRequestEvent;
-use codex_core::protocol::BackgroundEventEvent;
-use codex_core::protocol::ErrorEvent;
-use codex_core::protocol::Event;
-use codex_core::protocol::EventMsg;
-use codex_core::protocol::ExecApprovalRequestEvent;
-use codex_core::protocol::ExecCommandBeginEvent;
-use codex_core::protocol::ExecCommandEndEvent;
-use codex_core::protocol::InputItem;
-use codex_core::protocol::McpListToolsResponseEvent;
-use codex_core::protocol::McpToolCallBeginEvent;
-use codex_core::protocol::McpToolCallEndEvent;
-use codex_core::protocol::Op;
-use codex_core::protocol::PatchApplyBeginEvent;
-use codex_core::protocol::TaskCompleteEvent;
-use codex_core::protocol::TokenUsage;
-use codex_core::protocol::TurnDiffEvent;
-use codex_protocol::parse_command::ParsedCommand;
-use crossterm::event::KeyEvent;
-use crossterm::event::KeyEventKind;
+use agcodex_core::config::Config;
+use agcodex_core::protocol::AgentMessageDeltaEvent;
+use agcodex_core::protocol::AgentMessageEvent;
+use agcodex_core::protocol::AgentReasoningDeltaEvent;
+use agcodex_core::protocol::AgentReasoningEvent;
+use agcodex_core::protocol::AgentReasoningRawContentDeltaEvent;
+use agcodex_core::protocol::AgentReasoningRawContentEvent;
+use agcodex_core::protocol::ApplyPatchApprovalRequestEvent;
+use agcodex_core::protocol::BackgroundEventEvent;
+use agcodex_core::protocol::ErrorEvent;
+use agcodex_core::protocol::Event;
+use agcodex_core::protocol::EventMsg;
+use agcodex_core::protocol::ExecApprovalRequestEvent;
+use agcodex_core::protocol::ExecCommandBeginEvent;
+use agcodex_core::protocol::ExecCommandEndEvent;
+use agcodex_core::protocol::InputItem;
+use agcodex_core::protocol::McpListToolsResponseEvent;
+use agcodex_core::protocol::McpToolCallBeginEvent;
+use agcodex_core::protocol::McpToolCallEndEvent;
+use agcodex_core::protocol::Op;
+use agcodex_core::protocol::PatchApplyBeginEvent;
+use agcodex_core::protocol::TaskCompleteEvent;
+use agcodex_core::protocol::TokenUsage;
+use agcodex_core::protocol::TurnDiffEvent;
+use agcodex_protocol::parse_command::ParsedCommand;
 use rand::Rng;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyEventKind;
 use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::layout::Rect;
@@ -52,6 +52,10 @@ use crate::history_cell::CommandOutput;
 use crate::history_cell::ExecCell;
 use crate::history_cell::HistoryCell;
 use crate::history_cell::PatchEventType;
+use crate::widgets::MessageJump;
+use crate::widgets::SaveDialog;
+use crate::widgets::SaveDialogAction;
+use crate::widgets::SaveDialogState;
 // streaming internals are provided by crate::streaming and crate::markdown_stream
 use crate::user_approval_widget::ApprovalRequest;
 mod interrupts;
@@ -60,15 +64,15 @@ mod agent;
 use self::agent::spawn_agent;
 use crate::streaming::controller::AppEventHistorySink;
 use crate::streaming::controller::StreamController;
-use codex_common::approval_presets::ApprovalPreset;
-use codex_common::approval_presets::builtin_approval_presets;
-use codex_common::model_presets::ModelPreset;
-use codex_common::model_presets::builtin_model_presets;
-use codex_core::ConversationManager;
-use codex_core::protocol::AskForApproval;
-use codex_core::protocol::SandboxPolicy;
-use codex_core::protocol_config_types::ReasoningEffort as ReasoningEffortConfig;
-use codex_file_search::FileMatch;
+use agcodex_common::approval_presets::ApprovalPreset;
+use agcodex_common::approval_presets::builtin_approval_presets;
+use agcodex_common::model_presets::ModelPreset;
+use agcodex_common::model_presets::builtin_model_presets;
+use agcodex_core::ConversationManager;
+use agcodex_core::protocol::AskForApproval;
+use agcodex_core::protocol::SandboxPolicy;
+use agcodex_core::protocol_config_types::ReasoningEffort as ReasoningEffortConfig;
+use agcodex_file_search::FileMatch;
 use uuid::Uuid;
 
 // Track information about an in-flight exec command.
@@ -98,6 +102,14 @@ pub(crate) struct ChatWidget<'a> {
     // Whether a redraw is needed after handling the current event
     needs_redraw: bool,
     session_id: Option<Uuid>,
+    // Save dialog state
+    save_dialog_state: Option<SaveDialogState>,
+    // Message jump popup state
+    message_jump: MessageJump,
+    // Conversation history for message jump
+    conversation_history: Vec<agcodex_core::models::ResponseItem>,
+    // Current message index for scrolling
+    current_message_index: Option<usize>,
 }
 
 struct UserMessage {
@@ -126,7 +138,7 @@ fn create_initial_user_message(text: String, image_paths: Vec<PathBuf>) -> Optio
 
 impl ChatWidget<'_> {
     #[inline]
-    fn mark_needs_redraw(&mut self) {
+    const fn mark_needs_redraw(&mut self) {
         self.needs_redraw = true;
     }
     fn flush_answer_stream_with_separator(&mut self) {
@@ -134,7 +146,7 @@ impl ChatWidget<'_> {
         let _ = self.stream.finalize(StreamKind::Answer, true, &sink);
     }
     // --- Small event handlers ---
-    fn on_session_configured(&mut self, event: codex_core::protocol::SessionConfiguredEvent) {
+    fn on_session_configured(&mut self, event: agcodex_core::protocol::SessionConfiguredEvent) {
         self.bottom_pane
             .set_history_metadata(event.history_log_id, event.history_entry_count);
         self.session_id = Some(event.session_id);
@@ -146,6 +158,16 @@ impl ChatWidget<'_> {
     }
 
     fn on_agent_message(&mut self, message: String) {
+        // Store the message in conversation history
+        self.conversation_history
+            .push(agcodex_core::models::ResponseItem::Message {
+                id: None,
+                role: "assistant".to_string(),
+                content: vec![agcodex_core::models::ContentItem::OutputText {
+                    text: message.clone(),
+                }],
+            });
+
         let sink = AppEventHistorySink(self.app_event_tx.clone());
         let finished = self.stream.apply_final_answer(&message, &sink);
         self.last_stream_kind = Some(StreamKind::Answer);
@@ -162,6 +184,17 @@ impl ChatWidget<'_> {
     }
 
     fn on_agent_reasoning_final(&mut self, text: String) {
+        // Store reasoning in conversation history
+        self.conversation_history
+            .push(agcodex_core::models::ResponseItem::Reasoning {
+                id: uuid::Uuid::new_v4().to_string(),
+                summary: vec![],
+                content: Some(vec![agcodex_core::models::ReasoningItemContent::Text {
+                    text: text.clone(),
+                }]),
+                encrypted_content: None,
+            });
+
         let sink = AppEventHistorySink(self.app_event_tx.clone());
         let finished = self.stream.apply_final_reasoning(&text, &sink);
         self.last_stream_kind = Some(StreamKind::Reasoning);
@@ -217,7 +250,7 @@ impl ChatWidget<'_> {
         self.mark_needs_redraw();
     }
 
-    fn on_plan_update(&mut self, update: codex_core::plan_tool::UpdatePlanArgs) {
+    fn on_plan_update(&mut self, update: agcodex_core::plan_tool::UpdatePlanArgs) {
         self.add_to_history(&history_cell::new_plan_update(update));
     }
 
@@ -240,6 +273,23 @@ impl ChatWidget<'_> {
     }
 
     fn on_exec_command_begin(&mut self, ev: ExecCommandBeginEvent) {
+        // Store shell command in conversation history
+        self.conversation_history
+            .push(agcodex_core::models::ResponseItem::LocalShellCall {
+                id: None,
+                call_id: Some(ev.call_id.clone()),
+                status: agcodex_core::models::LocalShellStatus::InProgress,
+                action: agcodex_core::models::LocalShellAction::Exec(
+                    agcodex_core::models::LocalShellExecAction {
+                        command: ev.command.clone(),
+                        timeout_ms: None,
+                        working_directory: ev.cwd.to_str().map(|s| s.to_string()),
+                        env: None,
+                        user: None,
+                    },
+                ),
+            });
+
         self.flush_answer_stream_with_separator();
         let ev2 = ev.clone();
         self.defer_or_handle(|q| q.push_exec_begin(ev), |s| s.handle_exec_begin_now(ev2));
@@ -247,7 +297,7 @@ impl ChatWidget<'_> {
 
     fn on_exec_command_output_delta(
         &mut self,
-        _ev: codex_core::protocol::ExecCommandOutputDeltaEvent,
+        _ev: agcodex_core::protocol::ExecCommandOutputDeltaEvent,
     ) {
         // TODO: Handle streaming exec output if/when implemented
     }
@@ -261,7 +311,7 @@ impl ChatWidget<'_> {
         ));
     }
 
-    fn on_patch_apply_end(&mut self, event: codex_core::protocol::PatchApplyEndEvent) {
+    fn on_patch_apply_end(&mut self, event: agcodex_core::protocol::PatchApplyEndEvent) {
         let ev2 = event.clone();
         self.defer_or_handle(
             |q| q.push_patch_end(event),
@@ -275,6 +325,20 @@ impl ChatWidget<'_> {
     }
 
     fn on_mcp_tool_call_begin(&mut self, ev: McpToolCallBeginEvent) {
+        // Store function call in conversation history
+        self.conversation_history
+            .push(agcodex_core::models::ResponseItem::FunctionCall {
+                id: None,
+                name: ev.invocation.tool.clone(),
+                arguments: ev
+                    .invocation
+                    .arguments
+                    .as_ref()
+                    .and_then(|v| serde_json::to_string(v).ok())
+                    .unwrap_or_default(),
+                call_id: ev.call_id.clone(),
+            });
+
         let ev2 = ev.clone();
         self.defer_or_handle(|q| q.push_mcp_begin(ev), |s| s.handle_mcp_begin_now(ev2));
     }
@@ -286,9 +350,9 @@ impl ChatWidget<'_> {
 
     fn on_get_history_entry_response(
         &mut self,
-        event: codex_core::protocol::GetHistoryEntryResponseEvent,
+        event: agcodex_core::protocol::GetHistoryEntryResponseEvent,
     ) {
-        let codex_core::protocol::GetHistoryEntryResponseEvent {
+        let agcodex_core::protocol::GetHistoryEntryResponseEvent {
             offset,
             log_id,
             entry,
@@ -315,7 +379,7 @@ impl ChatWidget<'_> {
         let finished = self.stream.on_commit_tick(&sink);
         self.handle_if_stream_finished(finished);
     }
-    fn is_write_cycle_active(&self) -> bool {
+    const fn is_write_cycle_active(&self) -> bool {
         self.stream.is_write_cycle_active()
     }
 
@@ -390,7 +454,7 @@ impl ChatWidget<'_> {
 
     pub(crate) fn handle_patch_apply_end_now(
         &mut self,
-        event: codex_core::protocol::PatchApplyEndEvent,
+        event: agcodex_core::protocol::PatchApplyEndEvent,
     ) {
         if event.success {
             self.add_to_history(&history_cell::new_patch_apply_success(event.stdout));
@@ -534,6 +598,10 @@ impl ChatWidget<'_> {
             interrupts: InterruptManager::new(),
             needs_redraw: false,
             session_id: None,
+            save_dialog_state: None,
+            message_jump: MessageJump::new(),
+            conversation_history: Vec::new(),
+            current_message_index: None,
         }
     }
 
@@ -546,6 +614,37 @@ impl ChatWidget<'_> {
     }
 
     pub(crate) fn handle_key_event(&mut self, key_event: KeyEvent) {
+        // Handle save dialog key events first if dialog is open
+        if let Some(ref mut dialog_state) = self.save_dialog_state {
+            let action = dialog_state.handle_key_event(key_event);
+            match action {
+                SaveDialogAction::Save => {
+                    let name = dialog_state.session_name.clone();
+                    let description = if dialog_state.description.is_empty() {
+                        None
+                    } else {
+                        Some(dialog_state.description.clone())
+                    };
+                    self.app_event_tx
+                        .send(AppEvent::SaveSession { name, description });
+                }
+                SaveDialogAction::Cancel => {
+                    self.app_event_tx.send(AppEvent::CloseSaveDialog);
+                }
+                SaveDialogAction::None => {
+                    // Dialog handled the key, mark for redraw if needed
+                    self.mark_needs_redraw();
+                }
+            }
+            return; // Don't process other key events when dialog is open
+        }
+
+        // Handle message jump popup key events if open
+        if self.message_jump.is_visible() {
+            self.handle_message_jump_key_event(key_event);
+            return; // Don't process other key events when message jump is open
+        }
+
         if key_event.kind == KeyEventKind::Press {
             self.bottom_pane.clear_ctrl_c_quit_hint();
         }
@@ -577,6 +676,31 @@ impl ChatWidget<'_> {
 
     fn submit_user_message(&mut self, user_message: UserMessage) {
         let UserMessage { text, image_paths } = user_message;
+
+        // Store user message in conversation history
+        let mut content_items = vec![];
+        if !text.is_empty() {
+            content_items.push(agcodex_core::models::ContentItem::InputText { text: text.clone() });
+        }
+
+        // Add image items if present
+        for path in &image_paths {
+            if let Some(path_str) = path.to_str() {
+                content_items.push(agcodex_core::models::ContentItem::InputImage {
+                    image_url: format!("file://{}", path_str),
+                });
+            }
+        }
+
+        if !content_items.is_empty() {
+            self.conversation_history
+                .push(agcodex_core::models::ResponseItem::Message {
+                    id: None,
+                    role: "user".to_string(),
+                    content: content_items,
+                });
+        }
+
         let mut items: Vec<InputItem> = Vec::new();
 
         if !text.is_empty() {
@@ -771,7 +895,7 @@ impl ChatWidget<'_> {
         }
 
         self.bottom_pane.show_selection_view(
-            "Select Approvals Mode".to_string(),
+            "Select Approval Mode".to_string(),
             None,
             Some("Press Enter to confirm or Esc to go back".to_string()),
             items,
@@ -779,7 +903,7 @@ impl ChatWidget<'_> {
     }
 
     /// Set the approval policy in the widget's config copy.
-    pub(crate) fn set_approval_policy(&mut self, policy: AskForApproval) {
+    pub(crate) const fn set_approval_policy(&mut self, policy: AskForApproval) {
         self.config.approval_policy = policy;
     }
 
@@ -789,7 +913,7 @@ impl ChatWidget<'_> {
     }
 
     /// Set the reasoning effort in the widget's config copy.
-    pub(crate) fn set_reasoning_effort(&mut self, effort: ReasoningEffortConfig) {
+    pub(crate) const fn set_reasoning_effort(&mut self, effort: ReasoningEffortConfig) {
         self.config.model_reasoning_effort = effort;
     }
 
@@ -809,6 +933,24 @@ impl ChatWidget<'_> {
     /// Forward file-search results to the bottom pane.
     pub(crate) fn apply_file_search_result(&mut self, query: String, matches: Vec<FileMatch>) {
         self.bottom_pane.on_file_search_result(query, matches);
+    }
+
+    /// Show the load session dialog
+    pub(crate) fn show_load_dialog(&mut self) {
+        self.bottom_pane.show_load_dialog();
+    }
+
+    /// Forward session list results to the load dialog
+    pub(crate) fn apply_load_session_list_result(
+        &mut self,
+        sessions: Result<Vec<agcodex_persistence::types::SessionMetadata>, String>,
+    ) {
+        self.bottom_pane.on_load_session_list_result(sessions);
+    }
+
+    /// Update search query in load dialog
+    pub(crate) fn apply_load_dialog_query_update(&mut self, query: String) {
+        self.bottom_pane.on_load_dialog_query_update(query);
     }
 
     /// Handle Ctrl-C key press.
@@ -831,13 +973,161 @@ impl ChatWidget<'_> {
         }
     }
 
-    pub(crate) fn composer_is_empty(&self) -> bool {
+    pub(crate) const fn composer_is_empty(&self) -> bool {
         self.bottom_pane.composer_is_empty()
     }
 
     pub(crate) fn insert_str(&mut self, text: &str) {
         self.bottom_pane.insert_str(text);
     }
+
+    /// Open the save session dialog
+    pub(crate) fn open_save_dialog(&mut self) {
+        self.save_dialog_state = Some(SaveDialogState::new());
+        self.mark_needs_redraw();
+    }
+
+    /// Close the save session dialog
+    pub(crate) fn close_save_dialog(&mut self) {
+        self.save_dialog_state = None;
+        self.mark_needs_redraw();
+    }
+
+    /// Save the current session with the provided name and description
+    pub(crate) fn save_session(&mut self, name: String, description: Option<String>) {
+        let should_save = if let Some(ref mut dialog_state) = self.save_dialog_state {
+            dialog_state.session_name = name.clone();
+            dialog_state.description = description.clone().unwrap_or_default();
+
+            if !dialog_state.validate() {
+                self.mark_needs_redraw();
+                return;
+            }
+
+            dialog_state.set_saving(true);
+            true
+        } else {
+            false
+        };
+
+        if should_save {
+            self.mark_needs_redraw();
+
+            // Send save session event to App for SessionManager handling
+            self.app_event_tx
+                .send(AppEvent::SaveSession { name, description });
+        }
+    }
+
+    /// Show the message jump popup
+    pub(crate) fn show_message_jump(&mut self) {
+        // Get conversation history from the stream controller
+        let messages = self.get_conversation_history();
+        self.message_jump.show(messages);
+        self.mark_needs_redraw();
+    }
+
+    /// Hide the message jump popup
+    pub(crate) fn hide_message_jump(&mut self) {
+        self.message_jump.hide();
+        self.mark_needs_redraw();
+    }
+
+    /// Jump to a specific message index
+    pub(crate) fn jump_to_message(&mut self, index: usize) {
+        // Store the current message index
+        self.current_message_index = Some(index);
+
+        // Hide the popup
+        self.hide_message_jump();
+
+        // Clear the current display and rebuild up to the selected message
+        // This simulates scrolling to that point in the conversation
+        self.flush_active_exec_cell();
+
+        // TODO: In a real implementation, we would need to:
+        // 1. Clear the terminal or scroll to the appropriate position
+        // 2. Re-render messages from the beginning up to the selected index
+        // 3. Possibly maintain a scrollback buffer position
+        // For now, we'll just mark that we need a redraw
+        self.mark_needs_redraw();
+
+        // Notify the user of the jump
+        let message_info = if let Some(msg) = self.conversation_history.get(index) {
+            match msg {
+                agcodex_core::models::ResponseItem::Message { role, .. } => {
+                    format!("Jumped to message #{} ({})", index + 1, role)
+                }
+                _ => format!("Jumped to item #{}", index + 1),
+            }
+        } else {
+            "Invalid message index".to_string()
+        };
+
+        tracing::info!("{}", message_info);
+    }
+
+    /// Update search query in message jump popup
+    pub(crate) fn update_message_jump_search(&mut self, query: String) {
+        self.message_jump.set_search_query(query);
+        self.mark_needs_redraw();
+    }
+
+    /// Cycle role filter in message jump popup
+    pub(crate) fn cycle_message_jump_filter(&mut self) {
+        self.message_jump.cycle_role_filter();
+        self.mark_needs_redraw();
+    }
+
+    /// Get conversation history as ResponseItems for message jump
+    fn get_conversation_history(&self) -> Vec<agcodex_core::models::ResponseItem> {
+        // Return a clone of the stored conversation history
+        self.conversation_history.clone()
+    }
+
+    /// Handle key events when message jump popup is visible
+    fn handle_message_jump_key_event(&mut self, key_event: KeyEvent) {
+        use ratatui::crossterm::event::KeyCode;
+
+        if key_event.kind != KeyEventKind::Press {
+            return;
+        }
+
+        match key_event.code {
+            KeyCode::Esc => {
+                self.app_event_tx.send(AppEvent::HideMessageJump);
+            }
+            KeyCode::Enter => {
+                if let Some(selected) = self.message_jump.selected_message() {
+                    self.app_event_tx
+                        .send(AppEvent::JumpToMessage(selected.index));
+                }
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.message_jump.move_up();
+                self.mark_needs_redraw();
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.message_jump.move_down();
+                self.mark_needs_redraw();
+            }
+            KeyCode::Tab => {
+                self.app_event_tx.send(AppEvent::MessageJumpCycleFilter);
+            }
+            KeyCode::Char(c) => {
+                let mut query = self.message_jump.search_query().to_string();
+                query.push(c);
+                self.app_event_tx.send(AppEvent::MessageJumpSearch(query));
+            }
+            KeyCode::Backspace => {
+                let mut query = self.message_jump.search_query().to_string();
+                query.pop();
+                self.app_event_tx.send(AppEvent::MessageJumpSearch(query));
+            }
+            _ => {}
+        }
+    }
+
     /// Forward an `Op` directly to codex.
     pub(crate) fn submit_op(&self, op: Op) {
         // Record outbound operation for session replay fidelity.
@@ -861,7 +1151,7 @@ impl ChatWidget<'_> {
         self.submit_user_message(text.into());
     }
 
-    pub(crate) fn token_usage(&self) -> &TokenUsage {
+    pub(crate) const fn token_usage(&self) -> &TokenUsage {
         &self.total_token_usage
     }
 
@@ -887,6 +1177,30 @@ impl WidgetRef for &ChatWidget<'_> {
         if let Some(cell) = &self.active_exec_cell {
             cell.render_ref(active_cell_area, buf);
         }
+
+        // Render save dialog as overlay if open
+        if let Some(ref dialog_state) = self.save_dialog_state {
+            let dialog = SaveDialog::new(dialog_state);
+            dialog.render_ref(area, buf);
+        }
+
+        // Render message jump popup as overlay if visible
+        if self.message_jump.is_visible() {
+            // Calculate popup area (centered, taking 80% of width and height)
+            let popup_width = (area.width as f32 * 0.8) as u16;
+            let popup_height = (area.height as f32 * 0.8) as u16;
+            let popup_x = (area.width.saturating_sub(popup_width)) / 2;
+            let popup_y = (area.height.saturating_sub(popup_height)) / 2;
+
+            let popup_area = Rect {
+                x: area.x + popup_x,
+                y: area.y + popup_y,
+                width: popup_width,
+                height: popup_height,
+            };
+
+            (&self.message_jump).render(popup_area, buf);
+        }
     }
 }
 
@@ -899,7 +1213,7 @@ const EXAMPLE_PROMPTS: [&str; 6] = [
     "Improve documentation in @filename",
 ];
 
-fn add_token_usage(current_usage: &TokenUsage, new_usage: &TokenUsage) -> TokenUsage {
+const fn add_token_usage(current_usage: &TokenUsage, new_usage: &TokenUsage) -> TokenUsage {
     let cached_input_tokens = match (
         current_usage.cached_input_tokens,
         new_usage.cached_input_tokens,

@@ -1,5 +1,5 @@
-use codex_core::config::Config;
-use codex_core::user_agent::get_codex_user_agent;
+use agcodex_core::config::Config;
+use agcodex_core::user_agent::get_codex_user_agent;
 
 use crate::chatgpt_token::get_chatgpt_token_data;
 use crate::chatgpt_token::init_chatgpt_token_from_auth;

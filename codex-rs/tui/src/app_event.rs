@@ -1,14 +1,27 @@
-use codex_core::protocol::Event;
-use codex_file_search::FileMatch;
-use crossterm::event::KeyEvent;
+use agcodex_core::protocol::Event;
+use agcodex_core::subagents::InvocationRequest;
+use agcodex_core::subagents::SubagentExecution;
+use agcodex_file_search::FileMatch;
+use agcodex_persistence::types::SessionMetadata;
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::text::Line;
 use std::time::Duration;
+use uuid::Uuid;
 
 use crate::app::ChatWidgetArgs;
 use crate::slash_command::SlashCommand;
-use codex_core::protocol::AskForApproval;
-use codex_core::protocol::SandboxPolicy;
-use codex_core::protocol_config_types::ReasoningEffort;
+// Note: These imports will be used when session browser event handling is implemented
+#[allow(unused_imports)]
+use crate::widgets::FocusedPanel;
+#[allow(unused_imports)]
+use crate::widgets::SessionAction;
+#[allow(unused_imports)]
+use crate::widgets::SortBy;
+#[allow(unused_imports)]
+use crate::widgets::ViewMode;
+use agcodex_core::protocol::AskForApproval;
+use agcodex_core::protocol::SandboxPolicy;
+use agcodex_core::protocol_config_types::ReasoningEffort;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -35,7 +48,7 @@ pub(crate) enum AppEvent {
 
     /// Forward an `Op` to the Agent. Using an `AppEvent` for this avoids
     /// bubbling channels through layers of widgets.
-    CodexOp(codex_core::protocol::Op),
+    CodexOp(agcodex_core::protocol::Op),
 
     /// Dispatch a recognized slash command from the UI (composer) to the app
     /// layer so it can be handled centrally.
@@ -78,4 +91,206 @@ pub(crate) enum AppEvent {
 
     /// Update the current sandbox policy in the running app and widget.
     UpdateSandboxPolicy(SandboxPolicy),
+
+    /// Cycle to the next operating mode (Plan → Build → Review → Plan).
+    CycleModes,
+
+    /// Clear the previous mode after transition animation completes.
+    ClearPreviousMode,
+
+    /// Request to show the message jump popup.
+    ShowMessageJump,
+
+    /// Request to hide the message jump popup.
+    HideMessageJump,
+
+    /// Jump to a specific message index in the conversation history.
+    JumpToMessage(usize),
+
+    /// Update search query in message jump popup.
+    MessageJumpSearch(String),
+
+    /// Cycle role filter in message jump popup.
+    MessageJumpCycleFilter,
+
+    /// Open the save session dialog.
+    OpenSaveDialog,
+
+    /// Save session with the provided name and description.
+    SaveSession {
+        name: String,
+        description: Option<String>,
+    },
+
+    /// Close the save dialog.
+    CloseSaveDialog,
+
+    /// Open the load session dialog
+    OpenLoadDialog,
+
+    /// Close the load session dialog
+    CloseLoadDialog,
+
+    /// Start loading session list for the load dialog
+    StartLoadSessionList,
+
+    /// Result of loading session list
+    LoadSessionListResult(Result<Vec<SessionMetadata>, String>),
+
+    /// Load a specific session by ID
+    LoadSession(Uuid),
+
+    /// Result of loading a session
+    LoadSessionResult(Result<Uuid, String>),
+
+    /// Update search query in load dialog
+    UpdateLoadDialogQuery(String),
+
+    /// Open the session browser (Ctrl+H)
+    OpenSessionBrowser,
+
+    /// Close the session browser
+    CloseSessionBrowser,
+
+    /// Session browser: navigate up/down
+    SessionBrowserNavigate(i32),
+
+    /// Session browser: change panel focus
+    SessionBrowserFocusNext,
+    SessionBrowserFocusPrevious,
+
+    /// Session browser: toggle view mode
+    SessionBrowserToggleViewMode,
+
+    /// Session browser: cycle sort order
+    SessionBrowserCycleSort,
+
+    /// Session browser: update search query
+    SessionBrowserUpdateSearch(String),
+
+    /// Session browser: execute selected action
+    SessionBrowserExecuteAction,
+
+    /// Session browser: delete session
+    SessionBrowserDeleteSession(Uuid),
+
+    /// Session browser: export session
+    SessionBrowserExportSession {
+        id: Uuid,
+        format: String,
+    },
+
+    /// Session browser: rename session
+    SessionBrowserRenameSession {
+        id: Uuid,
+        new_name: String,
+    },
+
+    /// Session browser: toggle favorite
+    SessionBrowserToggleFavorite(Uuid),
+
+    /// Session browser: duplicate session
+    SessionBrowserDuplicateSession(Uuid),
+
+    /// Session browser: show confirmation dialog
+    SessionBrowserShowConfirmation(String),
+
+    /// Session browser: confirm action
+    SessionBrowserConfirmAction(bool),
+
+    /// Session browser: toggle favorites filter
+    SessionBrowserToggleFavoritesFilter,
+
+    /// Session browser: toggle expand
+    SessionBrowserToggleExpand,
+
+    /// Session browser: select item
+    SessionBrowserSelect,
+
+    /// Session browser: delete item
+    SessionBrowserDelete,
+
+    /// Session browser: filter
+    SessionBrowserFilter(String),
+
+    /// Session browser: sort
+    SessionBrowserSort(String),
+
+    /// Start history get operation
+    StartHistoryGet,
+
+    /// History get result
+    HistoryGetResult(String),
+
+    /// Start jump to message operation
+    StartJumpToMessage(usize),
+
+    /// Start undo operation
+    StartUndo,
+
+    /// Undo complete
+    UndoComplete,
+
+    /// Start redo operation
+    StartRedo,
+
+    /// Redo complete
+    RedoComplete,
+
+    /// Start fork operation
+    StartFork,
+
+    /// Fork complete
+    ForkComplete(String),
+
+    // ===== Agent Events =====
+    /// Start agent execution from invocation request
+    StartAgent(InvocationRequest),
+
+    /// Agent execution progress update
+    AgentProgress {
+        agent_id: Uuid,
+        progress: f32,   // 0.0 to 1.0
+        message: String, // Current status message
+    },
+
+    /// Agent execution completed
+    AgentComplete {
+        agent_id: Uuid,
+        execution: SubagentExecution,
+    },
+
+    /// Agent execution failed
+    AgentFailed {
+        agent_id: Uuid,
+        error: String,
+    },
+
+    /// Cancel running agent
+    CancelAgent(Uuid),
+
+    /// Toggle agent panel visibility (Ctrl+A)
+    ToggleAgentPanel,
+
+    /// Agent panel navigation events
+    AgentPanelNavigateUp,
+    AgentPanelNavigateDown,
+    AgentPanelCancel,
+
+    /// Agent output chunk received (for streaming)
+    AgentOutputChunk {
+        agent_id: Uuid,
+        chunk: String,
+    },
+
+    // ===== Context Visualizer Events =====
+    /// Toggle context visualizer visibility (Ctrl+T)
+    ToggleContextVisualizer,
+
+    /// Update context window information
+    UpdateContextWindow {
+        token_usage: agcodex_core::protocol::TokenUsage,
+        context_breakdown: Option<crate::context_visualizer::ContextBreakdown>,
+        compression_metrics: Option<crate::context_visualizer::CompressionMetrics>,
+    },
 }

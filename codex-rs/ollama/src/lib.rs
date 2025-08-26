@@ -3,8 +3,8 @@ mod parser;
 mod pull;
 mod url;
 
+use agcodex_core::config::Config;
 pub use client::OllamaClient;
-use codex_core::config::Config;
 pub use pull::CliProgressReporter;
 pub use pull::PullEvent;
 pub use pull::PullProgressReporter;

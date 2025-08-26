@@ -1,0 +1,110 @@
+name: AGCodex Test Suite
+
+on:
+  push:
+    branches: [ main, overhaul ]
+  pull_request:
+    branches: [ main, overhaul ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  check:
+    name: Cargo Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable, beta, nightly]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ matrix.rust }}
+        components: rustfmt, clippy
+        
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target/
+        key: ${{ runner.os }}-cargo-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ matrix.rust }}-
+          ${{ runner.os }}-cargo-
+          
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+      
+    - name: Run Clippy
+      run: cargo clippy --all-features --all-targets --workspace --tests --
+      
+    - name: Build all crates
+      run: cargo check --all-features --all-targets --workspace
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: llvm-tools-preview
+        
+    - name: Install cargo-llvm-cov
+      uses: taiki-e/install-action@cargo-llvm-cov
+      
+    - name: Generate coverage report
+      run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: lcov.info
+        fail_ci_if_error: true
+        token: ${{ secrets.CODECOV_TOKEN }}
+        
+    - name: Check coverage threshold
+      run: |
+        coverage=$(cargo llvm-cov --all-features --workspace --summary-only | grep -oP 'lines: \K[0-9.]+' | head -1)
+        echo "Coverage: $coverage%"
+        if (( $(echo "$coverage < 80" | bc -l) )); then
+          echo "Coverage $coverage% is below 80% threshold"
+          exit 1
+        fi
+
+  security_audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      
+    - name: Install cargo-audit
+      run: cargo install cargo-audit
+      
+    - name: Run security audit
+      run: cargo audit
+      
+    - name: Check for unsafe code blocks
+      run: |
+        UNSAFE_COUNT=$(grep -r -n "unsafe" --include="*.rs" . | wc -l || echo "0")
+        echo "Found $UNSAFE_COUNT unsafe blocks"
+        
+        if [ "$UNSAFE_COUNT" -gt 10 ]; then
+          echo "Warning: High number of unsafe blocks ($UNSAFE_COUNT). Consider review."
+        fi

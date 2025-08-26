@@ -1,8 +1,8 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+use agcodex_core::CODEX_APPLY_PATCH_ARG1;
 use anyhow::Context;
 use assert_cmd::prelude::*;
-use codex_core::CODEX_APPLY_PATCH_ARG1;
 use std::fs;
 use std::process::Command;
 use tempfile::tempdir;
@@ -17,7 +17,7 @@ fn test_standalone_exec_cli_can_use_apply_patch() -> anyhow::Result<()> {
     let absolute_path = tmp.path().join(relative_path);
     fs::write(&absolute_path, "original content\n")?;
 
-    Command::cargo_bin("codex-exec")
+    Command::cargo_bin("agcodex-exec")
         .context("should find binary for codex-exec")?
         .arg(CODEX_APPLY_PATCH_ARG1)
         .arg(
@@ -168,7 +168,7 @@ async fn test_apply_patch_tool() -> anyhow::Result<()> {
         .await;
 
     let tmp_cwd = TempDir::new().unwrap();
-    Command::cargo_bin("codex-exec")
+    Command::cargo_bin("agcodex-exec")
         .context("should find binary for codex-exec")?
         .current_dir(tmp_cwd.path())
         .env("CODEX_HOME", tmp_cwd.path())
