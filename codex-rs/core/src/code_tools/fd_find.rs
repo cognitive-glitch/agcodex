@@ -40,6 +40,8 @@ pub struct FdQuery {
     pub base_dir: PathBuf,
     /// Glob patterns to match (e.g., "*.rs", "**/*.js")
     pub glob_patterns: Vec<String>,
+    /// Patterns to exclude from search
+    pub exclude_patterns: Vec<String>,
     /// Regex pattern for advanced matching
     pub regex_pattern: Option<String>,
     /// File type filter
@@ -87,7 +89,7 @@ pub struct SizeFilter {
 }
 
 /// Search result with metadata
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FdResult {
     /// Full path to the found item
     pub path: PathBuf,
@@ -101,8 +103,14 @@ pub struct FdResult {
     pub executable: bool,
 }
 
+impl AsRef<Path> for FdResult {
+    fn as_ref(&self) -> &Path {
+        &self.path
+    }
+}
+
 /// File type enumeration
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FdFileType {
     File,
     Directory,
@@ -145,6 +153,7 @@ impl Default for FdQuery {
         Self {
             base_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             glob_patterns: Vec::new(),
+            exclude_patterns: Vec::new(),
             regex_pattern: None,
             file_type: FileTypeFilter::All,
             size_filter: None,
@@ -174,6 +183,24 @@ impl FdFind {
             default_max_depth: max_depth,
             default_threads: threads,
         }
+    }
+
+    /// Find files matching patterns with exclusions
+    pub fn find_files<P: AsRef<Path>>(
+        &self,
+        base_dir: P,
+        include_patterns: &[&str],
+        exclude_patterns: &[&str],
+    ) -> Result<Vec<FdResult>, ToolError> {
+        let query = FdQuery {
+            base_dir: base_dir.as_ref().to_path_buf(),
+            glob_patterns: include_patterns.iter().map(|s| (*s).to_string()).collect(),
+            exclude_patterns: exclude_patterns.iter().map(|s| (*s).to_string()).collect(),
+            file_type: FileTypeFilter::FilesOnly,
+            ..Default::default()
+        };
+
+        self.search(query)
     }
 
     /// Helper: Find files by extension

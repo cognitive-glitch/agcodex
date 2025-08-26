@@ -36,6 +36,7 @@ mod message_history;
 mod model_provider_info;
 pub mod modes;
 pub mod parse_command;
+pub mod parsers;
 pub use model_provider_info::BUILT_IN_OSS_MODEL_PROVIDER_ID;
 pub use model_provider_info::ModelProviderInfo;
 pub use model_provider_info::WireApi;
@@ -48,6 +49,7 @@ pub use conversation_manager::NewConversation;
 pub use conversation_manager_ext::ConversationManagerExt;
 pub use conversation_manager_ext::InterceptResult;
 pub use conversation_manager_ext::MessageContext;
+pub mod ast_compactor;
 pub mod model_family;
 pub mod models;
 mod openai_model_info;
@@ -67,6 +69,15 @@ mod user_notification;
 pub mod util;
 pub use apply_patch::CODEX_APPLY_PATCH_ARG1;
 pub use safety::get_platform_sandbox;
+
+// New type-safe modules
+pub mod builders;
+pub mod semantic_index;
+pub mod state_machines;
+pub mod types;
+
+#[cfg(test)]
+mod test_type_safety;
 // Re-export the protocol types from the standalone `codex-protocol` crate so existing
 // `codex_core::protocol::...` references continue to work across the workspace.
 pub use agcodex_protocol::protocol;

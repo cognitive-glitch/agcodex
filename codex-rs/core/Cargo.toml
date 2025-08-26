@@ -53,6 +53,7 @@ similar = { workspace = true }
 strum_macros = { workspace = true }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
+anyhow = { workspace = true }
 time = { workspace = true, features = ["formatting", "local-offset", "macros"] }
 tokio = { workspace = true, features = [
     "io-std",
@@ -115,6 +116,7 @@ tree-sitter-rst = { workspace = true }
 rayon = { workspace = true }
 ignore = { workspace = true }
 lru = "0.16"
+lazy_static = { workspace = true }
 md5 = { workspace = true }
 tantivy = "0.25"
 uuid = { workspace = true, features = ["serde", "v4"] }
@@ -128,6 +130,10 @@ ast-grep-core = { workspace = true }
 ast-grep-language = { workspace = true }
 ast-grep-config = { workspace = true }
 pretty_assertions = { workspace = true }
+
+# Code tools integration
+grep-regex = "0.1"
+which = "6.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 landlock = { workspace = true }
